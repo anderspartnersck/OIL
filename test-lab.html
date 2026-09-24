@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OiL! TESTING SUITE — the balance lab</title>
+<style>
+  :root{--gold:#e0a32a;--gold-lite:#f6c95a;--ink:#0c0a08;--cream:#efe6cf;
+    --red:#c0392b;--orange:#e2632a;--green:#2f8f5b;--panel:#1a140d;}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:radial-gradient(120% 100% at 50% -10%,#241a10,#0c0a08 70%);
+    color:var(--cream);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif}
+  a{color:var(--gold-lite);text-decoration:none}
+  header{display:flex;align-items:baseline;gap:14px;padding:14px 22px;border-bottom:1px solid #3a2c18;
+    background:linear-gradient(180deg,rgba(20,15,10,.9),rgba(10,8,6,.6))}
+  header .ti{font-family:Georgia,serif;font-weight:700;color:var(--gold-lite);font-size:25px;letter-spacing:.04em}
+  header .sub{font-size:11.5px;color:#9a8f7c}
+  header .sp{flex:1}
+  header .nav a{font-size:12px;margin-left:14px;color:#caa15e}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 22px 40px}
+  .bar-controls{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:linear-gradient(180deg,#191309,#120d08);
+    border:1px solid #33270f;border-radius:14px;padding:14px 16px;margin-bottom:16px}
+  .ctl{display:flex;flex-direction:column;gap:4px}
+  .ctl label{font-size:10px;letter-spacing:.1em;color:#8a7c63;text-transform:uppercase;font-weight:800}
+  select,input[type=number]{font-family:inherit;font-weight:700;background:#241a0f;color:var(--cream);
+    border:1px solid #4a3413;border-radius:8px;padding:7px 9px;font-size:13px}
+  button{font-family:inherit;font-weight:800;cursor:pointer;border:none;border-radius:999px;padding:10px 20px;font-size:13.5px;
+    color:#241405;background:linear-gradient(180deg,var(--gold-lite),var(--gold));box-shadow:0 3px 0 #93660f}
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 #93660f}
+  button.alt{background:linear-gradient(180deg,#caa15e,#7d5b22);color:#1a1206;box-shadow:0 3px 0 #4a3413}
+  .dialnote{font-size:11px;color:#7fd6a3;margin-bottom:12px;display:none}
+  #bar{height:9px;border-radius:6px;background:#241a0f;overflow:hidden;margin:4px 0 16px;display:none}
+  #bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-lite))}
+  .verdict{font-family:Georgia,serif;font-size:18px;margin:4px 0 14px;display:none}
+  .verdict.ok{color:#7fd6a3} .verdict.bad{color:#ff9a86}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,#1a140d,#120d08);border:1px solid #33270f;border-radius:14px;padding:14px 16px}
+  .card h3{margin:0 0 10px;font-size:11px;letter-spacing:.14em;color:#caa15e;text-transform:uppercase;font-weight:800}
+  .laws{display:flex;flex-direction:column;gap:5px}
+  .law{display:flex;align-items:center;gap:9px;font-size:12.5px;background:#16110b;border-radius:8px;padding:7px 10px}
+  .law .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+  .law .dot.ok{background:#2f8f5b;box-shadow:0 0 7px #2f8f5b} .law .dot.bad{background:#c0392b;box-shadow:0 0 7px #c0392b}
+  .law .nm{flex:1;color:#cbbd9d} .law .id{color:#8a7c63;font-weight:800;font-size:10px;flex:0 0 50px}
+  .law .dt{color:#9a8f7c;font-size:11px}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .kv .stat{background:#16110b;border-radius:9px;padding:9px 11px}
+  .kv .k{font-size:10px;letter-spacing:.08em;color:#8a7c63;text-transform:uppercase}
+  .kv .v{font-size:19px;font-weight:800;color:var(--gold-lite);font-family:Georgia,serif;margin-top:2px}
+  canvas{display:block;width:100%;height:170px}
+  .full{grid-column:1/-1}
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:2px}
+  .muted{color:#8a7c63;font-size:11px}
+  .results{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="ti">OiL! TESTING SUITE</div>
+  <div class="sub">the balance lab · drives the real native engine · the visual twin of <code style="color:#caa15e">oil-sweep.js</code></div>
+  <div class="sp"></div>
+  <div class="nav"><a href="diciner.html">🎲 THE DICINER</a><a href="oil-native.html">▶ native game</a><a href="index.html">card bible</a></div>
+</header>
+<div class="wrap">
+  <div class="dialnote" id="dialnote"></div>
+  <div class="bar-controls">
+    <div class="ctl"><label>Games</label><select id="games"><option>120</option><option selected>300</option><option>600</option><option>1000</option></select></div>
+    <div class="ctl"><label>Players</label><select id="players"><option value="mix" selected>mix 2–8</option><option>4</option><option>5</option><option>6</option><option>8</option></select></div>
+    <div class="ctl"><label>Expansion</label><select id="exp"><option value="mix" selected>mix ±green</option><option value="1">+ green</option><option value="0">core only</option></select></div>
+    <div class="ctl"><label>Edition</label><select id="ed"><option value="classic" selected>classic</option><option value="benchmark">benchmark</option><option value="both">compare both</option></select></div>
+    <div class="ctl"><label>Cards</label><select id="cards"><option value="1" selected>on</option><option value="0">off</option></select></div>
+    <div class="ctl"><label>THE TABLE</label><select id="deals"><option value="1" selected>on</option><option value="0">off</option></select></div>
+    <div class="ctl"><label>Factions</label><select id="asym"><option value="1" selected>asymmetric</option><option value="0">symmetric</option></select></div>
+    <button id="run">▶ RUN SWEEP</button>
+  </div>
+  <div id="bar"><i></i></div>
+  <div class="verdict" id="verdict"></div>
+
+  <div class="results" id="results">
+    <div class="grid">
+      <div class="card" id="lawcard"><h3>Franchise laws</h3><div class="laws" id="laws"></div></div>
+      <div class="card"><h3>Key metrics</h3><div class="kv" id="kv"></div></div>
+      <div class="card"><h3>Game length (turns)</h3><canvas id="lenChart"></canvas></div>
+      <div class="card"><h3>Winner exposure (cleanliness of exit)</h3><canvas id="expChart"></canvas></div>
+      <div class="card"><h3>Win-rate by faction</h3><canvas id="facChart"></canvas></div>
+      <div class="card"><h3>E.D.D. path &amp; win-by-policy</h3><canvas id="pathChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card full" style="margin-top:16px">
+    <h3>Dial sensitivity sweep</h3>
+    <div class="muted" style="margin-bottom:10px">Sweep one dial across a range and watch a metric move — find where a law breaks. Each point runs a fresh batch.</div>
+    <div class="bar-controls" style="margin:0 0 12px">
+      <div class="ctl"><label>Dial</label><select id="sd_dial">
+        <option value="T_CHAOS">T_CHAOS</option><option value="OIL_START">OIL_START</option>
+        <option value="EDD_PRICE">EDD_PRICE</option><option value="EDD_OIL">EDD_OIL</option>
+        <option value="SCARCITY_BAND">SCARCITY_BAND</option><option value="GREEN_TRIGGER">GREEN_TRIGGER</option>
+        <option value="BURN_PER_PRICE">BURN_PER_PRICE</option><option value="HOLD_PENALTY">HOLD_PENALTY</option>
+      </select></div>
+      <div class="ctl"><label>From</label><input type="number" id="sd_from" value="1" style="width:80px"></div>
+      <div class="ctl"><label>To</label><input type="number" id="sd_to" value="6" style="width:80px"></div>
+      <div class="ctl"><label>Steps</label><input type="number" id="sd_steps" value="6" style="width:70px"></div>
+      <div class="ctl"><label>Metric</label><select id="sd_metric">
+        <option value="spikePct">E.D.D. spike %</option><option value="median">length median</option>
+        <option value="avgWinExp">avg winner exposure</option><option value="avgLeadGap">avg leader gap</option>
+        <option value="lawsPass">laws passing (#)</option>
+      </select></div>
+      <div class="ctl"><label>Games/pt</label><select id="sd_games"><option>80</option><option selected>150</option><option>300</option></select></div>
+      <button class="alt" id="sweepBtn">⤳ SWEEP DIAL</button>
+    </div>
+    <div id="sd_bar" style="height:8px;border-radius:5px;background:#241a0f;overflow:hidden;margin-bottom:10px;display:none"><i style="display:block;height:100%;width:0;background:linear-gradient(90deg,#caa15e,#f6c95a)"></i></div>
+    <canvas id="sweepChart" style="height:230px"></canvas>
+  </div>
+</div>
+
+<script src="src/oil-content.js"></script>
+<script src="src/oil-skin.js"></script>
+<script src="src/oil-engine.js"></script>
+<script src="src/oil-cards.js"></script>
+<script src="src/oil-deals.js"></script>
+<script src="src/oil-factions.js"></script>
+<script src="src/oil-lab.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const LAB=window.OIL_LAB, BASE=window.OIL_DIALS;
+const FREG=(window.OIL_FACTIONS_FX&&window.OIL_FACTIONS_FX.FACTIONS)||{};
+const FCODES=Object.keys(FREG);
+const DPR=()=>window.devicePixelRatio||1;
+
+// optional dials handed over from THE DICINER (#dials=base64 json)
+let extraDials={};
+(function(){ const m=location.hash.match(/dials=([^&]+)/); if(m){ try{ extraDials=JSON.parse(atob(decodeURIComponent(m[1])));
+  const dn=$('#dialnote'); dn.style.display='block'; dn.textContent='⚙ testing a DICINER design: '+JSON.stringify(extraDials); }catch(e){} } })();
+
+function cfg(edition){
+  return { count:+$('#games').value, edition,
+    nPlayers: $('#players').value==='mix'?'mix':+$('#players').value,
+    expansion: $('#exp').value==='mix'?'mix':$('#exp').value==='1',
+    cards: $('#cards').value==='1', deals: $('#deals').value==='1', asym: $('#asym').value==='1', factions:FCODES,
+    dials: extraDials, seed0: 7000 };
+}
+
+let running=false;
+async function run(){
+  if(running)return; running=true;
+  const btn=$('#run'); btn.textContent='… running';
+  const bar=$('#bar'); bar.style.display='block'; bar.querySelector('i').style.width='0%';
+  const eds = $('#ed').value==='both' ? ['classic','benchmark'] : [$('#ed').value];
+  const reps={};
+  for(let e=0;e<eds.length;e++){
+    const c=cfg(eds[e]);
+    const games=await LAB.runBatch(Object.assign({},c,{onProgress:(d,t)=>{ bar.querySelector('i').style.width=(100*(e+d/t)/eds.length)+'%'; }}));
+    reps[eds[e]]=LAB.lawReport(games,c.dials);
+  }
+  bar.style.display='none'; btn.textContent='▶ RUN SWEEP';
+  render(reps);
+  running=false;
+}
+
+function render(reps){
+  $('#results').style.display='block';
+  const names=Object.keys(reps);
+  const primary=reps[names[0]];
+  const allPass=names.every(n=>reps[n].allPass);
+  const v=$('#verdict'); v.style.display='block'; v.className='verdict '+(allPass?'ok':'bad');
+  v.textContent=allPass? `✓ ALL FRANCHISE LAWS HOLD${names.length>1?' on both editions':''} — ${primary.N} games each.`
+    : `✗ A LAW BROKE — see the red dots below.`;
+
+  // law card (compare if 2 editions)
+  $('#lawcard').querySelector('h3').textContent = names.length>1 ? 'Franchise laws — classic vs benchmark' : 'Franchise laws';
+  $('#laws').innerHTML=primary.laws.map((l,i)=>{
+    const cells=names.map(n=>{const L=reps[n].laws[i]; return `<span class="dot ${L.pass?'ok':'bad'}" title="${n}: ${L.detail}"></span>`;}).join('');
+    return `<div class="law">${cells}<span class="id">${l.id}</span><span class="nm">${l.name}</span><span class="dt">${names.map(n=>reps[n].laws[i].detail).join(' · ')}</span></div>`;
+  }).join('');
+
+  // key metrics
+  const s=primary.stats;
+  $('#kv').innerHTML=[
+    ['games',primary.N],['length median',`${s.median} (${s.lenMin}–${s.lenMax})`],
+    ['E.D.D. spike',(100*s.spikePct).toFixed(0)+'%'],['E.D.D. oil-out',(100*s.oilOutPct).toFixed(0)+'%'],
+    ['avg winner exposure',s.avgWinExp.toFixed(1)],['avg leader gap',s.avgLeadGap.toFixed(1)],
+  ].map(([k,val])=>`<div class="stat"><div class="k">${k}</div><div class="v">${val}</div></div>`).join('');
+
+  // charts (use the primary edition's raw games via re-deriving from report — we kept stats; need games)
+  drawLen(primary); drawExp(primary); drawFac(primary); drawPath(primary);
+}
+
+// histograms are built from the report's distributions — recompute from games kept on the report
+// (lawReport doesn't keep games; so we stash them) -> patch: keep games on report
+const _origReport=LAB.lawReport;
+LAB.lawReport=function(games,dials){ const r=_origReport(games,dials); r._games=games; return r; };
+
+function bars(cv,labels,vals,opts){
+  opts=opts||{}; const ctx=cv.getContext('2d');
+  const W=cv.width=cv.clientWidth*DPR(), H=cv.height=cv.clientHeight*DPR();
+  ctx.clearRect(0,0,W,H);
+  const padB=22*DPR(), padT=8*DPR(), padL=opts.padL?opts.padL*DPR():6*DPR();
+  const max=Math.max(1,...vals), n=vals.length;
+  const bw=(W-padL)/n*0.78, gap=(W-padL)/n;
+  ctx.font=(9.5*DPR())+'px Trebuchet MS';ctx.textAlign='center';
+  vals.forEach((val,i)=>{
+    const h=(val/max)*(H-padB-padT), x=padL+gap*i+gap*0.11;
+    ctx.fillStyle=opts.colors?opts.colors[i]:'#caa15e';
+    ctx.fillRect(x,H-padB-h,bw,h);
+    ctx.fillStyle='#cbbd9d';ctx.textBaseline='alphabetic';
+    if(opts.vtop) ctx.fillText(opts.vtop[i],x+bw/2,H-padB-h-3*DPR());
+    ctx.fillStyle='#8a7c63';ctx.textBaseline='top';
+    ctx.fillText(labels[i],x+bw/2,H-padB+4*DPR());
+  });
+}
+function hist(cv,values,binCount,color){
+  const min=Math.min(...values),max=Math.max(...values);
+  const span=Math.max(1,max-min), bins=binCount||14, step=span/bins;
+  const counts=new Array(bins).fill(0); values.forEach(v=>{let b=Math.floor((v-min)/step); if(b>=bins)b=bins-1; if(b<0)b=0; counts[b]++;});
+  const labels=counts.map((_,i)=> (i%3===0)?Math.round(min+i*step):'');
+  bars(cv,labels,counts,{colors:counts.map(()=>color||'#caa15e')});
+}
+
+function drawLen(rep){ hist($('#lenChart'),rep._games.map(g=>g.len),14,'#caa15e'); }
+function drawExp(rep){ hist($('#expChart'),rep._games.map(g=>g.winExposure),14,'#e2632a'); }
+function drawFac(rep){
+  const fr=rep.facRates.slice().sort((a,b)=>b.rate-a.rate);
+  bars($('#facChart'),fr.map(f=>f.code.slice(0,4)),fr.map(f=>+(100*f.rate).toFixed(1)),
+    {vtop:fr.map(f=>(100*f.rate).toFixed(0)+'%'),colors:fr.map(f=> f.rate>=0.45?'#c0392b': f.rate<=0.05?'#7a4a2a':'#caa15e')});
+}
+function drawPath(rep){
+  const s=rep.stats, pol=rep.pwins;
+  const labels=['spike','oil-out',...Object.keys(pol).map(k=>'win:'+k)];
+  const vals=[s.spike,s.oilOut,...Object.keys(pol).map(k=>pol[k])];
+  const colors=['#e2632a','#7d5b22',...Object.keys(pol).map(()=>'#2f8f5b')];
+  bars($('#pathChart'),labels,vals,{vtop:vals.map(String),colors});
+}
+
+// ---- dial sensitivity sweep ----
+let sweeping=false;
+async function sweepDial(){
+  if(sweeping)return; sweeping=true;
+  const btn=$('#sweepBtn'); btn.textContent='… sweeping';
+  const dial=$('#sd_dial').value, from=+$('#sd_from').value, to=+$('#sd_to').value, steps=Math.max(2,+$('#sd_steps').value);
+  const metric=$('#sd_metric').value, gpp=+$('#sd_games').value;
+  const bar=$('#sd_bar'); bar.style.display='block'; bar.querySelector('i').style.width='0%';
+  const pts=[];
+  for(let i=0;i<steps;i++){
+    const val=from+(to-from)*i/(steps-1);
+    const rv = (dial==='T_CHAOS'||dial==='EDD_OIL'||dial==='GREEN_TRIGGER'||dial==='BURN_PER_PRICE'||dial==='HOLD_PENALTY'||dial==='SCARCITY_BAND')?Math.round(val):val;
+    const dials=Object.assign({},extraDials,{[dial]:rv});
+    const games=await LAB.runBatch({count:gpp,edition:'classic',nPlayers:'mix',expansion:'mix',cards:true,asym:true,factions:FCODES,seed0:8000,dials,
+      onProgress:(d,t)=>{bar.querySelector('i').style.width=(100*(i+d/t)/steps)+'%';}});
+    const rep=LAB.lawReport(games,dials);
+    let y; const s=rep.stats;
+    if(metric==='lawsPass') y=rep.laws.filter(l=>l.pass).length;
+    else if(metric==='spikePct') y=100*s.spikePct;
+    else y=s[metric];
+    pts.push({x:rv,y,allPass:rep.allPass});
+  }
+  bar.style.display='none'; btn.textContent='⤳ SWEEP DIAL';
+  drawSweep(pts,dial,metric);
+  sweeping=false;
+}
+function drawSweep(pts,dial,metric){
+  const cv=$('#sweepChart'),ctx=cv.getContext('2d');
+  const W=cv.width=cv.clientWidth*DPR(),H=cv.height=cv.clientHeight*DPR();
+  ctx.clearRect(0,0,W,H);
+  const padL=44*DPR(),padR=14*DPR(),padT=14*DPR(),padB=30*DPR();
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(0,...ys),ymax=Math.max(...ys)*1.1||1;
+  const X=x=>padL+(W-padL-padR)*((x-xmin)/((xmax-xmin)||1));
+  const Y=y=>padT+(H-padT-padB)*(1-(y-ymin)/((ymax-ymin)||1));
+  // axes
+  ctx.strokeStyle='rgba(120,100,70,.25)';ctx.lineWidth=DPR();ctx.font=(10*DPR())+'px Trebuchet MS';ctx.fillStyle='#8a7c63';
+  for(let g=0;g<=4;g++){const yy=padT+(H-padT-padB)*g/4,val=ymax-(ymax-ymin)*g/4;
+    ctx.beginPath();ctx.moveTo(padL,yy);ctx.lineTo(W-padR,yy);ctx.stroke();
+    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(val.toFixed(0),padL-5*DPR(),yy);}
+  // line + points (red where a law breaks)
+  ctx.strokeStyle='#f6c95a';ctx.lineWidth=2.4*DPR();ctx.beginPath();
+  pts.forEach((p,i)=>{const x=X(p.x),y=Y(p.y);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
+  pts.forEach(p=>{ctx.fillStyle=p.allPass?'#7fd6a3':'#c0392b';ctx.beginPath();ctx.arc(X(p.x),Y(p.y),4.5*DPR(),0,7);ctx.fill();
+    ctx.fillStyle='#8a7c63';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(p.x,X(p.x),H-padB+5*DPR());});
+  ctx.fillStyle='#caa15e';ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.fillText(`${dial} →  ${metric}  (green = laws pass · red = a law broke)`,padL,4*DPR());
+}
+
+$('#run').onclick=run;
+$('#sweepBtn').onclick=sweepDial;
+addEventListener('resize',()=>{ if($('#results').style.display==='block'){ /* charts redraw on next run */ } });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE DICINER — OiL! dice designer</title>
+<style>
+  :root{--gold:#e0a32a;--gold-lite:#f6c95a;--ink:#0c0a08;--ink2:#15110c;
+    --cream:#efe6cf;--red:#c0392b;--orange:#e2632a;--green:#2f8f5b;--panel:#1a140d;}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:radial-gradient(120% 100% at 50% -10%,#241a10,#0c0a08 70%);
+    color:var(--cream);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif}
+  a{color:var(--gold-lite)}
+  header{display:flex;align-items:baseline;gap:14px;padding:14px 22px;border-bottom:1px solid #3a2c18;
+    background:linear-gradient(180deg,rgba(20,15,10,.9),rgba(10,8,6,.6))}
+  header .ti{font-family:Georgia,serif;font-weight:700;color:var(--gold-lite);font-size:26px;letter-spacing:.04em}
+  header .sub{font-size:11.5px;color:#9a8f7c;letter-spacing:.05em}
+  header .sp{flex:1}
+  header .nav a{font-size:12px;margin-left:14px;text-decoration:none;color:#caa15e}
+  header .nav a:hover{color:var(--gold-lite)}
+  main{display:grid;grid-template-columns:340px 1fr;gap:0;align-items:stretch}
+  @media(max-width:880px){main{grid-template-columns:1fr}}
+  .panel{padding:16px 20px}
+  #controls{border-right:1px solid #3a2c18;background:linear-gradient(180deg,#191309,#120d08)}
+  .grp{margin-bottom:18px}
+  .grp h3{margin:0 0 8px;font-size:11px;letter-spacing:.14em;color:#caa15e;text-transform:uppercase;font-weight:800}
+  .faces{display:flex;gap:6px}
+  .faces .die{flex:1;text-align:center}
+  .faces .die label{display:block;font-size:9px;color:#7d6b4a;margin-bottom:3px}
+  .faces input,.wts input{width:100%;background:#241a0f;color:var(--cream);border:1px solid #4a3413;border-radius:8px;
+    padding:7px 4px;text-align:center;font-weight:800;font-size:15px;font-family:inherit}
+  .wts{display:flex;gap:6px}
+  .wts .w label{display:block;font-size:9px;color:#7d6b4a;margin-bottom:3px;text-align:center}
+  .wts .w{flex:1}
+  .row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:12px;color:#cbbd9d}
+  .row label{flex:0 0 116px;color:#9a8f7c;font-size:11px;letter-spacing:.03em}
+  .row input[type=range]{flex:1;accent-color:var(--gold)}
+  .row .val{flex:0 0 42px;text-align:right;font-weight:800;color:var(--gold-lite)}
+  .presets{display:flex;gap:7px;flex-wrap:wrap}
+  button{font-family:inherit;font-weight:800;cursor:pointer;border:none;border-radius:999px;padding:8px 15px;font-size:12.5px;
+    color:#241405;background:linear-gradient(180deg,var(--gold-lite),var(--gold));box-shadow:0 3px 0 #93660f}
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 #93660f}
+  button.alt{background:linear-gradient(180deg,#caa15e,#7d5b22);color:#1a1206;box-shadow:0 3px 0 #4a3413}
+  button.ghost{background:none;color:#caa15e;box-shadow:none;border:1px solid #4a3413;padding:7px 12px}
+  /* readouts */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:1180px){.cards{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:linear-gradient(180deg,#1d1509,#15100a);border:1px solid #33270f;border-radius:12px;padding:11px 13px}
+  .stat .k{font-size:10px;letter-spacing:.1em;color:#8a7c63;text-transform:uppercase}
+  .stat .v{font-size:23px;font-weight:800;color:var(--gold-lite);margin-top:3px;font-family:Georgia,serif}
+  .stat .s{font-size:10.5px;color:#9a8f7c;margin-top:2px}
+  .badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;padding:2px 9px;border-radius:999px;margin-top:5px}
+  .badge.ok{background:rgba(47,143,91,.22);color:#7fd6a3;border:1px solid #2f8f5b}
+  .badge.bad{background:rgba(192,57,43,.22);color:#ff9a86;border:1px solid #c0392b}
+  .vizwrap{background:linear-gradient(180deg,#140f08,#0e0a06);border:1px solid #33270f;border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .vizwrap h3{margin:0 0 4px;font-size:11px;letter-spacing:.12em;color:#caa15e;text-transform:uppercase}
+  .vizwrap .cap{font-size:11px;color:#8a7c63;margin-bottom:6px}
+  canvas{display:block;width:100%;height:190px}
+  .dice-faces{display:flex;gap:8px;margin:8px 0 2px;flex-wrap:wrap}
+  .pip{width:38px;height:38px;border-radius:9px;background:linear-gradient(180deg,#f3ead0,#cdбbа0);color:#1a1206;
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;font-family:Georgia,serif;
+    box-shadow:0 2px 0 #8a7038,inset 0 0 0 1px #b89a52}
+  .green-pip{background:linear-gradient(180deg,#bfe6c4,#5fae74)}
+  /* prove-it */
+  .prove{background:linear-gradient(180deg,#1a140d,#120d08);border:1px solid #33270f;border-radius:12px;padding:14px 16px}
+  .prove .bar{height:8px;border-radius:5px;background:#241a0f;overflow:hidden;margin:8px 0 4px;display:none}
+  .prove .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-lite));transition:width .1s}
+  .laws{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+  .law{display:flex;align-items:center;gap:9px;font-size:12px;background:#16110b;border-radius:8px;padding:7px 10px}
+  .law .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+  .law .dot.ok{background:#2f8f5b;box-shadow:0 0 7px #2f8f5b} .law .dot.bad{background:#c0392b;box-shadow:0 0 7px #c0392b}
+  .law .nm{flex:1;color:#cbbd9d} .law .id{color:#8a7c63;font-weight:800;font-size:10px;flex:0 0 52px}
+  .law .dt{color:#9a8f7c;font-size:11px}
+  .verdict{margin-top:10px;font-family:Georgia,serif;font-size:15px}
+  .verdict.ok{color:#7fd6a3} .verdict.bad{color:#ff9a86}
+  .shares{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;font-size:10.5px;color:#9a8f7c}
+  .shares b{color:#caa15e}
+  pre.export{white-space:pre-wrap;background:#0e0a06;border:1px solid #33270f;border-radius:10px;padding:11px 13px;
+    font-size:11px;color:#cbbd9d;font-family:ui-monospace,Menlo,monospace;margin-top:10px;display:none}
+  .lede{padding:8px 22px 18px;font-size:11px;color:#8a7c63;max-width:820px}
+</style>
+</head>
+<body>
+<header>
+  <div class="ti">THE DICINER</div>
+  <div class="sub">OiL! dice designer · model&nbsp;A locked (three bodies → one emergent price) · every face is a dial</div>
+  <div class="sp"></div>
+  <div class="nav"><a href="oil-native.html">▶ native game</a><a href="test-lab.html">🧪 testing suite</a><a href="index.html">card bible</a></div>
+</header>
+<main>
+  <section id="controls" class="panel">
+    <div class="grp">
+      <h3>The three bodies — faces</h3>
+      <div class="cap" style="font-size:10.5px;color:#7d6b4a;margin-bottom:7px">Supply · Weather · World share one interchangeable die (model A). Design its six faces.</div>
+      <div class="faces" id="faces"></div>
+    </div>
+    <div class="grp">
+      <h3>Shove weights (on sorted a≤b≤c)</h3>
+      <div class="wts" id="wts"></div>
+      <div class="cap" style="font-size:10px;color:#7d6b4a;margin-top:6px">market shove = w₀·a + w₁·b + w₂·c · default [1, −2, 1] = the three-body read</div>
+    </div>
+    <div class="grp">
+      <h3>Thresholds</h3>
+      <div class="row"><label>T_CHAOS (era)</label><input type="range" id="T_CHAOS" min="1" max="8" step="1"><span class="val" id="T_CHAOS_v"></span></div>
+      <div class="row"><label>Green trigger</label><input type="range" id="GREEN_TRIGGER" min="2" max="7" step="1"><span class="val" id="GREEN_TRIGGER_v"></span></div>
+      <div class="row"><label>Scarcity band</label><input type="range" id="SCARCITY_BAND" min="0" max="60" step="2"><span class="val" id="SCARCITY_BAND_v"></span></div>
+      <div class="row"><label>E.D.D. price</label><input type="range" id="EDD_PRICE" min="60" max="120" step="2"><span class="val" id="EDD_PRICE_v"></span></div>
+      <div class="row"><label>E.D.D. oil floor</label><input type="range" id="EDD_OIL" min="0" max="20" step="1"><span class="val" id="EDD_OIL_v"></span></div>
+      <div class="row"><label>Oil at start</label><input type="range" id="OIL_START" min="30" max="100" step="2"><span class="val" id="OIL_START_v"></span></div>
+    </div>
+    <div class="grp">
+      <h3>Presets</h3>
+      <div class="presets">
+        <button class="alt" data-preset="classic">CLASSIC</button>
+        <button class="alt" data-preset="benchmark">BENCHMARK</button>
+        <button class="ghost" data-preset="reset">↺ reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="cards">
+      <div class="stat"><div class="k">House drift (E1)</div><div class="v" id="m_mean">0.00</div><div class="s">mean shove — must be 0</div><div id="m_driftbadge"></div></div>
+      <div class="stat"><div class="k">Volatility</div><div class="v" id="m_std">—</div><div class="s">shove σ · range <span id="m_range">—</span></div></div>
+      <div class="stat"><div class="k">CHAOTIC rate</div><div class="v" id="m_chaos">—</div><div class="s">P(|shove| ≥ T_CHAOS)</div></div>
+      <div class="stat"><div class="k">Green intervenes</div><div class="v" id="m_green">—</div><div class="s">expansion die fires</div></div>
+    </div>
+
+    <div class="vizwrap">
+      <h3>The emergent market — shove distribution</h3>
+      <div class="cap">All <span id="m_n">216</span> rolls of the three bodies, read as one price shove. Symmetry about 0 = a fair market.</div>
+      <canvas id="hist"></canvas>
+    </div>
+
+    <div class="vizwrap">
+      <h3>The designed die</h3>
+      <div class="cap">Six faces of the shared body (left) · the Green Anders expansion die fires on the lit faces (right).</div>
+      <div class="dice-faces" id="faceview"></div>
+    </div>
+
+    <div class="prove">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button id="prove">⚖ PROVE IT — sweep these dice</button>
+        <button class="alt" id="play">▶ PLAY THESE DICE</button>
+        <button class="ghost" id="exportBtn">⬇ export dials</button>
+        <span class="sub" id="provehint" style="color:#8a7c63;font-size:11px">runs ~240 bot games on YOUR dice and checks every franchise law</span>
+      </div>
+      <div class="bar" id="provebar"><i></i></div>
+      <div class="laws" id="laws"></div>
+      <div class="verdict" id="verdict"></div>
+      <div class="shares" id="shares"></div>
+      <pre class="export" id="exportOut"></pre>
+    </div>
+  </section>
+</main>
+<div class="lede">
+  Model A is canon (CORE-002, locked 2026-06-15): the three core dice are interchangeable bodies read as one emergent
+  price — not three subsystems. So designing OiL!'s dice = designing these six faces, the shove weights, and the chaos
+  threshold. Keep the drift at 0 (Charter E1) and the laws green; the sweep proves consequences, the designer signs off (Charter L5).
+</div>
+
+<script src="src/oil-content.js"></script>
+<script src="src/oil-skin.js"></script>
+<script src="src/oil-engine.js"></script>
+<script src="src/oil-cards.js"></script>
+<script src="src/oil-deals.js"></script>
+<script src="src/oil-factions.js"></script>
+<script src="src/oil-lab.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const LAB=window.OIL_LAB, BASE=window.OIL_DIALS, EDS=window.OIL_EDITIONS||{};
+const FREG=(window.OIL_FACTIONS_FX&&window.OIL_FACTIONS_FX.FACTIONS)||{};
+const FCODES=Object.keys(FREG);
+const SLIDERS=['T_CHAOS','GREEN_TRIGGER','SCARCITY_BAND','EDD_PRICE','EDD_OIL','OIL_START'];
+
+// ---- state: the design ----
+let st={faces:BASE.DIE_FACES.slice(), weights:BASE.SHOVE_W.slice()};
+SLIDERS.forEach(k=>st[k]=BASE[k]);
+
+// ---- build face + weight inputs ----
+const facesEl=$('#faces'); BASE.DIE_FACES.forEach((v,i)=>{
+  const d=document.createElement('div'); d.className='die';
+  d.innerHTML=`<label>${['I','II','III','IV','V','VI'][i]}</label><input type="number" min="0" max="20" step="1" data-fi="${i}">`;
+  facesEl.appendChild(d);
+});
+const wtsEl=$('#wts'); ['a (low)','b (mid)','c (high)'].forEach((lab,i)=>{
+  const d=document.createElement('div'); d.className='w';
+  d.innerHTML=`<label>${lab}</label><input type="number" min="-5" max="5" step="1" data-wi="${i}">`;
+  wtsEl.appendChild(d);
+});
+
+function syncInputs(){
+  document.querySelectorAll('[data-fi]').forEach(inp=>inp.value=st.faces[+inp.dataset.fi]);
+  document.querySelectorAll('[data-wi]').forEach(inp=>inp.value=st.weights[+inp.dataset.wi]);
+  SLIDERS.forEach(k=>{$('#'+k).value=st[k]; $('#'+k+'_v').textContent=k==='GREEN_TRIGGER'&&st[k]>=7?'off':st[k];});
+}
+
+// ---- live readouts ----
+function dialsFromState(){
+  const d={DIE_FACES:st.faces.slice(),SHOVE_W:st.weights.slice()};
+  SLIDERS.forEach(k=>d[k]=+st[k]); return d;
+}
+function refresh(){
+  const en=LAB.enumerateShove(st.faces,st.weights);
+  $('#m_mean').textContent=en.mean.toFixed(2);
+  $('#m_std').textContent=en.std.toFixed(2);
+  $('#m_range').textContent=en.min+'…'+en.max;
+  $('#m_n').textContent=en.n;
+  $('#m_chaos').textContent=(100*en.chaosFrac(+st.T_CHAOS)).toFixed(0)+'%';
+  $('#m_green').textContent=(100*LAB.greenRate(+st.GREEN_TRIGGER)).toFixed(0)+'%';
+  const driftOk=Math.abs(en.mean)<1e-9 && en.symmetric;
+  const b=$('#m_driftbadge');
+  b.className='badge '+(driftOk?'ok':'bad');
+  b.textContent=driftOk?'✓ NO HOUSE DRIFT':(en.symmetric?'⚠ MEAN ≠ 0':'⚠ ASYMMETRIC — drift');
+  drawHist(en);
+  drawFaces();
+  // any design change invalidates a prior proof
+  $('#verdict').textContent=''; $('#verdict').className='verdict';
+  $('#laws').innerHTML=''; $('#shares').innerHTML='';
+}
+
+function drawHist(en){
+  const cv=$('#hist'),ctx=cv.getContext('2d');
+  const W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=cv.clientHeight*devicePixelRatio;
+  ctx.clearRect(0,0,W,H);
+  const keys=Object.keys(en.dist).map(Number).sort((a,b)=>a-b);
+  if(!keys.length)return;
+  const lo=Math.min(en.min,-1),hi=Math.max(en.max,1);
+  const span=hi-lo||1, maxC=Math.max(...keys.map(k=>en.dist[k]));
+  const padB=24*devicePixelRatio,padT=10*devicePixelRatio;
+  const x=v=>(v-lo)/span*W, bw=W/(span+1)*0.82;
+  // zero axis
+  ctx.strokeStyle='rgba(246,201,90,.5)';ctx.lineWidth=devicePixelRatio;ctx.setLineDash([4*devicePixelRatio,4*devicePixelRatio]);
+  ctx.beginPath();ctx.moveTo(x(0),padT);ctx.lineTo(x(0),H-padB);ctx.stroke();ctx.setLineDash([]);
+  // T_CHAOS bands
+  const T=+st.T_CHAOS;
+  ctx.fillStyle='rgba(226,99,42,.10)';
+  ctx.fillRect(0,padT,x(-T+0.5),H-padB-padT); ctx.fillRect(x(T-0.5),padT,W-x(T-0.5),H-padB-padT);
+  // bars
+  keys.forEach(k=>{
+    const h=(en.dist[k]/maxC)*(H-padB-padT);
+    const chaotic=Math.abs(k)>=T;
+    ctx.fillStyle=k===0?'#f6c95a':(chaotic?'#e2632a':'#caa15e');
+    ctx.fillRect(x(k)-bw/2,H-padB-h,bw,h);
+  });
+  // labels
+  ctx.fillStyle='#8a7c63';ctx.font=(10*devicePixelRatio)+'px Trebuchet MS';ctx.textAlign='center';ctx.textBaseline='top';
+  keys.forEach(k=>{ if(k%((span>16)?3:1)===0) ctx.fillText(k,x(k),H-padB+4*devicePixelRatio); });
+}
+
+function drawFaces(){
+  const fv=$('#faceview'); fv.innerHTML='';
+  st.faces.forEach(f=>{const d=document.createElement('div');d.className='pip';d.textContent=f;fv.appendChild(d);});
+  const sep=document.createElement('div'); sep.style.cssText='width:1px;background:#33270f;margin:0 4px';
+  fv.appendChild(sep);
+  for(let g=1;g<=6;g++){const d=document.createElement('div');d.className='pip green-pip';
+    d.textContent=g; d.style.opacity=(g>=+st.GREEN_TRIGGER)?'1':'.28'; fv.appendChild(d);}
+}
+
+// ---- prove it: sweep the designed dice ----
+let proving=false;
+async function proveIt(){
+  if(proving)return; proving=true;
+  const btn=$('#prove'); btn.textContent='… sweeping';
+  const bar=$('#provebar'); bar.style.display='block'; bar.querySelector('i').style.width='0%';
+  $('#laws').innerHTML=''; $('#verdict').textContent=''; $('#shares').innerHTML='';
+  const dials=dialsFromState();
+  const games=await LAB.runBatch({count:240,expansion:'mix',nPlayers:'mix',cards:true,asym:true,factions:FCODES,seed0:7000,
+    dials, onProgress:(d,t)=>{bar.querySelector('i').style.width=(100*d/t)+'%';}});
+  const rep=LAB.lawReport(games,dials);
+  bar.style.display='none';
+  $('#laws').innerHTML=rep.laws.map(l=>
+    `<div class="law"><span class="dot ${l.pass?'ok':'bad'}"></span><span class="id">${l.id}</span><span class="nm">${l.name}</span><span class="dt">${l.detail}</span></div>`).join('');
+  const v=$('#verdict');
+  v.className='verdict '+(rep.allPass?'ok':'bad');
+  v.textContent=rep.allPass
+    ? `✓ These dice are LAW-CLEAN. Length median ${rep.stats.median} (${rep.stats.lenMin}–${rep.stats.lenMax}) · E.D.D. spike ${(100*rep.stats.spikePct).toFixed(0)}% / oil-out ${(100*rep.stats.oilOutPct).toFixed(0)}%.`
+    : `✗ These dice BREAK a law — see the red dots. Adjust the design and re-sweep.`;
+  const fr=rep.facRates.slice().sort((a,b)=>b.rate-a.rate);
+  $('#shares').innerHTML='<b>win-rate by faction:</b> '+fr.map(f=>`${f.code} ${(100*f.rate).toFixed(0)}%`).join(' · ')
+    +'  &nbsp;|&nbsp; <b>by policy:</b> '+Object.entries(rep.pwins).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`${k} ${n}`).join(' · ');
+  btn.textContent='⚖ PROVE IT — sweep these dice';
+  proving=false;
+}
+
+// ---- export ----
+function exportDials(){
+  const d=dialsFromState();
+  const ed=`  // paste into EDITIONS in src/oil-engine.js, or new OilGame({dials:{...}})\n`+
+    `diciner: { rubberBand:false, dials: ${JSON.stringify(d)} },`;
+  const out=$('#exportOut'); out.style.display='block';
+  out.textContent=`// THE DICINER export · model A · ${new Date().toISOString?'':''}\n`+
+    `dials = ${JSON.stringify(d,null,2)}\n\n${ed}\n\n// play link:\n${playURL()}`;
+}
+function playURL(){
+  const d=dialsFromState();
+  return location.origin+location.pathname.replace(/diciner\.html$/,'oil-native.html')+'#dials='+btoa(JSON.stringify(d));
+}
+
+// ---- presets ----
+function applyPreset(name){
+  if(name==='reset'||name==='classic'){
+    st.faces=BASE.DIE_FACES.slice(); st.weights=BASE.SHOVE_W.slice();
+    SLIDERS.forEach(k=>st[k]=BASE[k]);
+  } else if(EDS[name]){
+    st.faces=BASE.DIE_FACES.slice(); st.weights=BASE.SHOVE_W.slice();
+    SLIDERS.forEach(k=>st[k]=BASE[k]);
+    Object.assign(st, EDS[name].dials||{});  // edition dial overrides
+  }
+  syncInputs(); refresh();
+}
+
+// ---- wire events ----
+facesEl.addEventListener('input',e=>{const i=+e.target.dataset.fi; st.faces[i]=Math.max(0,(+e.target.value||0)); refresh();});
+wtsEl.addEventListener('input',e=>{const i=+e.target.dataset.wi; st.weights[i]=(+e.target.value||0); refresh();});
+SLIDERS.forEach(k=>$('#'+k).addEventListener('input',e=>{st[k]=+e.target.value; $('#'+k+'_v').textContent=(k==='GREEN_TRIGGER'&&st[k]>=7)?'off':st[k]; refresh();}));
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>applyPreset(b.dataset.preset));
+$('#prove').onclick=proveIt;
+$('#exportBtn').onclick=exportDials;
+$('#play').onclick=()=>{ window.open(playURL(),'_blank'); };
+addEventListener('resize',()=>{const en=LAB.enumerateShove(st.faces,st.weights);drawHist(en);});
+
+syncInputs(); refresh();
+})();
+</script>
+</body>
+</html>

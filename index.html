@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>OiL! — The Home Game</title>
+<style>
+  :root{
+    --slate:#1c2230; --slate2:#262d3d; --ink:#15191f;
+    --gold:#d6a93f; --gold-lite:#f0cf7a; --juice:#e58a2a; --juice-lite:#f6a94e;
+    --cream:#efe6cf; --paper:#e9dcbd;
+    --candy1:#e8743b; --candy2:#3fa7a0; --candy3:#d8497a; --candy4:#6b8f3a; --candy5:#9a6bbf; --candy6:#dcae23;
+    --red:#c0392b; --shadow:#7a5aa6;
+    --panel:#222a39;
+  }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;background:var(--slate);color:var(--cream);
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;overflow:hidden}
+  .screen{position:fixed;inset:0;display:none;flex-direction:column}
+  .screen.on{display:flex}
+
+  /* ---------- shared candy buttons ---------- */
+  button.candy{font-family:inherit;font-weight:800;letter-spacing:.5px;cursor:pointer;border:none;
+    border-radius:999px;padding:12px 26px;font-size:16px;color:#2a1c08;
+    background:linear-gradient(180deg,var(--gold-lite),var(--gold));
+    box-shadow:0 5px 0 #9c7320,0 8px 14px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s}
+  button.candy:active{transform:translateY(4px);box-shadow:0 1px 0 #9c7320,0 3px 8px rgba(0,0,0,.4)}
+  button.candy.alt{background:linear-gradient(180deg,#6fc3bd,var(--candy2));color:#06302d;box-shadow:0 5px 0 #2b6f6a,0 8px 14px rgba(0,0,0,.4)}
+  button.candy.sm{padding:8px 16px;font-size:13px}
+  button.candy:disabled{filter:grayscale(.6) brightness(.8);cursor:default}
+
+  /* ---------- BOOT / TITLE ---------- */
+  #boot{align-items:center;justify-content:center;
+    background:radial-gradient(120% 90% at 50% 36%,#3a3b3c 0%,#2c2d2f 45%,#1a1b1d 100%)}
+  .wordmark{font-family:Georgia,"Times New Roman",serif;font-weight:700;
+    font-size:clamp(70px,17vw,200px);line-height:.9;letter-spacing:.02em;
+    color:var(--gold-lite);
+    text-shadow:0 0 36px rgba(229,160,60,.85),0 0 90px rgba(229,160,60,.45);
+    -webkit-text-stroke:2px #5a4214;animation:flickerIn 1.1s ease both}
+  @keyframes flickerIn{0%{opacity:0}40%{opacity:.4}55%{opacity:.9}60%{opacity:.5}100%{opacity:1}}
+  .tagline{margin-top:18px;font-family:"Trebuchet MS",sans-serif;font-weight:800;
+    color:#cdbf9e;letter-spacing:.18em;font-size:clamp(13px,2.4vw,22px);text-align:center;
+    text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .tagline b{color:var(--juice-lite)}
+  .byline{margin-top:8px;color:#8c8576;letter-spacing:.22em;font-size:12px;font-weight:700}
+  #boot .presents{width:min(46vw,300px);filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));animation:flickerIn 1s ease both}
+  #boot .presents-sub{margin-top:-6px;color:#9a927e;letter-spacing:.5em;font-size:12px;font-weight:800;animation:flickerIn 1.4s ease both}
+  #boot .sub{margin-top:16px;padding-bottom:6px;color:#776f5e;font-size:12px;letter-spacing:.14em;text-align:center}
+  #boot .start-hint{margin-top:22px;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+  /* 3D box (built to the 10.5×10.5×2 print spec) — slow spin + zoom */
+  .stage3d{perspective:1300px;width:min(72vw,440px);height:min(40vh,380px);
+    display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 30px 40px rgba(0,0,0,.6))}
+  .box3d{position:relative;width:300px;height:300px;transform-style:preserve-3d;
+    animation:boxspin 18s linear infinite, boxzoom 7.5s ease-in-out infinite alternate}
+  @keyframes boxspin{from{transform:rotateX(-17deg) rotateY(-22deg)}to{transform:rotateX(-17deg) rotateY(338deg)}}
+  @keyframes boxzoom{from{scale:.84}to{scale:1.12}}
+  /* depth = 61px ≈ 300 × (spine 174 / face 858) — matches the print 10.5×10.5×2 spine art exactly */
+  .bxface{position:absolute;backface-visibility:hidden;background-size:cover;background-position:center;
+    box-shadow:inset 0 0 34px rgba(0,0,0,.28)}   /* no hard border — that was the black seam line */
+  .bx-front,.bx-back{inset:0}
+  .bx-front{background-image:url(assets/box/top.png);transform:translateZ(30.5px)}
+  .bx-back{background-image:url(assets/box/top.png);filter:brightness(.45);transform:rotateY(180deg) translateZ(30.5px)}
+  /* left/right edges: spine art is portrait (174×858) and fits these portrait faces directly */
+  .bx-right,.bx-left{width:61px;height:300px;left:119.5px;top:0;background-image:url(assets/box/spine.png)}
+  .bx-right{transform:rotateY(90deg) translateZ(150px)}
+  .bx-left{transform:rotateY(-90deg) translateZ(150px);filter:brightness(.82)}
+  /* top/bottom edges are landscape — rotate the portrait spine 90° (via ::before) so the seam runs along the edge */
+  .bx-top,.bx-bottom{width:300px;height:61px;left:0;top:119.5px;overflow:hidden}
+  .bx-top::before,.bx-bottom::before{content:"";position:absolute;top:50%;left:50%;width:61px;height:300px;
+    background:url(assets/box/spine.png) center/cover;transform:translate(-50%,-50%) rotate(90deg)}
+  .bx-top{transform:rotateX(90deg) translateZ(150px)}
+  .bx-bottom{transform:rotateX(-90deg) translateZ(150px);filter:brightness(.5)}
+
+  /* ---------- the two boxes spinning side by side ---------- */
+  .boxduo{display:flex;align-items:center;justify-content:center;gap:min(4vw,30px);flex-wrap:nowrap}
+  .stage3d.mini{width:min(40vw,250px);height:min(30vh,250px)}
+  /* EXPANSION box (10.5×10.5×2, smaller) — blue, the SuprexCore PREMIUM badge as the spine */
+  .box-exp{position:relative;width:210px;height:210px;transform-style:preserve-3d;
+    animation:boxspin 18s linear infinite reverse, boxzoom 7.5s ease-in-out infinite alternate;animation-delay:-4s}
+  .exface{position:absolute;backface-visibility:hidden;overflow:hidden;
+    background:linear-gradient(155deg,#3157c7 0%,#1b337f 46%,#0c1a4d 100%);
+    box-shadow:inset 0 0 30px rgba(0,0,0,.45),inset 0 0 0 1px rgba(120,160,255,.18)}
+  .ex-front,.ex-back{inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px}
+  .ex-front{transform:translateZ(22px)}
+  .ex-front .flash{width:88%;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+  .ex-front .kick{margin-top:6px;font-family:Georgia,serif;font-weight:700;color:#e9d9a6;letter-spacing:.14em;font-size:13px;
+    text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .ex-front .kick b{color:#f6c95a}
+  /* the NEW BACK — a real expansion back-of-box */
+  .ex-back{transform:rotateY(180deg) translateZ(22px);
+    background:linear-gradient(155deg,#23408f 0%,#142a63 50%,#091436 100%)}
+  .ex-back .bt{font-family:Georgia,serif;color:#f6c95a;font-weight:700;font-size:15px;letter-spacing:.06em}
+  .ex-back .bs{margin-top:4px;color:#cdd8ff;font-size:9.5px;letter-spacing:.16em;font-weight:800}
+  .ex-back ul{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+  .ex-back li{color:#dfe7ff;font-size:9.5px;letter-spacing:.05em}
+  .ex-back li b{color:#7fd6a3}
+  .ex-back .req{margin-top:9px;color:#9fb0e6;font-size:8px;letter-spacing:.18em;font-weight:800}
+  /* spine (portrait edges) carries the badge, rotated to run up the box */
+  .ex-right,.ex-left{width:44px;height:210px;left:83px;top:0}
+  .ex-right{transform:rotateY(90deg) translateZ(105px)}
+  .ex-left{transform:rotateY(-90deg) translateZ(105px);filter:brightness(.84)}
+  .ex-right .spine-badge,.ex-left .spine-badge{position:absolute;top:50%;left:50%;width:200px;
+    transform:translate(-50%,-50%) rotate(90deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+  .ex-top,.ex-bottom{width:210px;height:44px;left:0;top:83px}
+  .ex-top{transform:rotateX(90deg) translateZ(105px)}
+  .ex-bottom{transform:rotateX(-90deg) translateZ(105px);filter:brightness(.5)}
+  .ex-top .cap,.ex-bottom .cap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    color:#9fb0e6;font-size:8px;letter-spacing:.34em;font-weight:800;white-space:nowrap}
+
+  /* ---------- SETUP ---------- */
+  #setup{align-items:center;justify-content:center;gap:6px;padding:24px;overflow-y:auto;
+    background:linear-gradient(rgba(14,17,25,.62),rgba(10,13,20,.82)),url("assets/board/oil_board.png") center/cover fixed}
+  #setup h2{font-family:Georgia,serif;color:var(--gold-lite);margin:.2em 0 0;font-size:28px;letter-spacing:.04em}
+  #setup .setup-sub{color:#9aa3b4;font-size:12px;font-weight:800;letter-spacing:.14em;margin-bottom:10px}
+  .chip.unofficial{opacity:.45}
+  .card{background:var(--panel);border:1px solid #36405a;border-radius:18px;padding:20px 24px;
+    box-shadow:0 16px 40px rgba(0,0,0,.5);max-width:780px;width:100%}
+  .row{display:flex;align-items:center;gap:12px;margin:14px 0;flex-wrap:wrap}
+  .row .lbl{width:130px;color:#aeb6c6;font-weight:700;font-size:14px;letter-spacing:.04em}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:8px 14px;border-radius:999px;background:#1a2030;
+    color:#cfd6e4;font-weight:800;cursor:pointer;border:2px solid #39455f}
+  .chip.on{background:linear-gradient(180deg,var(--gold-lite),var(--gold));color:#2a1c08;border-color:#9c7320}
+  .toggle{display:inline-flex;align-items:center;gap:10px;cursor:pointer}
+  .switch{width:52px;height:28px;border-radius:999px;background:#39455f;position:relative;transition:background .15s}
+  .switch i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#cdd4e2;transition:left .15s}
+  .switch.on{background:var(--shadow)} .switch.on i{left:27px;background:#fff}
+  .seats{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .seat{display:flex;align-items:center;gap:12px;background:#1a2031;border-radius:12px;padding:8px 12px}
+  .seat .pawnico{width:26px;height:32px;flex:0 0 auto}
+  .seat .nm{flex:1;font-weight:800}
+  .seat .role{color:#8b93a4;font-size:12px;font-weight:600}
+  .seat .hb{display:flex;gap:6px}
+  .miniel{font-size:11px;color:#9aa3b4;font-weight:700}
+  /* character frames (use the real printed portrait art) */
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;width:100%}
+  #seats.cgrid{max-height:42vh;overflow-y:auto;padding-right:4px}
+  .cframe{background:#161b26;border:1px solid #36405a;border-top:3px solid var(--ch,#d6a93f);
+    border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+  .cframe .port{width:100%;height:118px;background:#0e1219 center 18%/cover no-repeat;border-bottom:1px solid #2c3547}
+  .cframe .body{padding:8px 10px 10px;display:flex;flex-direction:column;gap:3px;flex:1}
+  .cframe .nm{font-family:Georgia,serif;font-weight:700;font-size:15px;color:var(--gold-lite);line-height:1}
+  .cframe .role{font-size:9.5px;letter-spacing:.08em;color:#9aa3b4;font-weight:800;text-transform:uppercase}
+  .cframe .line{font-size:11px;font-style:italic;color:#cdbf9e;line-height:1.3;min-height:30px;margin-top:3px}
+  .cframe .tell{font-size:9.5px;color:#7f8aa0;line-height:1.25;min-height:24px}
+  .cframe .seatbtn{margin-top:6px;align-self:flex-start}
+
+  /* ---------- GAME ---------- */
+  #game{flex-direction:row;background:#11151d}
+  #boardwrap{flex:1;position:relative;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #board{display:block;max-width:100%;max-height:100%}
+  #collapseFlash{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(192,57,43,.0),rgba(192,57,43,.0));mix-blend-mode:screen}
+  .banner{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    background:rgba(192,57,43,.92);color:#fff;font-weight:900;letter-spacing:.12em;
+    padding:8px 22px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;z-index:5}
+
+  /* right rail */
+  #rail{width:336px;flex:0 0 336px;background:linear-gradient(180deg,#1d2433,#161b26);
+    border-left:1px solid #2c3547;display:flex;flex-direction:column;min-height:0}
+  .rail-h{padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2c3547}
+  .rail-h .er{font-family:Georgia,serif;font-weight:700;color:var(--gold-lite);font-size:20px;text-shadow:0 0 12px rgba(229,160,60,.5)}
+  .rail-h .tg{font-size:10px;color:#8b93a4;letter-spacing:.12em;line-height:1.2}
+
+  .meters{display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #2c3547}
+  .meter{flex:1;background:#11161f;border-radius:12px;padding:8px;text-align:center}
+  .meter .mlbl{font-size:10px;letter-spacing:.1em;color:#9aa3b4;font-weight:800}
+  .meter .mval{font-size:13px;font-weight:900;margin-top:2px}
+  .pips{display:flex;gap:3px;justify-content:center;margin-top:6px}
+  .pip{width:14px;height:14px;border-radius:4px;background:#28303f;transition:background .2s,box-shadow .2s}
+  .pip.f-g{background:linear-gradient(180deg,#f0a94e,#c0392b);box-shadow:0 0 8px rgba(192,57,43,.6)}
+  .pip.f-s{background:linear-gradient(180deg,#b18bd8,#6c3fae);box-shadow:0 0 8px rgba(124,63,174,.6)}
+
+  #players{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  .pl{background:#1a2130;border-radius:14px;padding:9px 10px;border:2px solid transparent;transition:border-color .2s,transform .2s}
+  .pl.active{border-color:var(--gold);transform:scale(1.015);box-shadow:0 0 0 1px var(--gold),0 6px 18px rgba(0,0,0,.4)}
+  .pl.burned{filter:grayscale(.5) brightness(.8)}
+  .pl .top{display:flex;align-items:center;gap:9px}
+  .pl .pawnico{width:24px;height:30px;flex:0 0 auto}
+  .pl .nm{font-weight:900;font-size:14px;flex:1;line-height:1}
+  .pl .loc{font-size:10px;font-weight:800;letter-spacing:.06em;color:#0e1117;background:var(--gold-lite);border-radius:6px;padding:2px 7px}
+  .pl .loc.lounge{background:var(--juice-lite)}
+  .stats{display:flex;gap:6px;margin-top:8px}
+  .stat{flex:1;background:#11161f;border-radius:9px;padding:5px 2px;text-align:center}
+  .stat .sv{font-weight:900;font-size:15px;line-height:1}
+  .stat .sn{font-size:9px;letter-spacing:.06em;color:#8b93a4;font-weight:800;margin-top:2px}
+  .stat.j .sv{color:var(--juice-lite)} .stat.h .sv{color:#6fc3bd}
+  .stat.t .sv{color:#9fd06a} .stat.r .sv{color:#e0726a}
+  .extra{display:flex;align-items:center;gap:10px;margin-top:7px;min-height:18px}
+  .coins{display:flex;gap:2px}
+  .coin{width:19px;height:19px;background:url("assets/sprites/COIN SEC SIDEcolor.png") center/contain no-repeat;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+  .assets{display:flex;gap:3px;flex-wrap:wrap}
+  .acard{width:22px;height:31px;border-radius:3px;border:1px solid #000;background:#efe6cf center/cover no-repeat;
+    box-shadow:0 1px 2px rgba(0,0,0,.5)}
+  .acard.fd{background:repeating-linear-gradient(45deg,#2c3547,#2c3547 3px,#39455f 3px,#39455f 6px)}
+  .acard.dirty{box-shadow:0 0 0 1.5px #7a4a2a,0 1px 2px rgba(0,0,0,.5)}
+  .acard.clean{box-shadow:0 0 0 1.5px #4f8f5a,0 1px 2px rgba(0,0,0,.5)}
+
+  /* real card-face spotlight over the board */
+  #spotlight{position:absolute;left:14px;bottom:14px;width:150px;background:#0e1219ee;
+    border:1px solid #3a455f;border-radius:10px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.6);
+    transform:translateY(8px);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:6}
+  #spotlight.on{opacity:1;transform:translateY(0)}
+  #spotlight .face{width:100%;aspect-ratio:21/32;background:#efe6cf center/cover no-repeat;border-radius:6px;border:1px solid #000}
+  #spotlight .tag{font-size:10px;font-weight:800;letter-spacing:.06em;margin-top:6px;color:var(--gold-lite)}
+  #spotlight .who{font-size:10px;color:#9aa3b4}
+
+  /* controls */
+  #controls{border-top:1px solid #2c3547;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  .ctl-row{display:flex;align-items:center;gap:8px}
+  #die{width:54px;height:54px;border-radius:12px;background:var(--paper);box-shadow:inset 0 0 0 2px #c7b88f,0 4px 10px rgba(0,0,0,.4);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  #die img{width:46px;height:46px;image-rendering:auto}
+  #die.rolling{animation:wob .12s linear infinite}
+  @keyframes wob{0%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}100%{transform:rotate(-7deg)}}
+  .speed{display:flex;align-items:center;gap:6px;font-size:11px;color:#9aa3b4;font-weight:700}
+  input[type=range]{accent-color:var(--gold)}
+  #log{height:120px;overflow-y:auto;background:#0e1219;border-radius:10px;padding:6px 8px;font-size:11.5px;line-height:1.45;color:#aeb6c6}
+  #log .t{color:var(--gold-lite);font-weight:800}
+  #log .sec{color:#e0726a} #log .sh{color:#b18bd8} #log .good{color:#9fd06a}
+
+  /* ---------- character voice barks (lower-third caption) ---------- */
+  #bark{position:absolute;left:50%;bottom:128px;transform:translateX(-50%) translateY(6px);
+    max-width:min(80%,560px);display:none;z-index:8;opacity:0;transition:opacity .2s,transform .2s}
+  #bark.on{display:block;opacity:1;transform:translateX(-50%) translateY(0)}
+  #bark .b{background:linear-gradient(180deg,#222a39,#161b26);border:1px solid #3a455f;border-left-width:4px;
+    border-radius:10px;padding:7px 13px;box-shadow:0 8px 22px rgba(0,0,0,.5);font-size:14px;line-height:1.3}
+  #bark .who{font-family:Georgia,serif;font-weight:700;font-size:11px;letter-spacing:.06em;margin-right:7px}
+  #bark .b.sharky{border-left-color:#7fb0c8;background:linear-gradient(180deg,#1b2730,#12191f)}
+  #bark .b.sharky .who{color:#9fd0e0}
+  #bark .ln{color:var(--cream);font-style:italic}
+
+  /* ---------- human decision prompt ---------- */
+  #prompt{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(8,10,14,.55);backdrop-filter:blur(2px);z-index:12}
+  #prompt.on{display:flex}
+  #prompt .box{background:linear-gradient(180deg,#222a39,#171c27);border:1px solid #3a455f;
+    border-radius:16px;padding:18px 20px;max-width:min(86vw,560px);box-shadow:0 24px 60px rgba(0,0,0,.6);text-align:center}
+  #prompt .ttl{font-family:Georgia,serif;color:var(--gold-lite);font-size:19px;margin-bottom:4px}
+  #prompt .sub{color:#9aa3b4;font-size:12px;margin-bottom:14px;line-height:1.4}
+  #prompt .opts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  #prompt .opt{font-family:inherit;font-weight:800;cursor:pointer;border:2px solid #3a455f;
+    border-radius:12px;padding:9px 14px;font-size:14px;color:var(--cream);background:#1a2031;
+    transition:transform .07s,border-color .15s,background .15s;min-width:64px}
+  #prompt .opt:hover{border-color:var(--gold);transform:translateY(-1px)}
+  #prompt .opt.go{background:linear-gradient(180deg,var(--gold-lite),var(--gold));color:#2a1c08;border-color:#9c7320}
+  #prompt .opt.no{background:#241a1a;border-color:#5a3030;color:#e0a0a0}
+  #prompt .opt .os{display:block;font-size:10px;font-weight:700;opacity:.8;margin-top:2px}
+  #prompt .opt.card{width:108px;min-height:104px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;padding:8px}
+  #prompt .opt.card .ct{font-size:9px;letter-spacing:.05em;font-weight:800}
+  #prompt .opt.card.clean{border-color:#4f8f5a} #prompt .opt.card.dirty{border-color:#a06a3a} #prompt .opt.card.cond{border-color:#9a6bbf}
+  #prompt .opt.card .cn{font-size:11px;line-height:1.15}
+  #prompt .opt.card .cx{font-size:9px;color:#9aa3b4;line-height:1.2;margin-top:auto}
+
+  /* ---------- human hand strip ---------- */
+  #hand{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:none;
+    gap:7px;align-items:flex-end;z-index:7;max-width:96%;flex-wrap:wrap;justify-content:center}
+  #hand.on{display:flex}
+  .hcard{width:84px;min-height:96px;background:#15191f;border:1px solid #000;border-radius:7px;
+    padding:6px;box-shadow:0 5px 14px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:3px;
+    transition:transform .1s;cursor:default}
+  .hcard .ht{font-size:8.5px;font-weight:800;letter-spacing:.04em}
+  .hcard .hn{font-size:10.5px;font-weight:800;color:var(--cream);line-height:1.15}
+  .hcard .hx{font-size:8.5px;color:#9aa3b4;line-height:1.2;margin-top:auto}
+  .hcard.clean{border-left:3px solid #4f8f5a} .hcard.dirty{border-left:3px solid #a06a3a}
+  .hcard.cond{border-left:3px solid #9a6bbf} .hcard.neutral{border-left:3px solid #5b6172}
+  .hand-lbl{position:absolute;left:50%;bottom:114px;transform:translateX(-50%);z-index:7;display:none;
+    font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--gold-lite);text-shadow:0 1px 3px #000}
+  .hand-lbl.on{display:block}
+
+  /* gameover */
+  #over{align-items:center;justify-content:center;background:rgba(10,12,16,.92);z-index:20}
+  #over .card{text-align:center}
+  #over .crown{font-size:54px}
+  #over h2{font-size:34px}
+  .small{font-size:12px;color:#8b93a4}
+  .scoretab{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  .scoretab td{padding:4px 8px;border-bottom:1px solid #2c3547;text-align:left}
+  .scoretab td.r{text-align:right;font-weight:800}
+  @media (max-width:880px){ #rail{width:280px;flex-basis:280px} }
+
+  /* ---------- CARD BIBLE ---------- */
+  #bible{background:linear-gradient(rgba(10,8,6,.93),rgba(8,7,6,.96)),url("assets/board/oil_board.png") center/cover fixed;overflow:hidden}
+  .bible-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid #3a2f22;background:rgba(12,10,8,.7)}
+  .bible-title{font-family:Georgia,serif;font-weight:700;color:var(--gold-lite);font-size:22px;letter-spacing:.03em}
+  .bible-title .concept{font-family:"Trebuchet MS";font-size:10px;font-weight:800;letter-spacing:.16em;color:#0e1117;background:var(--juice);padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:8px}
+  #bibleBody{flex:1;overflow-y:auto;padding:18px 22px 60px;display:flex;flex-direction:column;gap:22px}
+  .bsec h3{color:var(--gold-lite);font-family:Georgia,serif;font-size:17px;margin:0 0 4px;border-bottom:1px solid #3a2f22;padding-bottom:5px;letter-spacing:.04em}
+  .bsec .bnote{color:#9a8f7c;font-size:11.5px;margin:0 0 10px;font-style:italic;line-height:1.4}
+  .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px}
+  .ocard{background:rgba(22,18,14,.82);border:1px solid #3a2f22;border-left:3px solid var(--gold);border-radius:9px;padding:9px 11px}
+  .ocard .on{font-weight:800;color:var(--cream);font-size:13px;line-height:1.15}
+  .ocard .ot{font-size:9px;font-weight:800;letter-spacing:.08em;color:#b79a5e;text-transform:uppercase;margin-top:2px}
+  .ocard .oeff{font-size:11px;color:#a9b0bd;line-height:1.35;margin-top:5px}
+  .ocard .otags{font-size:9px;color:#7f8aa0;letter-spacing:.06em;margin-top:5px}
+  .ocard.deeds{border-left-color:#d6a93f} .ocard.market{border-left-color:#3fa7a0} .ocard.compet{border-left-color:#c0392b}
+  .ocard .ersn{font-size:9px;color:#caa45a;margin-top:4px}
+  .frow{display:flex;flex-wrap:wrap;gap:9px}
+  .fchip{background:rgba(22,18,14,.82);border:1px solid #3a2f22;border-top:3px solid var(--fc,#d6a93f);border-radius:9px;padding:9px 12px;min-width:170px;flex:1}
+  .fchip .fb{font-weight:800;color:var(--cream);font-size:13px}
+  .fchip .fr{font-size:10px;color:#9a8f7c;letter-spacing:.05em}
+  .fchip .fd{font-size:10.5px;color:#a9b0bd;margin-top:4px;line-height:1.3}
+  .fchip .fm{font-size:9px;color:#caa45a;margin-top:4px}
+  .dice-row{display:flex;flex-wrap:wrap;gap:10px}
+  .die-chip{display:flex;align-items:center;gap:10px;background:rgba(22,18,14,.82);border:1px solid #3a2f22;border-radius:10px;padding:9px 12px;min-width:240px;flex:1}
+  .die-face{width:30px;height:30px;border-radius:7px;flex:0 0 auto;box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)}
+  .die-chip .dn{font-weight:800;color:var(--cream);font-size:13px}
+  .die-chip .dr{font-size:10px;color:#9aa3b4;line-height:1.3}
+  .die-chip .dc{font-size:9px;color:#c08a4a}
+  .openrule{background:rgba(22,18,14,.7);border:1px solid #3a2f22;border-radius:8px;padding:8px 11px;margin-bottom:7px}
+  .openrule .oid{font-weight:800;color:var(--juice-lite);font-size:11px;letter-spacing:.05em}
+  .openrule .oq{font-size:11px;color:#a9b0bd;line-height:1.4;margin-top:3px}
+</style>
+</head>
+<body>
+
+<!-- ===================== BOOT ===================== -->
+<section id="boot" class="screen on">
+  <img class="presents" src="assets/logo/classic_logo.png" alt="Anders & Partners">
+  <div class="presents-sub">PRESENTS</div>
+  <div class="boxduo">
+    <div class="stage3d mini"><div class="box3d" id="box3d">
+      <div class="bxface bx-front"></div><div class="bxface bx-back"></div>
+      <div class="bxface bx-right"></div><div class="bxface bx-left"></div>
+      <div class="bxface bx-top"></div><div class="bxface bx-bottom"></div>
+    </div></div>
+    <div class="stage3d mini"><div class="box-exp" id="boxExp">
+      <div class="exface ex-front">
+        <img class="flash" src="assets/box/suprexcore_web.png" alt="NOW WITH SuprexCore Premium">
+        <div class="kick">THE <b>EXPANSION</b></div>
+      </div>
+      <div class="exface ex-back">
+        <div class="bt">OiL! — THE EXPANSION</div>
+        <div class="bs">NOW WITH SUPREXCORE™ PREMIUM</div>
+        <ul>
+          <li><b>+</b> the GREEN ANDERS die (4th)</li>
+          <li><b>+</b> MEGASTRUCTURES</li>
+          <li><b>+</b> INTERNATIONAL WELL SERVICE</li>
+          <li><b>+</b> HQs &amp; the shadow market</li>
+        </ul>
+        <div class="req">REQUIRES THE BASE GAME</div>
+      </div>
+      <div class="exface ex-right"><img class="spine-badge" src="assets/box/suprexcore_web.png" alt=""></div>
+      <div class="exface ex-left"><img class="spine-badge" src="assets/box/suprexcore_web.png" alt=""></div>
+      <div class="exface ex-top"><span class="cap">SUPREXCORE PREMIUM</span></div>
+      <div class="exface ex-bottom"><span class="cap">ANDERS &amp; PARTNERS</span></div>
+    </div></div>
+  </div>
+  <div class="tagline">EXTRACT. &nbsp;<b>MOVE BARRELS.</b>&nbsp; OUTLAST THE WORLD.</div>
+  <div class="byline">CREATED BY JOSEPH COLEMAN</div>
+  <div style="display:flex;gap:10px;margin-top:20px">
+    <button class="candy start-hint" id="bootBtn">FUEL UP ▸</button>
+    <button class="candy alt sm" id="bibleBtn">📖 CARD BIBLE</button>
+  </div>
+  <div class="sub" style="margin-top:14px">
+    <a href="oil-native.html" style="color:#caa15e;text-decoration:none">▶ NATIVE ENGINE</a> &nbsp;·&nbsp;
+    <a href="diciner.html" style="color:#caa15e;text-decoration:none">🎲 THE DICINER</a> &nbsp;·&nbsp;
+    <a href="test-lab.html" style="color:#caa15e;text-decoration:none">🧪 TESTING SUITE</a>
+  </div>
+  <div class="sub">ANDERS &amp; PARTNERS™ LLC · "Double-Check Your Career" · ENGINE: ER$N substrate (skinned)</div>
+</section>
+
+<!-- ===================== SETUP ===================== -->
+<section id="setup" class="screen">
+  <h2>THE SPECULATORS</h2>
+  <div class="setup-sub">4–6 SPECULATORS · AGES 14+ · PREDATORY CAPITALISM FOR THE WHOLE FAMILY</div>
+  <div class="card">
+    <div class="row">
+      <div class="lbl">PLAYERS</div>
+      <div class="seg" id="countSeg"></div>
+    </div>
+    <div class="row">
+      <div class="lbl">EXPANSION</div>
+      <label class="toggle" id="expToggle">
+        <span class="switch on"><i></i></span>
+        <span class="miniel">SuprexCore — the Green Anders Die · Shadow Market · Megastructures register <i>(engine: ER$N expansion substrate)</i></span>
+      </label>
+    </div>
+    <div class="row">
+      <div class="lbl">EDITION</div>
+      <div class="seg" id="editionSeg"></div>
+      <span class="miniel" id="editionNote" style="flex:1"></span>
+    </div>
+    <div class="row" style="align-items:flex-start">
+      <div class="lbl">CAST</div>
+      <div class="seats cgrid" id="seats" style="flex:1"></div>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <span class="small">Tap a seat to toggle <b>YOU</b> / <b>BOT</b>. Characters dealt at random.</span>
+      <div style="display:flex;gap:10px">
+        <button class="candy alt sm" id="reshuffle">RE-DEAL</button>
+        <button class="candy" id="startBtn">OPEN THE MARKET ▸</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== GAME ===================== -->
+<section id="game" class="screen">
+  <div id="boardwrap">
+    <canvas id="board" width="1000" height="1000"></canvas>
+    <div id="collapseFlash"></div>
+    <div class="banner" id="banner"></div>
+    <div id="spotlight"><div class="face"></div><div class="tag">—</div><div class="who"></div></div>
+    <div class="hand-lbl" id="handLbl"></div>
+    <div id="bark"><div class="b"><span class="who"></span><span class="ln"></span></div></div>
+    <div id="hand"></div>
+    <div id="prompt"><div class="box"><div class="ttl" id="pTtl">—</div><div class="sub" id="pSub"></div><div class="opts" id="pOpts"></div></div></div>
+  </div>
+  <aside id="rail">
+    <div class="rail-h">
+      <div class="er">OiL!</div>
+      <div class="tg">THE HOME GAME<br>PREDATORY CAPITALISM FOR THE FAMILY</div>
+    </div>
+    <div class="meters">
+      <div class="meter"><div class="mlbl">GLOBAL CRISIS</div><div class="mval" id="gsVal">0 / 8</div><div class="pips" id="gsPips"></div></div>
+      <div class="meter" id="shadowMeter"><div class="mlbl">SHADOW MARKET</div><div class="mval" id="ssVal">0 / 8</div><div class="pips" id="ssPips"></div></div>
+    </div>
+    <div id="players"></div>
+    <div id="controls">
+      <div class="ctl-row">
+        <div id="die"><img id="dieImg" src="assets/die/d1.png" alt="die"></div>
+        <button class="candy sm" id="nextBtn" style="flex:1">NEXT TURN ▸</button>
+        <button class="candy alt sm" id="autoBtn">AUTO ▸</button>
+      </div>
+      <div class="ctl-row speed">
+        <span>SLOW</span><input type="range" id="speed" min="200" max="1600" value="650" style="flex:1"><span>FAST</span>
+        <button class="candy sm" id="muteBtn" title="sound" style="margin-left:4px">🔊</button>
+        <button class="candy sm" id="newBtn">NEW</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </aside>
+</section>
+
+<!-- ===================== CARD BIBLE ===================== -->
+<section id="bible" class="screen">
+  <div class="bible-bar">
+    <div class="bible-title">OiL! — CARD BIBLE <span class="concept">CONCEPT</span></div>
+    <button class="candy alt sm" id="bibleBack">◂ BACK</button>
+  </div>
+  <div id="bibleBody"></div>
+</section>
+
+<!-- ===================== GAME OVER ===================== -->
+<section id="over" class="screen">
+  <div class="card">
+    <div class="crown">👑</div>
+    <h2 id="overTitle">—</h2>
+    <div class="small" id="overReason"></div>
+    <table class="scoretab" id="scoretab"></table>
+    <button class="candy" id="overBtn">PLAY AGAIN ▸</button>
+  </div>
+</section>
+
+<script src="src/data.js"></script>
+<script src="src/oil-content.js"></script>
+<script src="src/oil-skin.js"></script>
+<script src="src/engine.js"></script>
+<script src="src/voices.js"></script>
+<script src="src/sfx.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const show=id=>{$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));};
+/* OiL! SKIN: the ER$N engine below runs UNCHANGED (its balance is byte-faithful).
+   We only (a) give each engine character an OiL! faction DISPLAY name — the engine
+   still keys logic on the original .name — and (b) relabel decks/meters/locations
+   to OiL!'s charter grammar. No OiL! rule is invented (House Rule 5). */
+if(window.OILSKIN) OILSKIN.applyToCharacters();
+const DN  = p => (window.OILSKIN ? OILSKIN.dn(p) : ((p&&p.name)||p));        // faction display name
+const LBL = k => (window.OILSKIN ? OILSKIN.label(k) : k);                    // relabel ER$N noun
+
+/* ---------- assets ---------- */
+const IMG={};
+function load(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src;IMG[src]=i;});}
+const A={board:'assets/sprites/HYSCORE GATEWAY.png', juice:'assets/juice_blob.png',
+  pawn:'assets/sprites/BW PAWN.png',
+  die:[1,2,3,4,5,6].map(n=>`assets/die/d${n}.png`)};
+let boardImg=null, juiceImg=null, pawnSprite=null, dieImgs=[];
+Promise.all([load(A.board),load(A.juice),load(A.pawn),...A.die.map(load)]).then(r=>{
+  boardImg=r[0]; juiceImg=r[1]; pawnSprite=r[2]; dieImgs=r.slice(3);
+});
+
+/* ---- pawn sprites: tint the shaded BW master (BW PAWN.png) to each character hex ----
+   Keys the white background to alpha and multiplies the grayscale shading by the color so
+   every pawn shares one silhouette/lighting but reads as its owner's color. Cached per hex. */
+const pawnTints={};
+function tintPawn(hex){
+  if(pawnTints[hex]) return pawnTints[hex];
+  if(!pawnSprite) return null;
+  const sw=pawnSprite.naturalWidth||pawnSprite.width, sh=pawnSprite.naturalHeight||pawnSprite.height;
+  const tmp=document.createElement('canvas');tmp.width=sw;tmp.height=sh;
+  const tc=tmp.getContext('2d');tc.drawImage(pawnSprite,0,0);
+  let img;try{img=tc.getImageData(0,0,sw,sh);}catch(e){return null;}
+  const d=img.data;
+  const cr=parseInt(hex.slice(1,3),16),cg=parseInt(hex.slice(3,5),16),cb=parseInt(hex.slice(5,7),16);
+  let minX=sw,minY=sh,maxX=0,maxY=0;
+  for(let i=0;i<d.length;i+=4){
+    const r=d[i],g=d[i+1],b=d[i+2];
+    const lum=(r*0.299+g*0.587+b*0.114);
+    // alpha: white bg(255)->0, pawn body(~150)->opaque, soft drop-shadow fades out
+    let a=(250-lum)/60; a=a<0?0:a>1?1:a;
+    if(a<=0.02){d[i+3]=0;continue;}
+    // shade factor around the master's mid-gray so highlights/shadows survive the tint,
+    // capped so light base colors (cream/mauve) don't blow out to white at the gloss
+    let s=lum/185; s=s<0.4?0.4:s>1.32?1.32:s;
+    d[i]=Math.min(255,cr*s); d[i+1]=Math.min(255,cg*s); d[i+2]=Math.min(255,cb*s);
+    d[i+3]=Math.round(a*255);
+    const px=(i>>2)%sw, py=(i>>2)/sw|0;
+    if(px<minX)minX=px; if(px>maxX)maxX=px; if(py<minY)minY=py; if(py>maxY)maxY=py;
+  }
+  tc.putImageData(img,0,0);
+  // trim to the pawn's bounding box so it isn't a speck in a big transparent frame
+  const bw=Math.max(1,maxX-minX+1), bh=Math.max(1,maxY-minY+1);
+  const out=document.createElement('canvas');out.width=bw;out.height=bh;
+  out.getContext('2d').drawImage(tmp,minX,minY,bw,bh,0,0,bw,bh);
+  pawnTints[hex]={cv:out,aspect:bw/bh};
+  return pawnTints[hex];
+}
+
+/* ---------- setup state ---------- */
+const S={count:4, expansion:true, seats:[], edition:'classic'};
+const EDITION_NOTE={classic:'Faithful to the printed product — the frozen reference.',benchmark:'Tunable balance lane — adds Shadow-on-Risk (collapse you can blame yourself for).'};
+let dealt=[]; // CharDef[]
+
+function dealChars(){
+  // random sample of S.count characters
+  const pool=CHARACTERS.slice();
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  dealt=pool.slice(0,S.count);
+  S.seats=dealt.map((c,i)=>i===0); // seat 0 = you, rest bots
+  renderSeats();
+}
+function pawnSVG(color,w,h){
+  return `<svg class="pawnico" viewBox="0 0 40 50" width="${w}" height="${h}">
+    <ellipse cx="20" cy="46" rx="13" ry="3.5" fill="rgba(0,0,0,.35)"/>
+    <path d="M20 4c-5 0-8 4-8 8 0 3 1.6 5 3.4 6.3C12 21 9 26 9 32c0 4 3 6 4.5 7.5C12 41 11 43 11 45h18c0-2-1-4-2.5-5.5C28 38 31 36 31 32c0-6-3-11-6.4-13.7C26.4 17 28 15 28 12c0-4-3-8-8-8z"
+      fill="${color}" stroke="#2a2118" stroke-width="1.6"/>
+    <ellipse cx="16" cy="11" rx="3" ry="4" fill="rgba(255,255,255,.5)"/>
+  </svg>`;
+}
+// Sharky's read on each player (from the rules-sheet "Disgusting Cubicle") — their intro tell
+const SHARKY_TELLS={
+  'Wu Drainer':"SHARKY: burns hot, moves like no one. Use him to break open someone’s books.",
+  'Vonda Vouch':"SHARKY: shows you clean, pulls dirty optics from air. Chip her pedestal.",
+  'Mark Markit':"SHARKY: not bluffing — he’s BRANDING. His Hype→Lounge bridge is on fire.",
+  'Danny Dough':"SHARKY: his sheet is illusion. Put him in the red, force early bribes.",
+  'Claudia Numbers':"SHARKY: wins if left to her devices. Tear her Trust before Turn 9.",
+  'Benny Boye':"SHARKY: rushes the tower, cloaked in privilege — gilded by daylight.",
+};
+function sig(name){ const l=window.VOICE&&VOICE.lines(name,'turn'); return (l&&l[0])||''; }
+function renderSeats(){
+  const el=$('#seats'); el.className='seats cgrid'; el.innerHTML='';
+  dealt.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='cframe';d.style.setProperty('--ch',c.color);
+    const line=sig(c.name), tell=SHARKY_TELLS[c.name]||'';
+    d.innerHTML=`<div class="port" style="background-image:url('${(c.vanityArt||c.infoArt||'').replace(/'/g,"%27")}')"></div>
+      <div class="body">
+        <div class="nm">${DN(c)}</div><div class="role">${c.role}</div>
+        <div class="line">${line?'“'+line+'”':''}</div>
+        <div class="tell">${tell}</div>
+        <button class="chip ${S.seats[i]?'on':''} seatbtn">${S.seats[i]?'▸ YOU':'BOT'}</button>
+      </div>`;
+    d.querySelector('.seatbtn').onclick=()=>{S.seats[i]=!S.seats[i];renderSeats();};
+    el.appendChild(d);
+  });
+}
+function buildSetup(){
+  const seg=$('#countSeg');seg.innerHTML='';
+  [2,3,4,5,6].forEach(n=>{
+    const c=document.createElement('div');c.className='chip'+(n===S.count?' on':'')+(n<4?' unofficial':'');c.textContent=n;
+    c.title=n<4?'sandbox (official game is 4–6)':'official';
+    c.onclick=()=>{S.count=n;buildSetup();dealChars();};seg.appendChild(c);
+  });
+  $('#expToggle .switch').classList.toggle('on',S.expansion);
+  const eseg=$('#editionSeg');eseg.innerHTML='';
+  [['classic','CLASSIC'],['benchmark','BENCHMARK']].forEach(([k,lbl])=>{
+    const c=document.createElement('div');c.className='chip'+(k===S.edition?' on':'');c.textContent=lbl;
+    c.onclick=()=>{S.edition=k;buildSetup();};eseg.appendChild(c);
+  });
+  $('#editionNote').textContent=EDITION_NOTE[S.edition]||'';
+}
+$('#expToggle').onclick=()=>{S.expansion=!S.expansion;$('#expToggle .switch').classList.toggle('on',S.expansion);};
+$('#reshuffle').onclick=dealChars;
+$('#bootBtn').onclick=()=>{if(window.SFX){SFX.play('makeSel',0.6);SFX.music&&SFX.music.start('marketLoop');}show('setup');buildSetup();dealChars();};
+$('#muteBtn').onclick=()=>{if(!window.SFX)return;const m=SFX.toggle();$('#muteBtn').textContent=m?'🔇':'🔊';if(!m)SFX.play('select',0.5);};
+$('#startBtn').onclick=startGame;
+$('#overBtn').onclick=()=>{show('setup');buildSetup();dealChars();};
+$('#newBtn').onclick=()=>{stopAuto();show('setup');buildSetup();dealChars();};
+
+/* ---------- CARD BIBLE (OiL!'s real, designer-authored content; CONCEPT) ---------- */
+const esc=s=>String(s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+const DECK_CLASS={'DEEDS':'deeds','FREEDOM-MARKET':'market','COMPETITION':'compet'};
+function renderBible(){
+  const O=window.OIL, SK=window.OILSKIN; const body=$('#bibleBody');
+  if(!O){ body.innerHTML='<div class="bsec">OiL! content failed to load. Run scripts/build_oil_content.py.</div>'; return; }
+  const g=O.GAME; let h='';
+  // intro
+  h+=`<div class="bsec"><h3>${esc(g.title)}</h3>
+    <p class="bnote">${esc(g.subtitle)} · ${esc(g.publisher)} · "${esc(g.publisher_slogan)}" · ${g.players_min}–${g.players_max} ${esc(g.player_term)}, ages ${g.age_min}+.
+    This video build runs the <b>ER$N engine substrate</b> (skinned). Everything below is OiL!'s own designer-authored
+    content — <b>all CONCEPT</b>; the ${O.OPEN_RULES.length} open rules at the bottom are unwritten on purpose (House Rule 5).</p></div>`;
+  // factions
+  const nCore=O.FACTIONS.filter(f=>f.edition!=='EXPANSION').length;
+  h+=`<div class="bsec"><h3>THE FACTIONS <span style="font-size:11px;color:#9a8f7c">(${nCore} core · ${O.FACTIONS.length-nCore} expansion)</span></h3><p class="bnote">National-oil majors. Powers are toolkit stub CORE-014 (None). Core seats onto the 6 ER$N character substrate; expansion factions are roster-only (no engine seat yet). Pawns reuse the BW master, tinted per colour below.</p><div class="frow">`;
+  O.FACTIONS.forEach(f=>{ const col=(SK&&SK.colorFor)?SK.colorFor(f.code):'#d6a93f'; const isExp=f.edition==='EXPANSION';
+    h+=`<div class="fchip" style="--fc:${col}"><div class="fb">${esc(f.brand)} ${isExp?'<span style="font-size:9px;color:#2f9e5b;font-weight:800">⊕ EXP</span>':''}</div>
+      <div class="fr">${esc(f.region)}</div><div class="fd">${esc(f.design_read)}</div>
+      <div class="fm">${f.mechanical_role?esc(f.mechanical_role):'mechanical role: pending CORE-014'}</div></div>`; });
+  h+='</div></div>';
+  // dice
+  if(SK&&SK.DICE){ const D=SK.DICE;
+    h+='<div class="bsec"><h3>THE DICE</h3><p class="bnote">Certified identity only. Readings are CONCEPT (~80%, not locked); no die is wired to resolution (stub CORE-002).</p><div class="dice-row">';
+    const dchip=(d,tag)=>`<div class="die-chip"><div class="die-face" style="background:${d.color}"></div><div><div class="dn">${esc(d.name)} <span style="color:#7f8aa0">· ${tag}</span></div><div class="dr">${esc(d.reading)}</div><div class="dc">${esc(d.reading_confidence)}</div></div></div>`;
+    D.core.forEach(d=>h+=dchip(d,'CORE')); D.expansion.forEach(d=>h+=dchip(d,'EXPANSION'));
+    h+=`</div><p class="bnote" style="margin-top:8px">⚠ ${esc(D.open)}</p></div>`;
+  }
+  // E.D.D.
+  const e=O.EDD;
+  h+=`<div class="bsec"><h3>${esc(e.name)} — ${esc(e.subtitle)}</h3><p class="bnote">${esc(e.design_goal)}. In this build it is the collapse phase (G1). Threshold & roll table are CORE-004/006 (unset).</p><div class="frow">`;
+  Object.entries(e.resolution_roll).forEach(([k,opts])=>{ h+=`<div class="fchip" style="--fc:#c0392b"><div class="fb">${esc(k)}</div><div class="fd">${opts.map(esc).join(' · ')}</div></div>`; });
+  h+='</div></div>';
+  // cards by deck
+  ['DEEDS','FREEDOM-MARKET','COMPETITION'].forEach(deck=>{
+    const cards=O.CARDS.filter(c=>c.deck===deck); if(!cards.length)return;
+    h+=`<div class="bsec"><h3>${esc(deck)} <span style="font-size:11px;color:#9a8f7c">(${cards.length})</span></h3><div class="bgrid">`;
+    cards.forEach(c=>{ h+=`<div class="ocard ${DECK_CLASS[deck]}"><div class="on">${esc(c.name)}</div>
+      <div class="ot">${esc(c.type||'untyped')}</div>
+      <div class="oeff">${c.effects.map(esc).join(' · ')}</div>
+      ${c.tags&&c.tags.length?`<div class="otags">${c.tags.map(esc).join(' / ')}</div>`:''}
+      ${c.shared_with_ersn?'<div class="ersn">↔ shared name with ER$N (CORE-009)</div>':''}</div>`; });
+    h+='</div></div>';
+  });
+  // open rules
+  h+='<div class="bsec"><h3>OPEN — NEEDS_CORE_RULES <span style="font-size:11px;color:#9a8f7c">(the designer\'s, never guessed)</span></h3>';
+  O.OPEN_RULES.forEach(r=>{ h+=`<div class="openrule"><div class="oid">${esc(r.id)} · ${esc(r.topic)}</div><div class="oq">${esc(r.question)}</div></div>`; });
+  h+='</div>';
+  body.innerHTML=h;
+}
+$('#bibleBtn').onclick=()=>{ renderBible(); show('bible'); };
+$('#bibleBack').onclick=()=>show('boot');
+
+/* ================= GAME ================= */
+let game=null, ctx=null, raf=0;
+let pawns={};         // name -> {x,y, tx,ty, hop}
+let auto=false, autoTimer=0, busy=false;
+const cv=$('#board');
+
+/* loop node layout (normalized to canvas) — winding candy path around the board.
+   indices 0..8 clockwise; 3 & 7 are TO MARKET doors. plus START and LOUNGE anchors. */
+// THE $90 MILLION HOLE (central black hole) = the Tower / Executive Lounge. The 9-space loop
+// orbits it as a perspective ellipse on the HYSCORE GATEWAY floor; collapse = falling in.
+// tuned to the painted candy-tile ring on assets/sprites/HYSCORE GATEWAY.png (1536x1024).
+// the tile ring sits low and wide around the hole; its visual center is below the hole itself.
+const CENTER={x:.50,y:.66};         // center of the tile-ring ellipse
+const RING={rx:.40,ry:.225};
+const NODES=Array.from({length:9},(_,i)=>{
+  const a=-Math.PI/2 + i*(2*Math.PI/9);   // node 0 at top, clockwise
+  return {x:CENTER.x+Math.cos(a)*RING.rx, y:CENTER.y+Math.sin(a)*RING.ry};
+});
+// START is the painted "START" tile at bottom-center; LOUNGE = THE $90 MILLION HOLE.
+const START={x:.50,y:.885}, LOUNGE={x:.49,y:.595};
+const DOORS=new Set([3,7]);
+const SPACE_COLORS=['#e8743b','#3fa7a0','#d8497a','#dcae23','#9a6bbf','#6b8f3a','#e8743b','#3fa7a0','#d8497a'];
+// board node deck letters relabeled to OiL!'s 3 decks (G6): Deeds / Freedom-Market / Competition
+const DECK_BY_IDX=i=>['DEEDS','FREEDOM','COMPET'][i%3];
+
+function nodeXY(pos){
+  let n;
+  if(pos==='START')n=START; else if(pos==='LOUNGE')n=LOUNGE; else n=NODES[pos]||NODES[0];
+  return {x:n.x*cv.width, y:n.y*cv.height};
+}
+
+function startGame(){
+  stopAuto();
+  game=new window.ERSNGame({n_players:S.count, expansion:S.expansion,
+    characters:dealt, humanSeats:S.seats, edition:S.edition, seed:(Math.random()*1e9)|0});
+  game.maxTurns=160;
+  // human seats drive their own decisions; bots keep the engine's default agent
+  game.players.forEach((p,i)=>{ if(S.seats[i]) p.agent=new HumanAgent(); });
+  // patch emit so the board/HUD/log/pawns update LIVE as the (now-pausable) turn unfolds
+  const _emit=game.emit.bind(game);
+  game.emit=(type,data)=>{ _emit(type,data); try{ handleEvent(game.events[game.events.length-1]); }catch(e){} };
+  pawns={};
+  game.players.forEach(p=>{const xy=nodeXY(p.pos);pawns[p.name]={x:xy.x,y:xy.y,tx:xy.x,ty:xy.y,hop:0};});
+  $('#shadowMeter').style.display=S.expansion?'':'none';
+  $('#log').innerHTML='';
+  closePrompt(); flushed={}; spiraled={}; $('#bark').classList.remove('on');
+  buildPlayerPanels();
+  updateHUD(); renderHand();
+  $('#banner').style.display='none';
+  $('#collapseFlash').style.boxShadow='none';
+  show('game');
+  if(!raf) loop();
+  const humans=S.seats.filter(Boolean).length;
+  logLine(`<span class="t">TABLE SET</span> · ${S.count} players (${humans} human) · ${S.expansion?'Core + Expansion':'Core only'} · ${S.edition==='benchmark'?'BENCHMARK':'Classic'} edition`);
+  if(humans) logLine(`<span class="good">Press NEXT TURN to begin. On your turn the game will ask for your moves.</span>`);
+}
+
+/* ---------- HUD ---------- */
+function pipRow(el,val,cls){
+  el.innerHTML=''; for(let i=0;i<8;i++){const d=document.createElement('div');
+    d.className='pip'+(i<val?(' '+cls):'');el.appendChild(d);} }
+function buildPlayerPanels(){
+  const wrap=$('#players');wrap.innerHTML='';
+  game.players.forEach(p=>{
+    const d=document.createElement('div');d.className='pl';d.id='pl-'+cssId(p.name);
+    d.innerHTML=`<div class="top">${pawnSVG(p.color,24,30)}
+      <span class="nm">${DN(p)}${p.isHuman?' <span style="color:#9fd06a">▸you</span>':''}</span>
+      <span class="loc">START</span></div>
+      <div class="stats">
+        <div class="stat j"><div class="sv">0</div><div class="sn">JUICE</div></div>
+        <div class="stat h"><div class="sv">0</div><div class="sn">HYPE</div></div>
+        <div class="stat t"><div class="sv">0</div><div class="sn">TRUST</div></div>
+        <div class="stat r"><div class="sv">0</div><div class="sn">RISK</div></div>
+      </div>
+      <div class="extra"><div class="coins"></div><div class="assets"></div></div>`;
+    wrap.appendChild(d);
+  });
+}
+const cssId=s=>s.replace(/[^a-z0-9]/gi,'');
+const CARD_BY_NAME={}; (window.CARDS||[]).forEach(c=>CARD_BY_NAME[c.name]=c);
+let spotTimer=0;
+function spotlight(cardName,who){
+  const c=CARD_BY_NAME[cardName]; if(!c)return;
+  const el=$('#spotlight');
+  el.querySelector('.face').style.backgroundImage=c.art?`url("${c.art}")`:'none';
+  el.querySelector('.tag').textContent=c.name;
+  el.querySelector('.who').textContent=who||'';
+  el.classList.add('on');
+  clearTimeout(spotTimer); spotTimer=setTimeout(()=>el.classList.remove('on'), 2600);
+}
+function updateHUD(){
+  pipRow($('#gsPips'),game.global_sec,'f-g'); $('#gsVal').textContent=game.global_sec+' / 8';
+  pipRow($('#ssPips'),game.shadow_sec,'f-s'); $('#ssVal').textContent=game.shadow_sec+' / 8';
+  game.players.forEach(p=>{
+    const d=$('#pl-'+cssId(p.name)); if(!d)return;
+    d.classList.toggle('active',game.activePlayer===p);
+    d.classList.toggle('burned',p.burned);
+    const loc=d.querySelector('.loc');
+    loc.textContent=p.in_lounge?'SUITE':(p.pos==='START'?'START':'SPACE '+p.pos);
+    loc.classList.toggle('lounge',p.in_lounge);
+    const sv=d.querySelectorAll('.sv');
+    sv[0].textContent=p.juice; sv[1].textContent=p.hype; sv[2].textContent=p.trust; sv[3].textContent=p.risk;
+    const coins=d.querySelector('.coins');coins.innerHTML='';
+    for(let i=0;i<p.bribes;i++){const c=document.createElement('div');c.className='coin';coins.appendChild(c);}
+    const as=d.querySelector('.assets');as.innerHTML='';
+    p.lineup.forEach(t=>{const a=document.createElement('div');
+      const dirty=p.effDirty(t);            // effective tag respects place-on-top modifiers
+      a.className='acard '+(!t.up?'fd':(dirty?'dirty':'clean'));
+      if(t.up&&t.card.art) a.style.backgroundImage=`url("${t.card.art}")`;
+      a.title=t.card.name+(t.mods&&t.mods.length?' (modified)':'');
+      as.appendChild(a);});
+  });
+}
+function logLine(html,cls){const l=$('#log');const e=document.createElement('div');if(cls)e.className=cls;e.innerHTML=html;l.appendChild(e);l.scrollTop=l.scrollHeight;
+  while(l.children.length>120)l.removeChild(l.firstChild);}
+
+/* ---------- die ---------- */
+function showDie(n){const img=$('#dieImg');if(dieImgs[n-1])img.src=A.die[n-1];}
+function rollDieAnim(result,cb){
+  const die=$('#die');die.classList.add('rolling');let t=0;
+  const iv=setInterval(()=>{showDie(1+Math.floor(Math.random()*6));if(++t>7){clearInterval(iv);die.classList.remove('rolling');showDie(result);cb&&cb();}},55);
+}
+
+/* ---------- character voice barks ---------- */
+let barkBudget=2, barkTimer=0, flushed={}, spiraled={};
+const playerColor=name=>{const p=game&&game.players.find(x=>x.name===name);return p?p.color:'#d6a93f';};
+function showBark(name,line,sharky){
+  if(!line)return;
+  const el=$('#bark'),b=el.querySelector('.b');
+  b.classList.toggle('sharky',!!sharky);
+  b.style.borderLeftColor=sharky?'':playerColor(name);
+  el.querySelector('.who').textContent=sharky?'SHARKY':name.toUpperCase();
+  el.querySelector('.who').style.color=sharky?'':playerColor(name);
+  el.querySelector('.ln').textContent='“'+line+'”';
+  el.classList.add('on');
+  clearTimeout(barkTimer); barkTimer=setTimeout(()=>el.classList.remove('on'), 2600);
+}
+function bark(name,key,prob){
+  if(!window.VOICE||barkBudget<=0)return;
+  if(prob!==undefined && Math.random()>=prob)return;
+  const line=VOICE.say(name,key); if(!line)return;
+  barkBudget--;
+  logLine(`&nbsp;&nbsp;<span style="color:${playerColor(name)};font-weight:800">${name}:</span> <i style="color:#cdbf9e">“${line}”</i>`);
+  showBark(name,line,false);
+}
+function sharkySay(key,prob){
+  if(!window.VOICE||barkBudget<=0)return;
+  if(prob!==undefined && Math.random()>=prob)return;
+  const line=VOICE.sharky(key); if(!line)return;
+  barkBudget--; showBark('Sharky',line,true);
+}
+
+/* ---------- live event handler (driven by the patched game.emit) ---------- */
+const sfx=(k,v)=>{try{window.SFX&&SFX.play(k,v);}catch(e){}};
+const duck=(to,ms)=>{try{window.SFX&&SFX.music&&SFX.music.duck(to,ms);}catch(e){}};
+function handleEvent(ev){
+  if(!ev)return;
+  switch(ev.type){
+    case 'turn_start': barkBudget=2; checkTails(ev.player); bark(ev.player,'turn',0.3); break;
+    case 'roll': rollDieAnim(ev.roll); logLine(`<span class="t">T${ev.turn}</span> ${ev.player} rolls a ${ev.roll}`); sfx('roll');
+      if(ev.roll>=5) bark(ev.player,'highRoll',0.5); else if(ev.roll<=2) bark(ev.player,'lowRoll',0.5); break;
+    case 'move': { const pp=game.players.find(x=>x.name===ev.player); if(pp&&pawns[pp.name]){const xy=nodeXY(pp.pos);pawns[pp.name].tx=xy.x;pawns[pp.name].ty=xy.y;pawns[pp.name].hop=1;} sfx('move'); break; }
+    case 'draw': logLine(`&nbsp;&nbsp;↳ draws <b>${ev.deck}</b>: ${ev.card}`); spotlight(ev.card, `${ev.player} drew`);
+      if(ev.deck==='SEC'){ sfx('drawSEC'); bark(ev.player,'sec',0.45); } else sfx('drawMarket',0.5); break;
+    case 'play': { logLine(`&nbsp;&nbsp;↳ plays <i>${ev.card}</i>`); spotlight(ev.card, `${ev.player} plays`); bark(ev.player,'play',0.5);
+      const c=CARD_BY_NAME[ev.card];
+      if(c && ['Clean','Dirty','Conditional'].includes(c.ctype)) sfx(c.deck==='AdvAsset'?'playAdvAsset':'playAsset');
+      else if(c && (c.deck==='Market'||c.deck==='AdvMarket')) sfx('drawMarket');
+      else sfx('select',0.4); break; }
+    case 'react': logLine(`&nbsp;&nbsp;↳ <span style="color:#f0cf7a">⚡ ${ev.player} reacts: ${ev.card}</span>`); spotlight(ev.card, `${ev.player} reacts`); bark(ev.player,'react',0.7); sfx('makeSel'); break;
+    case 'bribe': logLine(`&nbsp;&nbsp;↳ <span style="color:#f0cf7a">${ev.player} buys a Bribe 🪙</span>`); bark(ev.player,'bribe',0.5); sfx('select',0.5); break;
+    case 'globalsec': logLine(`&nbsp;&nbsp;↳ <span class="sec">GLOBAL SEC ▲ ${ev.value}</span> — ${ev.why||''}`); if(ev.value>=6){ sfx('drawSEC',0.4); duck(0.16,900); sharkySay('bigSec',0.5);} break;
+    case 'shadowsec': logLine(`&nbsp;&nbsp;↳ <span class="sh">SHADOW SEC ▲ ${ev.value}</span> — ${ev.why||''}`); sfx('shadow',0.6); duck(0.14,1000); break;
+    case 'burnout': logLine(`&nbsp;&nbsp;↳ <span class="sec">🔥 BURNOUT — ${ev.player}</span>`); sfx('burnout'); duck(0.12,1300); bark(ev.player,'burnout',1); sharkySay('burnout',0.6); break;
+    case 'enter_lounge': logLine(`&nbsp;&nbsp;↳ <span class="good">${DN(ev.player)} enters the Cartel Suite</span>`); sfx(ev.player==='Benny Boye'?'golden1':'lounge'); duck(ev.player==='Benny Boye'?0.08:0.18, ev.player==='Benny Boye'?3000:1200); bark(ev.player,'lounge',0.55); break;
+    case 'evict': logLine(`&nbsp;&nbsp;↳ <span class="sec">${DN(ev.player)} booted from the Cartel Suite</span>`); sfx('trustFail'); break;
+    case 'collapse': flashCollapse(); showBanner('▼ E.D.D. PROTOCOL ENGAGED ▼'); sfx('shadow',0.85); duck(0.06,2600); barkBudget=2; if(game.activePlayer)bark(game.activePlayer.name,'collapse',0.8); sharkySay('collapse',0.7); break;
+    case 'gameover': if(ev.winner){barkBudget=2; sfx('loungeWin'); duck(0.1,2800); bark(ev.winner,'win',1); sharkySay('win',0.6);} break;
+  }
+  updateHUD(); renderHand();
+}
+// runaway flush / negative spiral flavor — fire once per game per player
+function checkTails(name){
+  const p=game&&game.players.find(x=>x.name===name); if(!p)return;
+  if(p.juice>=100 && !flushed[name]){ flushed[name]=1; bark(name,'flush',1); sharkySay('flush',0.7); }
+  if(p.trust<=-10 && !spiraled[name]){ spiraled[name]=1; bark(name,'spiral',1); }
+}
+
+/* ---------- turn driver (async — the turn can pause for human input) ---------- */
+async function playTurn(){
+  if(!game||game.done||busy)return;
+  busy=true; setControls();
+  try{ await game.step(); }
+  catch(e){ logLine(`<span class="sec">engine error: ${e.message}</span>`); console.error(e); }
+  updateHUD(); renderHand();
+  busy=false; setControls();
+  if(game.done){ endGame(); return; }
+  if(auto) autoTimer=setTimeout(playTurn, Math.max(60, 1800-(+$('#speed').value)));
+}
+function setControls(){
+  const human=game&&game.activePlayer&&game.activePlayer.isHuman;
+  const n=$('#nextBtn'); if(n){ n.disabled=busy; n.textContent = (human&&!busy)?'YOUR TURN ▸':'NEXT TURN ▸'; }
+}
+function showBanner(t){const b=$('#banner');b.textContent=t;b.style.display='block';}
+let flashT=0;
+function flashCollapse(){flashT=1;}
+function endGame(){
+  stopAuto();
+  const w=game.winner;
+  $('#overTitle').textContent=w?`${DN(w)} WINS`:'NO CLEAN EXIT';
+  $('#overReason').textContent=game.end_reason||'';
+  const rows=game.players.slice().sort((a,b)=>b.final_favor()-a.final_favor()||b.juice-a.juice);
+  const tb=$('#scoretab');tb.innerHTML='';
+  rows.forEach(p=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p===w?'👑 ':''}${DN(p)}</td><td class="r">FF ${p.final_favor()}</td><td class="r">J${p.juice}</td><td class="r">R${p.risk}</td>`;
+    tb.appendChild(tr);});
+  setTimeout(()=>show('over'),700);
+}
+
+/* ============== HUMAN SEAT: agent + prompt UI + hand ============== */
+function HumanAgent(){}
+HumanAgent.prototype.decide=function(req,g,p){ return new Promise(res=>presentPrompt(req,p,res)); };
+
+const cls4=t=>({Clean:'clean',Dirty:'dirty',Conditional:'cond'}[t]||'neutral');
+const typeColor=t=>({Clean:'#9fd06a',Dirty:'#e0a06a',Conditional:'#c79be8'}[t]||'#9aa3b4');
+const playShort=p=>({Immediate:'PLAY',KeepInHand:'HOLD',FaceUp:'FACE-UP',FaceDown:'FACE-DOWN'}[p]||p);
+function shortText(c){const t=(c&&c.text)||'';return t.length>78?t.slice(0,76)+'…':t;}
+function findOwner(t){ if(!game)return null; return game.players.find(q=>q.lineup.includes(t))||null; }
+
+function renderHand(forP){
+  const p=forP||(game&&game.activePlayer);
+  const hd=$('#hand'), lbl=$('#handLbl');
+  if(!p||!p.isHuman||!p.hand||!p.hand.length){ hd.classList.remove('on'); lbl.classList.remove('on'); return; }
+  lbl.textContent=`${DN(p).toUpperCase()} · YOUR HAND (${p.hand.length})`; lbl.classList.add('on');
+  hd.innerHTML='';
+  p.hand.forEach(c=>{ const d=document.createElement('div'); d.className='hcard '+cls4(c.ctype);
+    d.innerHTML=`<div class="ht" style="color:${typeColor(c.ctype)}">${c.ctype.toUpperCase()} · ${playShort(c.play)}</div>`+
+      `<div class="hn">${c.name}</div><div class="hx">${shortText(c)}</div>`;
+    hd.appendChild(d); });
+  hd.classList.add('on');
+}
+
+function openPrompt(title,sub,opts,resolve){
+  $('#pTtl').textContent=title; $('#pSub').textContent=sub||'';
+  const box=$('#pOpts'); box.innerHTML='';
+  opts.forEach(o=>{
+    const b=document.createElement('button'); b.className='opt'+(o.cls?' '+o.cls:'');
+    if(o.card){ const c=o.card; b.className+=' card '+cls4(c.ctype);
+      b.innerHTML=`<div class="ct" style="color:${typeColor(c.ctype)}">${c.ctype.toUpperCase()} · ${playShort(c.play)}</div>`+
+        `<div class="cn">${c.name}</div><div class="cx">${shortText(c)}</div>`;
+    } else if(o.assetEntry){ const t=o.assetEntry, c=t.card, ow=findOwner(t);
+      b.className+=' card '+cls4(c.ctype);
+      const tag=t.up?(game.activePlayer&&t.dirty?'DIRTY':(t.dirty?'DIRTY':'CLEAN')):'FACE-DOWN';
+      b.innerHTML=`<div class="ct">${ow?DN(ow)+' · ':''}${tag}</div><div class="cn">${c.name}</div>`;
+    } else {
+      b.innerHTML=`${o.label}${o.sub?`<span class="os">${o.sub}</span>`:''}`;
+    }
+    b.onclick=()=>{ if(window.SFX)SFX.play('select',0.55); closePrompt(); resolve(o.value); };
+    box.appendChild(b);
+  });
+  $('#prompt').classList.add('on');
+}
+function closePrompt(){ const el=$('#prompt'); if(el) el.classList.remove('on'); }
+
+function presentPrompt(req,p,resolve){
+  renderHand(p);
+  const who=DN(p)+(p.isHuman?' · YOU':'');
+  let title='',sub='',opts=[];
+  switch(req.kind){
+    case 'bribe':
+      title='Buy a Bribe coin?'; sub=`${who} · Juice ${p.juice}. A Bribe skips a Trust Check or forces Lounge entry — but it costs you a Final-Favor point.`;
+      opts=[{label:'BUY · −3 Juice',value:true,cls:'go'},{label:'Skip',value:false,cls:'no'}]; break;
+    case 'steps':{ const max=Math.min(Math.max(0,p.juice),9);   // as far as Juice permits (1 Juice/space) — no 2-space cap
+      title='Move how far around the loop?'; sub=`${who} · Juice ${p.juice}. 1 Juice per space; you may go as far as your Juice allows (TO MARKET doors cost +1). You draw on the space you land on.`;
+      if(max<=0){ opts=[{label:'Can’t move (no Juice)',value:0}]; }
+      else { for(let n=0;n<=max;n++) opts.push({label:n===0?'Stay put':`${n}`,value:n,cls:n>0?'go':''}); }
+      break; }
+    case 'door':
+      title='Take the TO MARKET door?'; sub=`${who} · −1 Juice to cut across — and +1 Final Favor for passing through Market.`;
+      opts=[{label:'Take door · −1 Juice',value:true,cls:'go'},{label:'Stay on loop',value:false,cls:'no'}]; break;
+    case 'enterLounge':
+      title='Enter the Cartel Suite?'; sub=`${who} · −1 Juice. You qualify (Trust ≥4 or Hype 8). Win by ending a turn here holding exactly 2 Clean Assets.`;
+      opts=[{label:'Enter · −1 Juice',value:true,cls:'go'},{label:'Stay out',value:false,cls:'no'}]; break;
+    case 'play':
+      title='Play a card from your hand?'; sub=`${who} · pick one to play this turn, or pass.`;
+      opts=req.candidates.map(c=>({card:c,value:c}));
+      opts.push({label:'PASS — play nothing',value:null,cls:'no'}); break;
+    case 'react':
+      title='React now?'; sub=`${who} · you may trigger ${req.card.name} in response.`;
+      opts=[{card:req.card,value:req.card,cls:'go'},{label:'Pass',value:null,cls:'no'}]; break;
+    case 'target':
+      title='Choose a target'; sub=who;
+      opts=req.candidates.map(q=>({label:DN(q),sub:`J${q.juice} T${q.trust} H${q.hype} R${q.risk}`,value:q})); break;
+    case 'asset':
+      title='Choose an asset'; sub=who;
+      opts=req.candidates.map(t=>({assetEntry:t,value:t}));
+      if(!opts.length) opts=[{label:'(none)',value:null}]; break;
+    case 'giveHype':
+      title='Bail them out?'; sub=`Give 1 of your Hype to ${req.target?DN(req.target):'them'} so they dodge The Benchmark?`;
+      opts=[{label:'Give 1 Hype',value:true,cls:'go'},{label:'Refuse',value:false,cls:'no'}]; break;
+    case 'ability':
+      title=`Use ${req.ability}?`; sub=`${who}${req.cost?' · '+req.cost:''}`;
+      opts=[{label:'Use it',value:true,cls:'go'},{label:'Skip',value:false,cls:'no'}]; break;
+    default:{ const list=req.options||req.candidates||[];
+      title='Choose'; sub=who;
+      opts=list.map(o=>({label:(o&&o.name)||String(o),value:o}));
+      opts.push({label:'Pass',value:null,cls:'no'}); }
+  }
+  openPrompt(title,sub,opts,resolve);
+}
+
+/* ---------- controls ---------- */
+$('#nextBtn').onclick=()=>{if(!busy&&game&&!game.done)playTurn();};
+$('#autoBtn').onclick=()=>{auto?stopAuto():startAuto();};
+function startAuto(){auto=true;$('#autoBtn').textContent='PAUSE ❚❚';if(!busy)playTurn();}
+function stopAuto(){auto=false;clearTimeout(autoTimer);const b=$('#autoBtn');if(b)b.textContent='AUTO ▸';}
+
+/* ---------- render loop ---------- */
+function loop(){
+  raf=requestAnimationFrame(loop);
+  if(!ctx)ctx=cv.getContext('2d');
+  fitCanvas();
+  drawBoard();
+}
+function fitCanvas(){
+  const wrap=$('#boardwrap');if(!wrap.clientWidth)return;
+  const aspect=boardImg?boardImg.width/boardImg.height:1100/690;
+  let w=wrap.clientWidth, h=wrap.clientHeight;
+  if(w/h>aspect)w=h*aspect; else h=w/aspect;
+  cv.style.width=w+'px';cv.style.height=h+'px';
+}
+let t0=0;
+function drawBoard(ts){
+  const W=cv.width,H=cv.height,now=performance.now();
+  ctx.clearRect(0,0,W,H);
+  // board art backdrop
+  if(boardImg){ctx.globalAlpha=1;ctx.drawImage(boardImg,0,0,W,H);}
+  // light vignette so the markers read without hiding the venue render
+  const vg=ctx.createRadialGradient(W*.5,H*.42,W*.18,W*.5,H*.5,W*.72);
+  vg.addColorStop(0,'rgba(8,10,16,0)');vg.addColorStop(1,'rgba(8,10,16,.5)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(10,12,20,.12)';ctx.fillRect(0,0,W,H);
+
+  // ---- loop ring connectors (subtle, on the floor) ----
+  ctx.lineWidth=Math.max(5,W*0.006);ctx.lineCap='round';
+  ctx.strokeStyle='rgba(240,207,122,.18)';
+  ctx.beginPath();
+  for(let i=0;i<NODES.length;i++){const a=nodeXY(i),b=nodeXY((i+1)%NODES.length);
+    ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}
+  ctx.stroke();
+
+  // ---- LOUNGE = a gold ring around the $90M HOLE (don't cover the art) ----
+  { const c=nodeXY('LOUNGE'),rr=Math.max(40,W*0.085);
+    ctx.save();ctx.lineWidth=Math.max(2,W*0.004);
+    ctx.strokeStyle=flashT>0?`rgba(229,138,42,${.6+.4*Math.sin(now/90)})`:'rgba(246,169,78,.5)';
+    ctx.beginPath();ctx.ellipse(c.x,c.y,rr,rr*.7,0,0,7);ctx.stroke();ctx.restore(); }
+
+  // ---- nodes (small floor markers; art shows through) ----
+  for(let i=0;i<NODES.length;i++){
+    const n=nodeXY(i), r=Math.max(11,W*0.0185);
+    const door=DOORS.has(i);
+    ctx.save();ctx.globalAlpha=.88;
+    ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);
+    ctx.fillStyle=door?'#2a2f3d':SPACE_COLORS[i];ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle='rgba(0,0,0,.55)';ctx.stroke();
+    ctx.beginPath();ctx.arc(n.x-r*.3,n.y-r*.3,r*.4,0,7);ctx.fillStyle='rgba(255,255,255,.28)';ctx.fill();
+    ctx.globalAlpha=1;ctx.fillStyle=door?'#f0cf7a':'rgba(0,0,0,.65)';
+    ctx.font=`800 ${Math.round(r*0.5)}px Trebuchet MS`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(door?'▸':DECK_BY_IDX(i)[0], n.x, n.y);
+    ctx.restore();
+  }
+  // START anchor
+  drawAnchor(nodeXY('START'),'START','#f0cf7a',W);
+
+  // ---- pawns ----
+  game&&game.players.forEach((p,i)=>{
+    const pw=pawns[p.name];if(!pw)return;
+    pw.x+=(pw.tx-pw.x)*0.22; pw.y+=(pw.ty-pw.y)*0.22;
+    const dx=pw.tx-pw.x,dy=pw.ty-pw.y,dist=Math.hypot(dx,dy);
+    let hopY=0;
+    if(pw.hop>0){ pw.hop=Math.max(0,pw.hop-0.05); hopY=-Math.sin((1-pw.hop)*Math.PI)*W*0.03; if(dist<1)pw.hop=Math.max(pw.hop,0);}
+    if(dist<1.2)pw.hop=0;
+    // fan out multiple pawns on same node
+    drawPawn(ctx, pw.x+offsetFor(p)*W*0.02, pw.y+hopY, W*0.034, p.color, game.activePlayer===p, p.burned);
+  });
+
+  // collapse red flash decay
+  if(flashT>0){flashT=Math.max(0,flashT-0.012);
+    ctx.fillStyle=`rgba(192,57,43,${0.28*flashT*(0.6+0.4*Math.sin(now/90))})`;ctx.fillRect(0,0,W,H);}
+}
+function offsetFor(p){ // small horizontal fan by seat order to avoid overlap
+  const idx=game.players.indexOf(p);return (idx-(game.players.length-1)/2);}
+function drawAnchor(n,label,color,W){
+  const r=Math.max(20,W*0.034);
+  ctx.save();
+  ctx.beginPath();ctx.arc(n.x,n.y,r,0,7);
+  ctx.fillStyle='rgba(20,24,34,.85)';ctx.fill();
+  ctx.lineWidth=4;ctx.strokeStyle=color;ctx.stroke();
+  ctx.fillStyle=color;ctx.font=`900 ${Math.round(r*0.32)}px Trebuchet MS`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  label.split(' ').forEach((w,k,arr)=>ctx.fillText(w,n.x,n.y+(k-(arr.length-1)/2)*r*0.4));
+  ctx.restore();
+}
+function drawTowerJuice(now){
+  // central tower spine with orange juice flowing down (the juice runs the tower like blood)
+  const W=cv.width,H=cv.height, cx=LOUNGE.x*W, top=LOUNGE.y*H;
+  ctx.save();
+  for(let s=0;s<3;s++){
+    const ph=(now/700+s*0.6)%1;
+    const x=cx+(s-1)*W*0.012;
+    const grad=ctx.createLinearGradient(0,top,0,H*0.8);
+    grad.addColorStop(0,'rgba(246,169,78,.0)');
+    grad.addColorStop(Math.min(.95,ph),'rgba(229,138,42,.55)');
+    grad.addColorStop(1,'rgba(229,138,42,0)');
+    ctx.strokeStyle=grad;ctx.lineWidth=W*0.006;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x+Math.sin(now/400+s)*4,H*0.8);ctx.stroke();
+  }
+  // juice droplet blobs
+  for(let s=0;s<3;s++){const ph=(now/900+s*0.4)%1;const y=top+ph*H*0.32;
+    ctx.beginPath();ctx.arc(cx+(s-1)*W*0.012,y,W*0.006*(1.1-ph*0.4),0,7);
+    ctx.fillStyle=`rgba(246,169,78,${0.7*(1-ph)})`;ctx.fill();}
+  ctx.restore();
+}
+function drawPawn(ctx,x,y,sc,color,active,burned){
+  ctx.save();
+  // shadow
+  ctx.beginPath();ctx.ellipse(x,y+sc*0.95,sc*0.7,sc*0.22,0,0,7);ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();
+  if(active){ctx.beginPath();ctx.arc(x,y,sc*1.5,0,7);ctx.fillStyle='rgba(240,207,122,.22)';ctx.fill();}
+  // real pawn sprite (BW master tinted to the character color); fallback below if not loaded
+  const tint=tintPawn(burned?'#5f5f5f':color);
+  if(tint){
+    const h=sc*2.9, w=h*tint.aspect;
+    if(active){ctx.shadowColor='rgba(240,207,122,.9)';ctx.shadowBlur=sc*0.6;}
+    ctx.globalAlpha=burned?0.7:1;
+    ctx.drawImage(tint.cv, x-w/2, y+sc*0.95-h, w, h);
+    ctx.restore();
+    return;
+  }
+  // body (SORRY pawn silhouette)
+  ctx.translate(x,y);ctx.scale(sc/20,sc/20);
+  ctx.beginPath();
+  ctx.moveTo(0,-16);
+  ctx.bezierCurveTo(-8,-16,-9,-6,-4,-2);
+  ctx.bezierCurveTo(-11,2,-13,12,-9,16);
+  ctx.bezierCurveTo(-12,18,-13,21,-11,23);
+  ctx.lineTo(11,23);
+  ctx.bezierCurveTo(13,21,12,18,9,16);
+  ctx.bezierCurveTo(13,12,11,2,4,-2);
+  ctx.bezierCurveTo(9,-6,8,-16,0,-16);
+  ctx.closePath();
+  const g=ctx.createLinearGradient(-10,-16,10,23);
+  g.addColorStop(0,shade(color,1.35));g.addColorStop(.5,color);g.addColorStop(1,shade(color,0.7));
+  ctx.fillStyle=burned?'#5b5b5b':g;ctx.fill();
+  ctx.lineWidth=1.8;ctx.strokeStyle='rgba(30,24,18,.9)';ctx.stroke();
+  // head gloss
+  ctx.beginPath();ctx.ellipse(-4,-12,2.4,3.4,0,0,7);ctx.fillStyle='rgba(255,255,255,.55)';ctx.fill();
+  ctx.restore();
+}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.min(255,r*f);g=Math.min(255,g*f);b=Math.min(255,b*f);
+  return `rgb(${r|0},${g|0},${b|0})`;}
+
+/* keyboard: space = next */
+window.addEventListener('keydown',e=>{
+  if($('#game').classList.contains('on')&&e.code==='Space'){e.preventDefault();if(!busy&&game&&!game.done)playTurn();}
+});
+
+/* ============================================================
+   1-PLAYER CONTROLLER NAVIGATION  (additive, self-contained)
+   Synthesizes the same clicks the mouse makes. No game-logic
+   changes. Exception-safe. Rising-edge button detection.
+   - A(0)/Start(9): if prompt open -> click focused #pOpts .opt,
+                    else advance turn (mirror Space binding).
+   - B(1): if prompt open -> click its Pass/Refuse "no" option
+           (else just close it).
+   - D-pad / left stick / right stick UP/DOWN: move focus across
+     visible #pOpts .opt buttons; A clicks the focused one.
+   ============================================================ */
+(function(){
+  const PAD_PREV = {};          // per-pad rising-edge state for buttons
+  const NAV_PREV = {};          // per-pad rising-edge state for up/down
+  let focusIdx = -1;            // current focused option index
+  const DEAD = 0.5;
+
+  function promptOpen(){
+    try{ const el=$('#prompt'); return !!(el && el.classList.contains('on')); }
+    catch(_){ return false; }
+  }
+  function gameOn(){
+    try{ const g=$('#game'); return !!(g && g.classList.contains('on')); }
+    catch(_){ return false; }
+  }
+  function opts(){
+    try{
+      const box=$('#pOpts'); if(!box) return [];
+      return [...box.querySelectorAll('button.opt')].filter(b=>{
+        if(b.disabled) return false;
+        // visible check
+        return b.offsetParent!==null || (b.getClientRects && b.getClientRects().length>0);
+      });
+    }catch(_){ return []; }
+  }
+  function clearFocusStyle(list){
+    list.forEach(b=>{ try{ b.classList.remove('gp-focus'); b.style.outline=''; b.style.outlineOffset=''; }catch(_){ } });
+  }
+  function paintFocus(){
+    const list=opts();
+    clearFocusStyle(list);
+    if(!list.length){ focusIdx=-1; return; }
+    if(focusIdx<0||focusIdx>=list.length) focusIdx=0;
+    const b=list[focusIdx];
+    try{ b.classList.add('gp-focus'); b.style.outline='3px solid #f0cf7a'; b.style.outlineOffset='2px'; b.scrollIntoView&&b.scrollIntoView({block:'nearest'}); }catch(_){ }
+  }
+  function moveFocus(dir){
+    const list=opts();
+    if(!list.length){ focusIdx=-1; return; }
+    if(focusIdx<0) focusIdx = dir>0 ? 0 : list.length-1;
+    else focusIdx = (focusIdx + (dir>0?1:-1) + list.length) % list.length;
+    paintFocus();
+  }
+  function clickFocused(){
+    const list=opts();
+    if(!list.length) return;
+    let i=focusIdx; if(i<0||i>=list.length) i=0;
+    try{ list[i].click(); }catch(_){ }
+    focusIdx=-1;
+  }
+  function clickNo(){
+    const list=opts();
+    const no=list.find(b=>b.classList.contains('no'));
+    if(no){ try{ no.click(); }catch(_){ } focusIdx=-1; return true; }
+    return false;
+  }
+  function advance(){
+    try{
+      const nb=$('#nextBtn');
+      if(nb && !nb.disabled) nb.click();
+      else if(typeof busy!=='undefined' && !busy && typeof game!=='undefined' && game && !game.done && typeof playTurn==='function') playTurn();
+    }catch(_){ }
+  }
+
+  function pollPads(){
+    try{
+      if(!gameOn()) { return; }
+      const pads = (navigator.getGamepads && navigator.getGamepads()) || [];
+      const open = promptOpen();
+      // reset focus highlight when no prompt is showing
+      if(!open && focusIdx!==-1){ clearFocusStyle(opts()); focusIdx=-1; }
+
+      for(let gi=0; gi<pads.length; gi++){
+        const gp=pads[gi]; if(!gp) continue;
+        const pp = PAD_PREV[gi] || (PAD_PREV[gi]={});
+        const np = NAV_PREV[gi] || (NAV_PREV[gi]={up:false,down:false});
+        const btn = (n)=>{ const b=gp.buttons&&gp.buttons[n]; return !!(b && (typeof b==='object'?b.pressed:b>0.5)); };
+        const ax  = (n)=>{ const a=gp.axes&&gp.axes[n]; return typeof a==='number'?a:0; };
+
+        // ---- vertical nav from d-pad + left stick(1) + right stick(3) ----
+        let vy = 0;
+        if(btn(12)) vy=-1;            // d-pad up
+        if(btn(13)) vy= 1;            // d-pad down
+        const ly=ax(1), ry=ax(3);
+        if(Math.abs(ly)>DEAD) vy = ly<0?-1:1;
+        if(Math.abs(ry)>DEAD) vy = ry<0?-1:1;
+        // hat axis(9) only on non-standard mappings, folded carefully
+        if(gp.mapping!=='standard'){
+          const h=ax(9);
+          if(h>=-1.1 && h<=1.1 && Math.abs(h)>0.10){
+            // common hat encoding: up ~ -1, down ~ +0.14..+0.42 region; use sign
+            if(h<-0.5) vy=-1; else if(h>0 && h<0.6) vy=1;
+          }
+        }
+        const wantUp = vy<0, wantDown = vy>0;
+        if(open){
+          if(wantUp && !np.up) moveFocus(-1);
+          if(wantDown && !np.down) moveFocus(1);
+        }
+        np.up=wantUp; np.down=wantDown;
+
+        // ---- buttons (rising edge) ----
+        const a=btn(0), start=btn(9), b=btn(1);
+        if((a && !pp[0]) || (start && !pp[9])){
+          if(open){ if(focusIdx<0) paintFocus(); clickFocused(); }
+          else advance();
+        }
+        if(b && !pp[1]){
+          if(open){ if(!clickNo()){ try{ if(typeof closePrompt==='function') closePrompt(); }catch(_){ } focusIdx=-1; } }
+        }
+        pp[0]=a; pp[9]=start; pp[1]=b;
+      }
+
+      // ensure a focus exists once a prompt opens
+      if(open && focusIdx<0 && opts().length){ paintFocus(); }
+    }catch(_){ /* never break the page */ }
+    requestAnimationFrame(pollPads);
+  }
+  // gamepad-focus outline style (additive)
+  try{ const st=document.createElement('style'); st.textContent='#pOpts button.gp-focus{border-color:#f0cf7a !important;}'; document.head.appendChild(st); }catch(_){ }
+  requestAnimationFrame(pollPads);
+})();
+
+/* capture hook: #bible opens the Card Bible directly */
+if(location.hash.indexOf('bible')>=0){
+  window.addEventListener('load',()=>setTimeout(()=>{renderBible();show('bible');},400));
+}
+/* demo hook for static capture: #demo[N] auto-starts a game and steps N turns */
+if(location.hash.indexOf('setup')>=0){
+  window.addEventListener('load',()=>setTimeout(()=>{S.count=5;buildSetup();dealChars();show('setup');},500));
+}
+if(location.hash.indexOf('demo')>=0 && location.hash.indexOf('human')<0){
+  window.addEventListener('load',()=>setTimeout(async ()=>{
+    const m=location.hash.match(/demo(\d+)/); const n=m?+m[1]:9;
+    const pm=location.hash.match(/p(\d)/); // optional #...p6 to force player count (capture only)
+    S.count=pm?+pm[1]:4;S.expansion=true;buildSetup();dealChars(); S.seats=dealt.map(()=>false); // bots only for capture
+    startGame();
+    for(let k=0;k<n && !game.done;k++) await game.step();
+    game.players.forEach(p=>{const xy=nodeXY(p.pos);pawns[p.name]={x:xy.x,y:xy.y,tx:xy.x,ty:xy.y,hop:0};});
+    updateHUD();
+    spotlight('Sacrificial Lamb','demo · drawn'); clearTimeout(spotTimer);
+  },700));
+}
+// debug: paced bots-only run so voice barks stay on-screen (for capture)
+if(location.hash.indexOf('barkshot')>=0){
+  window.addEventListener('load',()=>setTimeout(()=>{
+    S.count=4;S.expansion=true;buildSetup();dealChars(); S.seats=dealt.map(()=>false);
+    startGame();
+    (function tick(){ if(!game||game.done)return; if(!busy)playTurn(); setTimeout(tick,360); })();
+  },700));
+}
+// debug: drive a HUMAN seat end-to-end, auto-answering every prompt (validates the prompt UI in-browser)
+if(location.hash.indexOf('humandemo')>=0){
+  window.addEventListener('load',()=>setTimeout(async ()=>{
+    const m=location.hash.match(/humandemo(\d+)/); const n=m?+m[1]:18;
+    S.count=4;S.expansion=true;buildSetup();dealChars(); S.seats=dealt.map((_,i)=>i===0);
+    startGame();
+    const iv=setInterval(()=>{ const pr=$('#prompt'); if(pr.classList.contains('on')){ (pr.querySelector('.opt.go')||pr.querySelector('.opt'))?.click(); } },50);
+    for(let k=0;k<n && !game.done;k++){ await playTurn(); await new Promise(r=>setTimeout(r,30)); }
+    clearInterval(iv);
+  },700));
+}
+// debug: start a human game and stop on the first live prompt (for a UI screenshot)
+if(location.hash.indexOf('humanshot')>=0){
+  window.addEventListener('load',()=>setTimeout(()=>{
+    S.count=4;S.expansion=true;buildSetup();dealChars(); S.seats=dealt.map((_,i)=>i===0);
+    startGame(); playTurn();   // seat 0 (human) acts first — its prompt stays up
+  },700));
+}
+// debug: render the hand strip + 'play a card' prompt with a sample hand (UI screenshot)
+if(location.hash.indexOf('handshot')>=0){
+  window.addEventListener('load',()=>setTimeout(()=>{
+    S.count=4;S.expansion=true;buildSetup();dealChars(); S.seats=dealt.map((_,i)=>i===0);
+    startGame();
+    const me=game.players[0];
+    me.hand=(window.CARDS||[]).filter(c=>['FaceUp','FaceDown','KeepInHand'].includes(c.play)).slice(0,4);
+    game.activePlayer=me; updateHUD(); renderHand(me);
+    presentPrompt({kind:'play',candidates:me.hand}, me, ()=>{});
+  },700));
+}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OiL! — Native Engine · Market Tape</title>
+<style>
+  :root{--gold:#e0a32a;--gold-lite:#f6c95a;--ink:#0c0a08;--ink2:#15110c;
+    --cream:#efe6cf;--red:#c0392b;--orange:#e2632a;--green:#2f8f5b;--panel:#1a140d;}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:radial-gradient(120% 100% at 50% 0%,#241a10,#0c0a08 70%);
+    color:var(--cream);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;overflow:hidden}
+  #wrap{display:flex;flex-direction:column;height:100vh}
+  header{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid #3a2c18;background:rgba(10,8,6,.6)}
+  header .ti{font-family:Georgia,serif;font-weight:700;color:var(--gold-lite);font-size:21px;letter-spacing:.02em}
+  header .sub{font-size:11px;color:#9a8f7c;letter-spacing:.06em}
+  header .sp{flex:1}
+  button{font-family:inherit;font-weight:800;cursor:pointer;border:none;border-radius:999px;padding:8px 16px;font-size:13px;
+    color:#241405;background:linear-gradient(180deg,var(--gold-lite),var(--gold));box-shadow:0 3px 0 #93660f}
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 #93660f}
+  button.alt{background:linear-gradient(180deg,#caa15e,#7d5b22);color:#1a1206;box-shadow:0 3px 0 #4a3413}
+  select{font-family:inherit;font-weight:700;background:#241a0f;color:var(--cream);border:1px solid #4a3413;border-radius:8px;padding:6px 8px}
+  main{flex:1;display:flex;min-height:0}
+  #stage{flex:1;position:relative;min-width:0}
+  /* venue backdrop — the GATEWAY oil-rig table, dimmed so the market tape reads on top */
+  #venue{position:absolute;inset:0;z-index:0;background:#0c0a08 url(assets/gateway/web/ocean-of-oil-2.jpg) center/cover no-repeat;
+    opacity:.5}
+  #venue::after{content:"";position:absolute;inset:0;background:
+    radial-gradient(120% 90% at 50% 38%,rgba(12,10,8,.32),rgba(12,10,8,.82) 78%),
+    linear-gradient(180deg,rgba(12,10,8,.55),rgba(12,10,8,.35) 40%,rgba(12,10,8,.78))}
+  canvas{display:block;width:100%;height:100%;position:relative;z-index:1}
+  #edd{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(192,57,43,.93);color:#fff;
+    font-weight:900;letter-spacing:.14em;padding:8px 22px;border-radius:999px;box-shadow:0 6px 24px rgba(0,0,0,.6);display:none}
+  aside{width:300px;flex:0 0 300px;border-left:1px solid #3a2c18;background:linear-gradient(180deg,#1a140d,#120e09);
+    display:flex;flex-direction:column;min-height:0}
+  .rh{padding:9px 14px;border-bottom:1px solid #3a2c18;font-size:11px;letter-spacing:.1em;color:#9a8f7c;font-weight:800}
+  #players{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+  .pl{background:#241a0f;border-radius:10px;padding:8px 10px;border-left:3px solid var(--c,#e0a32a)}
+  .pl .nm{font-weight:800;font-size:12.5px;display:flex;justify-content:space-between}
+  .pl .nm .ctl{color:var(--gold-lite)}
+  .pl .bars{display:flex;gap:5px;margin-top:5px;font-size:9px;color:#9a8f7c;font-weight:700}
+  .pl .bars span{flex:1}
+  .bar{height:5px;border-radius:3px;background:#3a2c18;margin-top:2px;overflow:hidden}
+  .bar i{display:block;height:100%}
+  #log{height:118px;overflow-y:auto;border-top:1px solid #3a2c18;padding:6px 12px;font-size:11px;line-height:1.5;color:#b6a98a}
+  #log .t{color:var(--gold-lite);font-weight:800}
+  #log .spike{color:var(--orange)} #log .out{color:var(--red)} #log .grn{color:var(--green)}
+  .lede{padding:6px 18px;font-size:11px;color:#8a7c63;border-top:1px solid #3a2c18}
+  .pl.you{box-shadow:0 0 0 2px var(--gold-lite)}
+  #nprompt{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,6,4,.62);z-index:20}
+  #nprompt.on{display:flex}
+  #nprompt .box{background:linear-gradient(180deg,#241a0f,#15110c);border:1px solid #4a3413;border-radius:14px;
+    padding:18px 22px;max-width:460px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+  #nprompt .pt{font-family:Georgia,serif;color:var(--gold-lite);font-size:18px;margin-bottom:4px}
+  #nprompt .ps{color:#9a8f7c;font-size:12px;margin-bottom:14px;line-height:1.45}
+  #nprompt .po{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  #nprompt .po button{min-width:96px}
+  #nprompt .po button.no{background:linear-gradient(180deg,#caa15e,#7d5b22);color:#1a1206;box-shadow:0 3px 0 #4a3413}
+  /* boot / title splash — the OIL OPEN CARD establishing shot */
+  #boot{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    text-align:center;background:#0c0a08 url(assets/gateway/web/oil-open-card.jpg) center/cover no-repeat;
+    transition:opacity .6s ease}
+  #boot::before{content:"";position:absolute;inset:0;background:
+    linear-gradient(180deg,rgba(12,10,8,.10),rgba(12,10,8,.32) 46%,rgba(12,10,8,.92))}
+  #boot.gone{opacity:0;pointer-events:none}
+  #boot .bz{position:relative;padding:0 22px 8vh;max-width:680px}
+  #boot .pre{font-size:12px;letter-spacing:.42em;color:#caa15e;font-weight:800;text-transform:uppercase}
+  #boot .ti{font-family:Georgia,serif;font-weight:700;color:var(--gold-lite);font-size:clamp(42px,9vw,86px);
+    line-height:.96;letter-spacing:.01em;text-shadow:0 6px 30px rgba(0,0,0,.7);margin:6px 0 2px}
+  #boot .tag{font-family:Georgia,serif;font-style:italic;color:#d9cba8;font-size:clamp(14px,2.2vw,19px);margin-bottom:22px;
+    text-shadow:0 3px 14px rgba(0,0,0,.8)}
+  #boot .open{font-size:16px;padding:13px 30px;letter-spacing:.06em}
+  #boot .note{margin-top:16px;font-size:10.5px;letter-spacing:.16em;color:#8a7c63;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div id="boot">
+  <div class="bz">
+    <div class="pre">Anders &amp; Partners present</div>
+    <div class="ti">OiL!</div>
+    <div class="tag">The world is on fire. Double-check your career.</div>
+    <button class="open" id="bootOpen">OPEN THE MARKET</button>
+    <div class="note">Native engine · strawman dials · the spike is coming</div>
+  </div>
+</div>
+<div id="wrap">
+  <header>
+    <div class="ti">OiL! <span style="color:#8a7c63">·</span> NATIVE ENGINE</div>
+    <div class="sub">the dice / price / depletion spine — strawman dials, validated</div>
+    <div class="sp"></div>
+    <a href="diciner.html" class="sub" style="text-decoration:none;color:#caa15e">🎲 DICINER</a>&nbsp;
+    <a href="test-lab.html" class="sub" style="text-decoration:none;color:#caa15e">🧪 LAB</a>&nbsp;&nbsp;
+    <label class="sub">SPECULATORS&nbsp;<select id="np"><option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option></select></label>
+    <label class="sub">&nbsp;<select id="exp"><option value="1" selected>+ Green Anders (exp)</option><option value="0">core only</option></select></label>
+    <label class="sub">&nbsp;<select id="ed"><option value="classic" selected>CLASSIC</option><option value="benchmark">BENCHMARK</option></select></label>
+    <label class="sub">&nbsp;<select id="dax"><option value="1" selected>dice: Supply·Weather·World</option><option value="0">dice: raw numbers</option></select></label>
+    <label class="sub">&nbsp;<select id="cards"><option value="1" selected>cards: on</option><option value="0">cards: off</option></select></label>
+    <label class="sub">&nbsp;<select id="asym"><option value="1" selected>factions: asymmetric (CORE-014)</option><option value="0">factions: symmetric</option></select></label>
+    <label class="sub">&nbsp;<select id="you"><option value="0" selected>spectate</option><option value="1">YOU play seat 1</option></select></label>
+    <label class="sub">&nbsp;<select id="spd"><option value="420">slow</option><option value="200" selected>medium</option><option value="70">fast</option></select></label>
+    <button class="alt" id="step">STEP</button>
+    <button id="play">▶ RUN</button>
+    <button id="new">NEW</button>
+  </header>
+  <main>
+    <div id="stage"><div id="venue"></div><canvas id="cv"></canvas><div id="edd">▼ E.D.D. PROTOCOL ▼</div>
+      <div id="nprompt"><div class="box"><div class="pt" id="npt">—</div><div class="ps" id="nps"></div><div class="po" id="npo"></div></div></div>
+    </div>
+    <aside>
+      <div class="rh">SPECULATORS · control / value / exposure</div>
+      <div id="players"></div>
+      <div id="log"></div>
+    </aside>
+  </main>
+  <div class="lede" id="lede">Red + Black + fate die → three-body price shove · Oil Remaining is the monotonic clock · scarcity makes price climb · E.D.D. = Eat / Divide / Destroy.</div>
+</div>
+
+<script src="src/oil-content.js"></script>
+<script src="src/oil-skin.js"></script>
+<script src="src/oil-engine.js"></script>
+<script src="src/oil-cards.js"></script>
+<script src="src/oil-deals.js"></script>
+<script src="src/oil-factions.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const cv=$('#cv'), ctx=cv.getContext('2d');
+let game=null, hist=[], timer=0, running=false;
+// Model A is LOCKED (CORE-002): the 3 dice are interchangeable bodies named
+// Supply/Weather/World (canonical, from the SSOT) — NOT separate subsystems.
+// The names are flavor on one emergent read; "raw numbers" is just an alt view.
+const AXES=(window.OIL&&OIL.META&&OIL.META.dice_names_core)||['Supply','Weather','World'];
+const diceStr=()=>{const d=game.lastDice;return $('#dax').value==='0'?d.join('-'):d.map((v,i)=>AXES[i]+' '+v).join(' · ');};
+// dials handed over from THE DICINER (#dials=base64 json) — "PLAY THESE DICE"
+let HASH_DIALS=null;
+(function(){const m=location.hash.match(/dials=([^&]+)/);if(m){try{HASH_DIALS=JSON.parse(atob(decodeURIComponent(m[1])));}catch(e){}}})();
+
+// faction roster for player identity (display only)
+const FAC=(window.OIL&&OIL.FACTIONS)||[];
+const colorFor=(window.OILSKIN&&OILSKIN.colorFor)||(()=>'#e0a32a');
+const FACFX=((window.OIL_FACTIONS_FX&&OIL_FACTIONS_FX.FACTIONS)||{});   // power read for the panel
+
+function newGame(){
+  stop();
+  const n=+$('#np').value, exp=$('#exp').value==='1', edition=$('#ed').value, you=$('#you').value==='1', cards=$('#cards').value==='1', asym=$('#asym').value==='1';
+  const facs=FAC.slice(0,n);
+  const names=facs.map(f=>f.brand);
+  game=new OilGame({seed:(Math.random()*1e9)|0,n_players:n,expansion:exp,names,edition,cards,factions:facs.map(f=>f.code),asym,dials:HASH_DIALS||{}});
+  game._colors=facs.map(f=>colorFor(f.code));
+  if(you){ game.players[0].isHuman=true; game.players[0].agent={decide:presentPrompt}; }  // human seat -> same ask() seam as bots (E6)
+  hist=[{price:game.price,oil:game.oil,era:'STABLE',edd:false}];
+  $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#log').innerHTML='';
+  buildPanels(); draw();
+  logLine(`<span class="t">TABLE SET</span> · ${n} speculators · ${exp?'+ Green Anders':'core only'} · <b>${edition.toUpperCase()}</b>${game.rubberBand?' (rubber band on)':''}${game.asym?' · <b style="color:#caa15e">factions ASYMMETRIC</b>':' · factions symmetric'}${you?' · <b style="color:#f6c95a">YOU = '+game.players[0].name+'</b>':''} · oil ${game.oil}, price ${game.price}`);
+  if(you) logLine(`<span class="grn">You play seat 1. Press RUN — the game pauses for your calls.</span>`);
+  if(HASH_DIALS) logLine(`<span style="color:#caa15e">🎲 playing a DICINER design — custom dice/dials active</span>`);
+}
+function buildPanels(){
+  const w=$('#players'); w.innerHTML='';
+  game.players.forEach((p,i)=>{
+    const d=document.createElement('div'); d.className='pl'+(p.isHuman?' you':''); d.id='pl'+i; d.style.setProperty('--c',game._colors[i]);
+    const fx=game.asym&&p.faction&&FACFX[p.faction];
+    const pow=fx?`<div class="pow" title="${fx.text.replace(/"/g,'&quot;')}" style="font-size:9px;letter-spacing:.5px;color:#caa15e;margin:1px 0 3px">◆ ${fx.power}</div>`:'';
+    d.innerHTML=`<div class="nm"><span>${p.name}${p.isHuman?' <span style="color:#f6c95a">· YOU</span>':''}</span><span class="ctl">▰0</span></div>${pow}
+      <div class="bars"><span>VAL<div class="bar"><i style="background:var(--gold)"></i></div></span>
+      <span>EXP<div class="bar"><i style="background:var(--red)"></i></div></span>
+      <span>PIPS<div class="bar"><i style="background:var(--green)"></i></div></span></div>`;
+    w.appendChild(d);
+  });
+}
+function updatePanels(){
+  const maxVal=Math.max(1,...game.players.map(p=>p.holdings(game.price)));
+  const maxExp=Math.max(1,...game.players.map(p=>p.exposure));
+  game.players.forEach((p,i)=>{
+    const d=$('#pl'+i); if(!d)return;
+    d.querySelector('.ctl').textContent='▰'+p.control;
+    const bars=d.querySelectorAll('.bar i');
+    bars[0].style.width=(100*p.holdings(game.price)/maxVal)+'%';
+    bars[1].style.width=(100*p.exposure/maxExp)+'%';
+    bars[2].style.width=(100*p.pips/(window.OIL_DIALS?OIL_DIALS.PIPS_START:3))+'%';
+    d.style.opacity=(game.done&&game.winner===p)?'1':game.done?'0.5':'1';
+    d.style.boxShadow=(game.done&&game.winner===p)?'0 0 0 2px '+game._colors[i]:'none';
+  });
+}
+function logLine(html){const l=$('#log');const e=document.createElement('div');e.innerHTML=html;l.appendChild(e);l.scrollTop=l.scrollHeight;while(l.children.length>60)l.removeChild(l.firstChild);}
+
+async function stepOnce(){
+  if(!game||game.done)return;
+  const before=game.events.length;
+  await game.step();
+  hist.push({price:game.price,oil:game.oil,era:game.era,edd:game.edd,shove:game.lastShove,scar:game.scarcity||0});
+  // surface notable events
+  for(let k=before;k<game.events.length;k++){const ev=game.events[k];
+    if(ev.type==='edd_begin'){ $('#edd').style.display='block'; logLine(`<span class="out">▼ ${ev.reason} — oil ${ev.oil}, price ${ev.price}</span>`); }
+    else if(ev.type==='edd'){ logLine(`&nbsp;&nbsp;<span class="out">${ev.outcome}</span> by ${ev.player}${ev.on?' on '+ev.on:''}`); }
+    else if(ev.type==='green'){ logLine(`&nbsp;&nbsp;<span class="grn">⊛ Green Anders intervenes</span> (${ev.inject>0?'+':''}${ev.inject} → price ${ev.price})`); }
+    else if(ev.type==='slingshot'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> spends a pip — slingshots the price`); }
+    else if(ev.type==='card'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> plays <b style="color:#f6c95a">${ev.card}</b> <span style="color:#7d6b4a">[${ev.deck[0]}]</span>`); }
+    else if(ev.type==='faction'&&ev.code==='HADDAD'&&game.era==='STABLE'){ logLine(`&nbsp;&nbsp;<span style="color:#caa15e">◆ ${ev.player} steadies the tape</span> <span style="color:#7d6b4a">(${ev.power})</span>`); }
+  }
+  const h=hist[hist.length-1];
+  if(h.era==='CHAOTIC') logLine(`<span class="t">T${game.turn}</span> dice ${game.lastDice.join('-')} · shove ${h.shove>=0?'+':''}${h.shove} <span class="spike">CHAOTIC</span> · price ${game.price}`);
+  updatePanels(); draw();
+  if(game.done){ stop(); verdict(); }
+}
+function verdict(){
+  const w=game.winner;
+  logLine(`<span class="t">★ VERDICT</span> — ${w.name} controls the ruin (▰${w.control}, exposure ${w.exposure})`);
+}
+
+function draw(){
+  const W=cv.width=cv.clientWidth*devicePixelRatio, H=cv.height=cv.clientHeight*devicePixelRatio;
+  ctx.clearRect(0,0,W,H);
+  const D=(game&&game.dials)||window.OIL_DIALS||{PRICE_MAX:120,OIL_START:60,EDD_PRICE:88,SCARCITY_BAND:30,EDD_OIL:6};
+  const padL=54*devicePixelRatio,padR=18*devicePixelRatio,padT=24*devicePixelRatio,padB=70*devicePixelRatio;
+  const cw=W-padL-padR, ch=H-padT-padB;
+  const n=Math.max(2,hist.length-1);
+  const X=i=>padL+cw*(i/n), Yp=v=>padT+ch*(1-v/D.PRICE_MAX);
+  // grid + thresholds
+  ctx.font=(11*devicePixelRatio)+'px Trebuchet MS'; ctx.textBaseline='middle';
+  ctx.strokeStyle='rgba(120,100,70,.18)'; ctx.fillStyle='#7d6b4a'; ctx.lineWidth=devicePixelRatio;
+  for(let v=0;v<=D.PRICE_MAX;v+=20){const y=Yp(v);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();ctx.textAlign='right';ctx.fillText('$'+v,padL-6*devicePixelRatio,y);}
+  // E.D.D. price threshold line
+  ctx.strokeStyle='rgba(226,99,42,.55)';ctx.setLineDash([6*devicePixelRatio,5*devicePixelRatio]);
+  let y=Yp(D.EDD_PRICE);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#e2632a';ctx.textAlign='left';ctx.fillText('E.D.D. price '+D.EDD_PRICE,padL+4*devicePixelRatio,y-10*devicePixelRatio);
+
+  // shade CHAOTIC turns
+  for(let i=1;i<hist.length;i++){ if(hist[i].era==='CHAOTIC'){ ctx.fillStyle='rgba(226,99,42,.10)'; ctx.fillRect(X(i-1),padT,X(i)-X(i-1),ch);} }
+  // price line
+  ctx.lineWidth=2.4*devicePixelRatio;ctx.strokeStyle='#f6c95a';ctx.lineJoin='round';ctx.beginPath();
+  hist.forEach((h,i)=>{const x=X(i),yy=Yp(h.price);i?ctx.lineTo(x,yy):ctx.moveTo(x,yy);});ctx.stroke();
+  // current price dot
+  if(hist.length){const h=hist[hist.length-1];const x=X(hist.length-1),yy=Yp(h.price);
+    ctx.fillStyle=h.edd?'#c0392b':'#f6c95a';ctx.beginPath();ctx.arc(x,yy,5*devicePixelRatio,0,7);ctx.fill();
+    ctx.fillStyle=h.edd?'#ff8a6a':'#f6c95a';ctx.textAlign='right';ctx.font=('bold '+13*devicePixelRatio+'px Trebuchet MS');
+    ctx.fillText('$'+h.price+(h.era==='CHAOTIC'?'  ⚡':''),Math.min(W-padR,x-8*devicePixelRatio),Math.max(padT+10*devicePixelRatio,yy-14*devicePixelRatio));}
+
+  // OIL REMAINING bar (the monotonic clock) along the bottom
+  const oy=H-padB+24*devicePixelRatio, oh=20*devicePixelRatio, ow=cw;
+  const oilFrac=game?game.oil/D.OIL_START:1;
+  ctx.fillStyle='#1c140c';ctx.fillRect(padL,oy,ow,oh);
+  const og=ctx.createLinearGradient(padL,0,padL+ow,0);og.addColorStop(0,'#3a2410');og.addColorStop(1,'#0a0604');
+  ctx.fillStyle=og;ctx.fillRect(padL,oy,ow*oilFrac,oh);
+  // scarcity band marker
+  const sx=padL+ow*(D.SCARCITY_BAND/D.OIL_START);
+  ctx.strokeStyle='rgba(226,99,42,.5)';ctx.setLineDash([4*devicePixelRatio,4*devicePixelRatio]);ctx.beginPath();ctx.moveTo(sx,oy);ctx.lineTo(sx,oy+oh);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#caa15e';ctx.textAlign='left';ctx.font=(11*devicePixelRatio)+'px Trebuchet MS';
+  ctx.fillText('OIL REMAINING  '+(game?game.oil:0)+' / '+D.OIL_START+'   (scarcity premium ◂ when below '+D.SCARCITY_BAND+')',padL,oy+oh+16*devicePixelRatio);
+  // era/dice readout
+  if(game){ctx.textAlign='right';ctx.fillStyle=game.era==='CHAOTIC'?'#e2632a':'#9a8f7c';
+    ctx.fillText('turn '+game.turn+' · '+diceStr()+' · '+game.era,W-padR,oy+oh+16*devicePixelRatio);}
+}
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function play(){
+  if(running)return; running=true; $('#play').textContent='❚❚ PAUSE';
+  while(running&&game&&!game.done){ await stepOnce(); if(!running||!game||game.done)break; await sleep(+$('#spd').value); }
+  if(!game||game.done) stop();
+}
+function stop(){running=false;clearTimeout(timer);const b=$('#play');if(b)b.textContent='▶ RUN';}
+
+// human-seat prompt: the agent.decide() the engine awaits at each of YOUR decisions
+function presentPrompt(g,p,ctx){
+  return new Promise(resolve=>{
+    let title='',sub='',opts=[];
+    if(ctx.kind==='slingshot'){
+      const proj=Math.max(g.dials.PRICE_MIN,Math.min(g.dials.PRICE_MAX,g.price+g.lastShove));
+      title='Slingshot the market?';
+      sub=`${diceStr()} · shove ${g.lastShove>=0?'+':''}${g.lastShove} → price ${g.price}→${proj}. Spend 1 pip (you hold ${p.pips}) to FLIP the shove's sign.`;
+      opts=[{label:'FLIP (−1 pip)',value:'flip'},{label:'keep',value:'keep',cls:'no'}];
+    } else if(ctx.kind==='action'){
+      title='Claim or hold?';
+      sub=`Price $${g.price}. CLAIM: spend 1 barrel (you hold ${p.barrels}) → +1 control, bank $${g.price}. HOLD: +${g.dials.HOLD_PENALTY} exposure (always move or suffer).`;
+      opts=[{label:'CLAIM',value:'claim'},{label:'hold',value:'hold',cls:'no'}];
+    } else if(ctx.kind==='card'){
+      const cbn={}; (window.OIL&&OIL.CARDS||[]).forEach(c=>cbn[c.name]=c);
+      const hand=ctx.options.filter(o=>o!=='pass');
+      title='Play a card?';
+      sub='Your hand — '+hand.map(nm=>{const c=cbn[nm];return nm+(c&&c.effects[0]?' ('+c.effects[0]+')':'');}).join('  ·  ');
+      opts=hand.map(nm=>({label:nm,value:nm})).concat([{label:'pass',value:'pass',cls:'no'}]);
+    } else if(ctx.kind==='edd'){
+      title='E.D.D. — '+ctx.options[0];
+      sub=`The protocol rolls ${ctx.options[0]}: strike the table's biggest holder.`;
+      opts=ctx.options.map(o=>({label:o,value:o}));
+    } else { title='Choose'; opts=(ctx.options||[]).map(o=>({label:String(o),value:o})); }
+    $('#npt').textContent=title; $('#nps').textContent=sub;
+    const box=$('#npo'); box.innerHTML='';
+    opts.forEach(o=>{const b=document.createElement('button'); if(o.cls)b.className=o.cls; b.textContent=o.label;
+      b.onclick=()=>{ $('#nprompt').classList.remove('on'); resolve(o.value); }; box.appendChild(b);});
+    updatePanels(); draw(); $('#nprompt').classList.add('on');
+  });
+}
+
+// boot splash → market
+const dismissBoot=()=>{const b=$('#boot'); if(b&&!b.classList.contains('gone')){b.classList.add('gone'); setTimeout(()=>b.remove(),650); draw();}};
+$('#bootOpen').onclick=dismissBoot;
+
+$('#step').onclick=async()=>{stop(); await stepOnce();};
+$('#play').onclick=()=>{running?stop():play();};
+$('#new').onclick=newGame;
+['np','exp','ed','you','cards'].forEach(id=>$('#'+id).onchange=newGame);
+$('#dax').onchange=draw;
+addEventListener('resize',draw);
+newGame();
+// capture/demo hooks
+if(location.hash.length>1) dismissBoot();                                           // any demo hook skips the splash
+if(location.hash.indexOf('run')>=0){$('#spd').value='70';play();}                 // spectate, auto-run fast
+if(location.hash.indexOf('youshot')>=0){$('#you').value='1';newGame();play();}      // human seat: stop on the first prompt
+if(location.hash.indexOf('youauto')>=0){                                            // human seat: auto-answer to validate the flow
+  $('#you').value='1';$('#spd').value='60';newGame();
+  setInterval(()=>{const pr=$('#nprompt');if(pr.classList.contains('on'))pr.querySelector('button').click();},40);
+  play();
+}
+})();
+</script>
+</body>
+</html>
