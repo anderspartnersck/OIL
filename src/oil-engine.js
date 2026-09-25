@@ -47,6 +47,19 @@
     DIE_FACES: [1, 2, 3, 4, 5, 6],   // faces shared by the 3 bodies (design them here)
     SHOVE_W: [1, -2, 1],             // weights on the SORTED dice (a<=b<=c): a - 2b + c
     GREEN_TRIGGER: 5,                // expansion green die intervenes when it rolls >= this
+    // ---- THE ANDERS DIE, PUNITIVE (docs/THE-CONTROL-LAYER.md §5) -------------
+    // The three bodies are nature and markets: symmetric, untargeted, and they do not know your
+    // name. Anders does. This is the one roll that can reach across the table and TAKE something
+    // from a named company — which is the game admitting the house is a participant, and why it
+    // belongs in the expansion, breaking a rule the core needs.
+    //
+    // It is AIMED AT THE LEADER on purpose. Random cruelty is just noise; leaning on whoever is
+    // winning is a hand on the scale, which is the point. And it fires only on the top face of a
+    // die that is already gated to CHAOTIC expansion turns — roughly a sixth of a third — because
+    // punitive AND frequent is just misery.
+    GREEN_PUNITIVE_AT: 6,            // only the top face punishes; 5 stays the old price shove
+    GREEN_SEIZE_HEAT: 3,             // 'assign the blame' — heat dumped on ground the leader holds
+    GREEN_LEVY: 6,                   // 'call the loan' — value taken from the leader
     // --- price (the shared market) ---
     PRICE_START: 50, PRICE_MIN: 5, PRICE_MAX: 120,
     // three-body era threshold: CHAOTIC when |shove| >= T_CHAOS (three_body.py sweep)
@@ -68,6 +81,35 @@
     BARRELS_START: 2, PIPS_START: 3, PIP_REGEN_EVERY: 3,
     HOLD_PENALTY: 4,         // "always move or take a penalty": skip your action -> price-points of value lost
     CLAIM_COST: 1,           // barrels spent to claim/produce
+
+    // ---- CONTROL (docs/THE-CONTROL-LAYER.md §2) -----------------------------
+    // Territory measured in the only unit this game already trusts: barrels moved
+    // through a place. Read off the claim/sell action that already exists — it adds
+    // NO decision (LAB 11's one-page budget), which is the whole constraint.
+    // ---- THE RATCHET — BUILT, MEASURED, AND REMOVED (docs/THE-CONTROL-LAYER.md §3) --------
+    // The brief asked for player action to "ratchet up or down" the price. It was built here and
+    // taken back out, because the measurement said it cannot work in THIS economy:
+    //
+    //   · Charter E1 rejected it immediately — oil-rich drift went to -0.43/turn against a 0.15
+    //     tolerance. A lean that only points one way IS a house drift; that is what E1 is for.
+    //   · The reason it only points one way is the barrel economy. Players start with 2 barrels
+    //     and spend them one at a time. Measured over 60 games: 6,845 seat-turns holding ZERO
+    //     barrels, 1,475 holding one, 600 holding two, and NOT ONE holding four.
+    //   · So §3's two sides do not exist here. "Sell a large lot" is impossible — every sale is
+    //     one barrel. "Withhold and stockpile" is impossible — there is nothing to withhold.
+    //     Only the down-lean can ever fire, so only drift can result.
+    //
+    // A LEGAL ratchet needs a two-sided pressure source that this economy actually has. The
+    // candidates are on the board already and are NOT barrel-flow: CONTROL of a place (§2), a
+    // gate shut by somebody who holds it, and fire destroying supply. Those can push both ways
+    // and fire independently of sales. That is the next attempt, and it is a design decision
+    // about what "pressure" means — not a threshold to tune until E1 stops complaining.
+    //
+    // Dials kept, unused, so the attempt is legible rather than silently lost.
+    THROUGHPUT_DECAY: 0.85,  // control ROTS without trade. You hold ground by working it.
+    CONTROL_MARGIN: 1.25,    // you must beat second place by this to hold it outright...
+    CONTROL_MIN: 2,          // ...and clear this floor, so one stray barrel owns nothing.
+                             // Below either bar the place is CONTESTED — a state, not a tie-break.
   };
 
   // ---- EDITIONS (matches the ER$N pattern) -----------------------------------
@@ -113,6 +155,7 @@
       this.grudges = [];                     // ids of players who broke a deal with you (THE TABLE)
       this.at = null;                        // where you stand on THE MAP (place code)
       this.longWay = false;                  // you came the long way round past a shut gate
+      this.consignedTo = null;               // CONSIGNED CARGO (model): the buyer you owe
     }
     holdings(price) { return this.value + this.barrels * price; }
   }
@@ -126,6 +169,18 @@
   // THE MAP — where a bot sails. Seed-stable (g.rng only). The read: get to an HQ
   // so you can actually sell; prefer a rival's yard (the incursion pays more);
   // and in a chaotic season the steady hand stays out of the deep water.
+  // CONSIGNED CARGO (model): should this seat sell HERE, or carry it to the buyer?
+  // Without this the seat sold wherever it stood and 70% of cargo was dumped — the contract
+  // existed on paper and changed nobody's behaviour. Hold if the buyer is close enough to be
+  // worth the wait; dump if it is far, because a cargo you can never land is worth what the
+  // spot market gives you today.
+  function shouldLandIt(g, p) {
+    if (!g.consign || !p.consignedTo) return true;          // no contract: sell as before
+    if (p.at === p.consignedTo) return true;                // you are there. land it.
+    const MP = OilGame._mapFX();
+    const d = MP.reach(p.at, 99, g.mapState).dist[p.consignedTo];
+    return !(d !== undefined && d <= 4);                    // within reach soon -> carry it
+  }
   function movePick(g, p, ctx) {
     const MP = OilGame._mapFX(), opts = ctx.options;
     if (!MP.BY || !opts.length) return p.at;
@@ -133,7 +188,24 @@
     const risky = c => { const k = (MP.BY[c] || {}).kind; return k === 'cape' || k === 'arctic' || k === 'ocean'; };
     const score = c => {
       const pl = MP.BY[c]; if (!pl) return -99;
-      let v = pl.kind === 'hq' ? 10 : 0;                       // you can only sell at an HQ
+      // An HQ is still the best sale; ONSHORE ground is the tempting second — it pays a premium
+      // and no strait can close on it. Scored just under an HQ so it is a real option rather than
+      // a curiosity: at 0 the AI treated Genesee County as open ocean and the ground was never
+      // worked in 300 games, which left the whole onshore mechanic dead on the board.
+      let v = pl.kind === 'hq' ? 10 : pl.kind === 'onshore' ? 7 : 0;
+      // CONSIGNED CARGO (model): the buyer outranks everything — and, crucially, so does GETTING
+      // CLOSER TO IT. Scoring only the arrival was not enough: a turn moves you a few steps, so if
+      // the buyer is six steps away it is never in the option list and the bonus never applies.
+      // The seat just picked the best node in reach, exactly as before, and 73% of cargo was
+      // dumped. Rewarding PROGRESS is what turns a move into a voyage — and a voyage is the only
+      // thing a shut strait can actually lengthen.
+      if (g.consign && p.consignedTo) {
+        if (c === p.consignedTo) v += 30;
+        else {
+          const onward = MP.reach(c, 99, g.mapState).dist[p.consignedTo];
+          if (onward !== undefined) v += Math.max(0, 14 - onward * 2);   // closer is better
+        }
+      }
       if (pl.kind === 'hq' && c !== p.faction) v += 3;         // somebody else's yard pays more
       if (c === p.at) v -= 4;                                  // always move or suffer
       v -= MP.trafficAt(c, g.mapState).blocked * 2;            // don't sail into a squeeze
@@ -161,7 +233,7 @@
         const helps = (g.lastShove >= 0) === (p.barrels > 0);
         return (!helps && p.pips > 0 && Math.abs(g.lastShove) >= 1) ? 'flip' : 'keep';
       }
-      if (ctx.kind === 'action') return p.barrels >= DIALS.CLAIM_COST ? 'claim' : 'hold';
+      if (ctx.kind === 'action') return (p.barrels >= DIALS.CLAIM_COST && shouldLandIt(g, p)) ? 'claim' : 'hold';
       if (ctx.kind === 'edd') return ctx.options.includes('EAT') ? 'EAT' : ctx.options[0];
       return ctx.options[0];
     },
@@ -175,7 +247,7 @@
       if (ctx.kind === 'action' && ctx.options.indexOf('retainer') >= 0 && g.rng.random() < 0.35) return 'retainer';
       if (ctx.kind === 'action' && ctx.options.indexOf('build') >= 0) return 'build';
       if (ctx.kind === 'slingshot') return 'keep';
-      if (ctx.kind === 'action') return 'claim';
+      if (ctx.kind === 'action') return shouldLandIt(g, p) ? 'claim' : 'hold';
       if (ctx.kind === 'edd') return ctx.options.includes('DIVIDE') ? 'DIVIDE' : ctx.options[0];
       return ctx.options[0];
     },
@@ -203,10 +275,14 @@
       this.lastShove = 0; this.lastDice = [0, 0, 0];
       this.edd = false; this.eddLog = [];
       this.turn = 0; this.round = 0; this.idx = 0;
+      this.pressure = 0;                     // THE RATCHET: player lean on next turn's price
+      this.throughput = {};                  // place -> { playerName: barrels }, decayed each round
+      this.controlOwner = {};                // place -> playerName | null (null = CONTESTED/none)
       this.done = false; this.winner = null; this.end_reason = null;
       this.log = []; this.events = [];
       this.maxTurns = opts.maxTurns || 400;   // safety only; oil depletion ends it far sooner
       this.cards = !!opts.cards;              // optional card layer (src/oil-cards.js)
+      this.consign = !!opts.consign;          // MODEL: consigned cargo (see the CONSIGN_* dials)
       if (this.cards) this._buildDecks();
 
       // ---- optional THE TABLE (negotiation layer; src/oil-deals.js) ----------
@@ -230,6 +306,9 @@
       if (this.map) {
         // you start at your faction's HQ; symmetric games spread round the 8 HQs.
         this.players.forEach((q, i) => { q.at = (q.faction && MP.BY[q.faction]) ? q.faction : MP.HQS[i % MP.HQS.length]; });
+        // CONSIGNED CARGO (model): everybody starts holding a contract, or the first sale has
+        // nowhere to be and the whole experiment starts a turn late.
+        if (this.consign) this.players.forEach(q => this._consign(q));
       }
 
       // ---- optional CRISIS (flashpoints / blowouts / IWS; src/oil-crisis.js) ----
@@ -615,6 +694,96 @@
     // A claim is a DELIVERY: blocked routes out of your node cut what you can move,
     // the long way past a shut gate pays a premium, and selling out of a rival's
     // yard pays more and costs you both.
+    // ---- CONTROL: throughput in, control out ---------------------------------
+    // A station is EVIDENCE OF THROUGHPUT, not a purchase — you get one by selling at a
+    // place, so you cannot buy into a region you do not actually supply.
+    _addThroughput(p, place, barrels) {
+      if (!place || !barrels) return;
+      const t = (this.throughput[place] || (this.throughput[place] = {}));
+      t[p.name] = (t[p.name] || 0) + barrels;
+    }
+    // Who holds a place: the leader, if it clears the floor AND beats second by the margin.
+    // Anything else is CONTESTED — which is where the deal layer and the flashpoints work.
+    controlOf(place) {
+      const t = this.throughput[place]; if (!t) return null;
+      const D = this.dials;
+      const rank = Object.keys(t).map(n => [n, t[n]]).sort((a, b) => b[1] - a[1]);
+      if (!rank.length || rank[0][1] < D.CONTROL_MIN) return null;
+      const second = rank[1] ? rank[1][1] : 0;
+      if (second > 0 && rank[0][1] < second * D.CONTROL_MARGIN) return null;
+      return rank[0][0];
+    }
+    controlTable() {
+      const out = {};
+      Object.keys(this.throughput).forEach(pl => { const o = this.controlOf(pl); if (o) out[pl] = o; });
+      return out;
+    }
+    controlCount(name) {
+      const t = this.controlTable();
+      return Object.keys(t).filter(k => t[k] === name).length;
+    }
+    // Once per round: trade rots, then control is re-read. Emitting only on CHANGE keeps the
+    // event stream honest about when ground actually moved.
+    _settleControl() {
+      const D = this.dials;
+      Object.keys(this.throughput).forEach(pl => {
+        const t = this.throughput[pl];
+        Object.keys(t).forEach(n => {
+          t[n] *= D.THROUGHPUT_DECAY;
+          if (t[n] < 0.05) delete t[n];
+        });
+        if (!Object.keys(t).length) delete this.throughput[pl];
+      });
+      Object.keys(this.throughput).forEach(pl => {
+        const now = this.controlOf(pl), was = this.controlOwner[pl] || null;
+        if (now !== was) {
+          this.controlOwner[pl] = now;
+          this.emit('control', { place: pl, from: was, to: now, turn: this.turn });
+        }
+      });
+    }
+
+    // THE PUNITIVE STROKE. One seat, one effect, survivable — the guardrail from §5 is that this
+    // must never become misery, so it takes a bite and never a leg. Which of the three lands is
+    // deterministic on the turn, so a replay is a replay.
+    _andersPunish() {
+      const D = this.dials;
+      const lead = this.players.slice().sort((a, b) => b.holdings(this.price) - a.holdings(this.price))[0];
+      if (!lead) return;
+      const held = Object.keys(this.controlTable()).filter(k => this.controlTable()[k] === lead.name);
+      const pick = this.turn % 3;
+      let how = null;
+
+      if (pick === 0 && held.length) {              // SEIZE — strip the ground out from under them
+        const place = held[0];
+        const t = this.throughput[place] || {};
+        delete t[lead.name];                        // the station is gone; whoever is next inherits
+        this.controlOwner[place] = this.controlOf(place);
+        how = { how: 'seize', place };
+      } else if (pick === 1 && held.length && this.crisis) {
+        this.addHeat(held[0], D.GREEN_SEIZE_HEAT, 'Anders assigns the blame');
+        how = { how: 'blame', place: held[0] };     // BLAME — the trouble is booked to your ground
+      } else {                                      // LEVY — the loan is called. Always available.
+        const take = Math.min(lead.value, D.GREEN_LEVY);
+        lead.value -= take;
+        how = { how: 'levy', took: take };
+      }
+      lead.exposure += 1;                           // and it is on the record that Anders had to act
+      this.andersStats = this.andersStats || { seize: 0, blame: 0, levy: 0 };
+      this.andersStats[how.how]++;
+      this.emit('anders', Object.assign({ player: lead.name, turn: this.turn }, how));
+    }
+
+    // CONSIGNED CARGO (model). Hand this seat a buyer that is NOT where it is standing —
+    // a contract you are already sitting on is not a destination, it is a formality.
+    _consign(p) {
+      const MP = OilGame._mapFX();
+      if (!MP.HQS || !MP.HQS.length) return;
+      const away = MP.HQS.filter(c => c !== p.at);
+      p.consignedTo = away.length ? away[Math.floor(this.rng.random() * away.length)] : MP.HQS[0];
+      this.emit('consign', { player: p.name, to: p.consignedTo, from: p.at, turn: this.turn });
+    }
+
     _deliveryValue(p) {
       const MP = OilGame._mapFX(), D = this.mapDials;
       if (!this.map) return { value: this.price, pct: 100 };
@@ -632,13 +801,27 @@
       // you cannot ship out of a field that is on fire
       if (this.crisis && this.burningAt(p.at)) pct = Math.round(pct * this.crisisDials.FIRE_DELIVERY / 100);
       const place = MP.BY[p.at];
+      // ONSHORE GROUND PAYS A LITTLE BETTER — it is domestic. Nothing is shipped, no freight is
+      // bought, no strait can be shut on you. That is exactly why it is tempting, and exactly why
+      // the harm lands on people instead of on cargo: the cheap barrel is the one pulled out from
+      // under somebody's house. The bill arrives as HEAT on that place (crisisDials.HEAT_ONSHORE),
+      // not as a worse price. See docs/THE-CONTROL-LAYER.md §4.
+      if (place && place.kind === 'onshore') pct += D.ONSHORE_PCT;
+      // CONSIGNED CARGO (model): the buyer is where the money is. Land it and you are paid for
+      // the voyage; dump it anywhere else and you take what the spot market will give you. This
+      // is the whole experiment — it turns 'sell' into 'arrive'.
+      let consigned = null;
+      if (this.consign && p.consignedTo) {
+        consigned = (p.at === p.consignedTo);
+        pct = consigned ? pct + D.CONSIGN_BONUS : Math.round(pct * D.CONSIGN_DUMP / 100);
+      }
       let incursion = null;
       if (place && place.kind === 'hq' && place.code !== p.faction) {
         pct += D.INCURSION_BONUS;
         incursion = this.players.find(q => q !== p && q.faction === place.code) || null;
       }
       return { value: Math.max(0, Math.round(this.price * pct / 100)), pct, squeezed, incursion,
-        blocked: t.blocked, premium, longWay: !!p.longWay };
+        blocked: t.blocked, premium, longWay: !!p.longWay, consigned };
     }
 
     // ========================================================================
@@ -771,7 +954,7 @@
       const D = this.dials, p = this.players[this.idx];
       this._oilMark = this.oil;
       this.turn++;
-      if (this.idx === 0) this.round++;
+      if (this.idx === 0) { this.round++; this._settleControl(); }
 
       // 1. roll the three core bodies (Supply / Weather / World) off the faces table
       let dice = [rollFace(this.rng, D.DIE_FACES), rollFace(this.rng, D.DIE_FACES), rollFace(this.rng, D.DIE_FACES)];
@@ -805,6 +988,7 @@
       let next = this.price + this.lastShove;
       this.scarcity = this.oil <= D.SCARCITY_BAND ? Math.ceil((D.SCARCITY_BAND - this.oil) / D.SCARCITY_DIV) : 0;
       next += this.scarcity;
+      // (THE RATCHET was built here and REMOVED — see the RATCHET_* dials for why.)
       this.price = Math.max(D.PRICE_MIN, Math.min(D.PRICE_MAX, next));
       this.era = Math.abs(this.lastShove) >= D.T_CHAOS ? 'CHAOTIC' : 'STABLE';
       this.emit('market', { dice: this.lastDice, shove: this.lastShove, scarcity: this.scarcity, price: this.price, era: this.era });
@@ -818,6 +1002,10 @@
           const inj = (this.lastShove >= 0 ? 1 : -1) * Math.ceil(g / 2);
           this.price = Math.max(D.PRICE_MIN, Math.min(D.PRICE_MAX, this.price + inj));
           this.emit('green', { player: p.name, die: g, inject: inj, price: this.price });
+
+          // ...and on the TOP FACE it does not merely shove the tape — it takes something, from
+          // one named seat. Aimed at the leader by holdings: the house leans on whoever is winning.
+          if (g >= D.GREEN_PUNITIVE_AT) this._andersPunish();
         }
       }
 
@@ -864,6 +1052,20 @@
           const del = this._deliveryValue(p);
           p.barrels -= D.CLAIM_COST; p.control += 1;
           p.value += del.value;                      // sell a barrel into the market
+          this._addThroughput(p, p.at, D.CLAIM_COST);  // ...and that sale is your claim on the ground
+          if (this.consign) {                          // the contract is discharged; take the next
+            if (del.consigned) this.mapStats.consignHit = (this.mapStats.consignHit || 0) + 1;
+            else this.mapStats.consignDump = (this.mapStats.consignDump || 0) + 1;
+            this._consign(p);
+          }
+
+          // ...and if that ground is ONSHORE, working it is what poisons it. No gate has to shut
+          // and no war has to start — this is the ordinary business of production doing the harm.
+          const _MP = OilGame._mapFX();                 // step() has no MP of its own
+          if (this.crisis && _MP.BY && (_MP.BY[p.at] || {}).kind === 'onshore') {
+            this.addHeat(p.at, this.crisisDials.HEAT_ONSHORE, 'production on the ground');
+            this.mapStats.onshoreWorked = (this.mapStats.onshoreWorked || 0) + 1;
+          }
           if (this.map) {
             if (del.squeezed) this.mapStats.squeezed++;
             if (del.premium > 0) this.mapStats.premiums++;

@@ -44,17 +44,22 @@
   .tagline b{color:var(--juice-lite)}
   .byline{margin-top:8px;color:#8c8576;letter-spacing:.22em;font-size:12px;font-weight:700}
   #boot .presents{width:min(46vw,300px);filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));animation:flickerIn 1s ease both}
-  #boot .presents-sub{margin-top:-6px;color:#9a927e;letter-spacing:.5em;font-size:12px;font-weight:800;animation:flickerIn 1.4s ease both}
+  #boot .presents-sub{margin-top:-6px;color:#9a927e;letter-spacing:.5em;font-size:12px;font-weight:800;animation:flickerIn 1.4s ease both;
+    position:relative;z-index:3}   /* sits ABOVE the spinning boxes — a 3D face must never cover the credit */
   #boot .sub{margin-top:16px;padding-bottom:6px;color:#776f5e;font-size:12px;letter-spacing:.14em;text-align:center}
   #boot .start-hint{margin-top:22px;animation:pulse 1.6s infinite}
   @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
   /* 3D box (built to the 10.5×10.5×2 print spec) — slow spin + zoom */
-  .stage3d{perspective:1300px;width:min(72vw,440px);height:min(40vh,380px);
+  .stage3d{perspective:1300px;width:min(72vw,440px);height:min(44vh,420px);
     display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 30px 40px rgba(0,0,0,.6))}
   .box3d{position:relative;width:300px;height:300px;transform-style:preserve-3d;
     animation:boxspin 18s linear infinite, boxzoom 7.5s ease-in-out infinite alternate}
   @keyframes boxspin{from{transform:rotateX(-17deg) rotateY(-22deg)}to{transform:rotateX(-17deg) rotateY(338deg)}}
-  @keyframes boxzoom{from{scale:.84}to{scale:1.12}}
+  /* Was .84 -> 1.12. At 1.12 a 300px face plus its 61px depth, rotated and under 1300px of
+     perspective, projects WIDER AND TALLER than the 440x380 stage — so the box escaped its box
+     and sat on top of the PRESENTS line above it. Breathing room instead of a bigger swing: the
+     zoom is gentler and the stage is given real height. */
+  @keyframes boxzoom{from{scale:.88}to{scale:1.0}}
   /* depth = 61px ≈ 300 × (spine 174 / face 858) — matches the print 10.5×10.5×2 spine art exactly */
   .bxface{position:absolute;backface-visibility:hidden;background-size:cover;background-position:center;
     box-shadow:inset 0 0 34px rgba(0,0,0,.28)}   /* no hard border — that was the black seam line */
@@ -73,7 +78,11 @@
   .bx-bottom{transform:rotateX(-90deg) translateZ(150px);filter:brightness(.5)}
 
   /* ---------- the two boxes spinning side by side ---------- */
-  .boxduo{display:flex;align-items:center;justify-content:center;gap:min(4vw,30px);flex-wrap:nowrap}
+  /* The 3D faces project OUTSIDE their stage (perspective + rotateX lifts the top edge), so the
+     duo needs real clearance above, not just a smaller zoom — otherwise the box climbs onto the
+     PRESENTS line. Clearance above, a little below for the tagline. */
+  .boxduo{display:flex;align-items:center;justify-content:center;gap:min(4vw,30px);flex-wrap:nowrap;
+    margin-top:26px;margin-bottom:12px;position:relative;z-index:1}
   .stage3d.mini{width:min(40vw,250px);height:min(30vh,250px)}
   /* EXPANSION box (10.5×10.5×2, smaller) — blue, the SuprexCore PREMIUM badge as the spine */
   .box-exp{position:relative;width:210px;height:210px;transform-style:preserve-3d;
@@ -83,6 +92,16 @@
     box-shadow:inset 0 0 30px rgba(0,0,0,.45),inset 0 0 0 1px rgba(120,160,255,.18)}
   .ex-front,.ex-back{inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px}
   .ex-front{transform:translateZ(22px)}
+  /* the cover sits UNDER the kicker; the gradient beneath survives as the fallback if the art
+     is ever missing, so a 404 degrades to the old blue box rather than to nothing. */
+  /* THE expansion cover — 'OIL BOX TOP 0416 modern final'. This is the real box top, not a
+     variant: the art itself carries 'OIL! EXPANSION EDITION' on the storefront, the SuprexCore
+     PREMIUM flash, and the whole legal block (core edition required · 4-6 Speculators · 14+).
+     So no kicker is drawn over it — the artwork already says everything a box front says, and
+     an overlaid 'THE EXPANSION' would be a second, worse version of a line already in the picture. */
+  .ex-front.has-cover{background-image:url(assets/box/covers/expansion.png);
+    background-size:cover;background-position:center}
+  .ex-front.has-cover .kick{display:none}
   .ex-front .flash{width:88%;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
   .ex-front .kick{margin-top:6px;font-family:Georgia,serif;font-weight:700;color:#e9d9a6;letter-spacing:.14em;font-size:13px;
     text-shadow:0 1px 2px rgba(0,0,0,.6)}
@@ -326,8 +345,12 @@
       <div class="bxface bx-top"></div><div class="bxface bx-bottom"></div>
     </div></div>
     <div class="stage3d mini"><div class="box-exp" id="boxExp">
-      <div class="exface ex-front">
-        <img class="flash" src="assets/box/suprexcore_web.png" alt="NOW WITH SuprexCore Premium">
+      <!-- The expansion front is REAL COVER ART now (the modern cut, which already carries the
+           SuprexCore PREMIUM flash baked in) — it used to be a CSS gradient with the flash PNG
+           laid on top, which is why it read as a blue placeholder next to the real base-game box.
+           The separate <img class="flash"> is gone on purpose: the badge is in the artwork, and
+           two of them stacked. -->
+      <div class="exface ex-front has-cover">
         <div class="kick">THE <b>EXPANSION</b></div>
       </div>
       <div class="exface ex-back">

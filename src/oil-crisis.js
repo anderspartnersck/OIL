@@ -52,6 +52,12 @@
     HEAT_CHAOS_GATES: 2,    // a CHAOTIC season leans on EVERY chokepoint on the board
     HEAT_CHAOS_LOCAL: 1,    // ...and on the water the active seat is standing in
     HEAT_INCURSION: 3,      // selling out of somebody's yard makes trouble there
+    // PRODUCING ON THE GROUND POISONS IT (docs/THE-CONTROL-LAYER.md §4). An onshore place is
+    // not a chokepoint — nothing ships THROUGH Genesee County. What is at risk there is the
+    // people living on top of the industry, and the thing that puts them at risk is the
+    // ordinary business of production. So working an onshore place heats it, every time, with
+    // no shut gate and no war required. You cannot route around the place you produce in.
+    HEAT_ONSHORE: 2,
     HEAT_EDD: 2,            // the Protocol firing heats where it struck
     HEAT_CARD: 4,           // a war/government card played here
     HEAT_SPREAD: 1,         // a SHUT strait bleeds stress into the HQs beside it —

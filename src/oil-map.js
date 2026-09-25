@@ -102,6 +102,11 @@
     BUILD_HEAT: 2,          // exposure taken (a megaproject is a very visible thing)
 
     // --- standing on a rival's HQ ---
+    // ONSHORE ground is DOMESTIC — nothing is shipped, no freight is bought, and no strait can be
+    // shut on you. So the barrel nets more. That is the temptation, and the bill arrives instead as
+    // HEAT on the place (crisisDials.HEAT_ONSHORE): the cheap barrel is the one pulled out from
+    // under somebody's house. docs/THE-CONTROL-LAYER.md §4.
+    ONSHORE_PCT: 12,        // % bonus for working your own ground
     INCURSION_BONUS: 25,    // % bonus on the sale (selling out of their yard)
     INCURSION_HEAT: 1,      // exposure you take for it
     INCURSION_HIT: 1,       // exposure the HQ's seat takes (the swing)
@@ -152,14 +157,62 @@
     // -- CAPES: the long ways round. Slow, unclosable, and hungry in a bad season. --
     { code: 'GOODHOPE', kind: 'cape', name: 'The Cape of Good Hope', at: [0.158, 0.640] },
     { code: 'HORN',     kind: 'cape', name: 'Cape Horn',            at: [0.762, 0.762] },
+    // ANTARCTICA. The Southern Ocean was an EDGE labelled 'the Southern Ocean', running Good Hope
+    // straight to Cape Horn — but this board's rule is that risk lives in the PLACE you sail
+    // through, not the edge. So the roughest water on earth was the one stretch that could carry
+    // no peril at all. It is a place now, and the two capes reach each other THROUGH it. Like a
+    // cape it can never be shut (nobody closes the Southern Ocean); like the Arctic it is where
+    // a CHAOTIC season takes cargo.
+    { code: 'SOUTHERN', kind: 'cape', name: 'The Southern Ocean', at: [0.470, 0.745],
+      note: 'the Roaring Forties — the only water that circles the world unbroken' },
 
     // -- ARCTIC: iced shut until somebody develops the north. --
     { code: 'NSR', kind: 'arctic', name: 'The Northern Sea Route', at: [0.330, 0.072] },
     { code: 'NWP', kind: 'arctic', name: 'The Northwest Passage',  at: [0.636, 0.080] },
 
+    // ---------------------------------------------------------------------------
+    // ONSHORE — the ground the industry stands on. A CLASS THE MAP WAS MISSING.
+    //
+    // Every other flashpoint here is a CHOKEPOINT: Hormuz, Suez, Malacca — places where
+    // the CARGO is at risk. The designer named "genesee county michigan", which is not
+    // that at all. Nothing ships through it. What is at risk on an onshore place is the
+    // people living on top of the industry.
+    //
+    // That is the distinction worth building, and it is the game's own thesis: the sea
+    // takes cargo, the land takes everyone else. A chokepoint heats when somebody shuts
+    // it; an onshore place heats IN PROPORTION TO THE BARRELS YOU RUN THROUGH IT —
+    // producing is the thing that poisons it — and you cannot route around the place you
+    // produce in. See docs/THE-CONTROL-LAYER.md §4.
+    //
+    // NAMING IS A DESIGNER CALL, NOT MINE (§4 of that doc). These are real places and
+    // real people. Genesee County is carried verbatim because Joe named it; the others
+    // use the REGIONAL naming the rest of this map already uses ("The Gulf", "The
+    // Orinoco" — not company towns). Do not expand this into a roster of named towns
+    // without that call being made deliberately.
+    //
+    // DATA ONLY at this stage: kind 'onshore' exists, carries no rules yet, and is not a
+    // gate. Wiring production->heat is step 3 of the build order, gated on the
+    // annihilation rate staying in band.
+    // ---------------------------------------------------------------------------
+    { code: 'GENESEE',  kind: 'onshore', name: 'Genesee County', at: [0.730, 0.286],
+      note: "a company county, and what austerity did to its water — the designer's example" },
+    { code: 'REFINERY_ROW', kind: 'onshore', name: 'The Refinery Coast', at: [0.704, 0.392],
+      note: 'the petrochemical corridor along the Gulf — fence-line country' },
+    { code: 'THE_DELTA', kind: 'onshore', name: 'The Delta', at: [0.146, 0.470],
+      note: 'spills, flaring, and what was done to the people who objected' },
+
     // -- BUILT: the megastructures that redraw shipping (expansion). --
     { code: 'SEACITY', kind: 'built', name: 'Sea City', at: [0.505, 0.520],
       requires: 'SEA_CITY', note: 'a floating civilisation in the middle of the Pacific' },
+    // THE ANTARCTIC STATION — Arctic Development's southern twin. The ice at BOTH ends is hard
+    // reserve; developing the south raises a place on the Antarctic coast, and a lee shore in the
+    // Forties shortens the Southern Ocean for whoever paid for it.
+    { code: 'ANTARCTIC_BASE', kind: 'built', name: 'The Antarctic Station', at: [0.330, 0.805],
+      requires: 'ANTARCTIC_DEV', note: 'hard reserve under the ice — and shelter in the Forties' },
+    // THE SPACE ELEVATOR stands on the EQUATOR. That is not flavour, it is the engineering
+    // constraint — which is why the tether lands mid-Pacific and not at anybody's HQ.
+    { code: 'ELEVATOR', kind: 'built', name: 'The Space Elevator', at: [0.505, 0.452],
+      requires: 'SPACE_ELEVATOR', note: 'equatorial tether — the map stops applying to whoever holds it' },
   ];
 
   // ============================================================================
@@ -209,7 +262,24 @@
     ['PANAMA',  'PACIFIC', 1, 'out of Balboa'],
     ['HORN',    'PACIFIC', 3, 'the Chile run'],
     ['PACIFIC', 'BRIGHT',  2, 'the Pacific crossing'],
-    ['GOODHOPE','HORN',    4, 'the Southern Ocean'],
+    ['GOODHOPE','SOUTHERN', 2, 'into the Forties'],
+    ['SOUTHERN', 'HORN',    2, 'the Drake Passage approach'],
+    ['SOUTHERN', 'INDIAN',  3, 'the southern Indian Ocean run'],
+    ['SOUTHERN', 'PACIFIC', 3, 'the South Pacific'],
+
+    // ---- the far south: raised only if somebody develops Antarctica ----
+    ['SOUTHERN', 'ANTARCTIC_BASE', 1, 'the ice approach'],
+    ['ANTARCTIC_BASE', 'HORN',     1, 'the Weddell run'],
+    ['ANTARCTIC_BASE', 'GOODHOPE', 2, 'the Enderby run'],
+
+    // ---- onshore: the ground, reached from the HQ that works it ----
+    ['STOCK',     'GENESEE',      1, 'the Great Lakes line'],
+    ['HARTSTARR', 'REFINERY_ROW', 1, 'the fence line'],
+    ['GIBRALTAR', 'THE_DELTA',    2, 'the West Africa coast'],
+    ['THE_DELTA', 'GOODHOPE',     2, 'the Gulf of Guinea run'],
+
+    // ---- the equatorial tether ----
+    ['PACIFIC',  'ELEVATOR', 1, 'the tether approach'],
 
     // ---- the north (iced shut until developed) ----
     ['MINA',     'NSR', 1, 'the Kara Sea'],
@@ -241,11 +311,79 @@
       note: 'floating civilisation; new strategic locations, changes shipping',
       raises: ['SEACITY'],
     },
+    // ANTARCTIC DEVELOPMENT — THE DESPERATION PLAY.
+    // Designer, 2026-09-24: "antarctica I believe is a potential but risky to the world
+    // enterprise, but can be a way to compete if one is desperate but it is costly and
+    // mortgages or turns off part of the board" — clarified moments later: "for that player's
+    // company that is."
+    //
+    // That clarification is the whole mechanic, so it is worth stating plainly: the board it
+    // turns off is YOUR OWN. Not the commons, not the dealer's choice — the developing player
+    // mortgages their own operation to reach the ice. The RISK is to the world (this is a
+    // global-heat enterprise and everybody lives with the weather); the COST is private.
+    //
+    // That is what separates it from Arctic Development. Arctic Development is an investment:
+    // you pay cash, the world gets bigger, you are ahead. Antarctic Development is what you
+    // reach for when you are LOSING — it buys reach you cannot otherwise afford by shutting
+    // down part of the company that is buying it. You come back into the game smaller.
+    //
+    // WHEN it arrives changes WHO pays. Designer, same session: "perhaps late game stage as the
+    // game is at a high risk of catastrophe ending the game do the other players suffer but this
+    // is one of those things that can exacerbate a bad turn into a domino."
+    //
+    // So the cost is not fixed, it is CONDITIONAL on the state of the world, and that is the
+    // elegant part:
+    //   · EARLY / a cool world — the bill is entirely private. You mortgage your own company for
+    //     reach, everyone else just watches you do something desperate.
+    //   · LATE / a world already near catastrophe — the same act lands on EVERYBODY. It is not a
+    //     separate penalty bolted on; it is the ordinary global-heat effect arriving on a board
+    //     that can no longer absorb it.
+    //
+    // Which makes it a CASCADE AMPLIFIER rather than a cost: it does not usually end the game,
+    // it makes a bad turn unsurvivable. That is the domino. It also means the temptation is
+    // worst exactly when the consequence is worst — you reach for it when you are losing, and
+    // you are usually losing late.
+    //
+    // This rides the crisis system that already exists (global heat, flashpoints, blowouts, fire
+    // accelerating the collapse, ANNIHILATION at ~9% of endings) — it should add NO new kind of
+    // decision, per LAB 11's one-page budget. It is a multiplier on heat already modelled.
+    //
+    // SHAPE ONLY — the numbers are the designer's (House Rule 5: this build does not invent
+    // canon). Marked CONCEPT so nothing downstream treats these as settled.
+    ANTARCTIC_DEV: {
+      name: 'Antarctic Development',
+      status: 'CONCEPT',
+      effect: 'raises a station on the Antarctic coast and shortens the Southern Ocean',
+      note: 'the desperation play — reach you buy by mortgaging the board',
+      raises: ['ANTARCTIC_BASE'],
+      // --- what makes it a last resort rather than an upgrade ---
+      desperation: true,        // reachable mainly when you are behind — it is a comeback, not a lead
+      costly: true,             // the priciest structure on the board
+      worldRisk: 'high',        // RISK is shared: a global-heat enterprise, everybody lives with the weather
+      costScope: 'self',        // the DIRECT cost is private — the developer's own company pays
+      mortgages: 'own',         // ...by mortgaging its own operation, not the commons
+      lateGame: true,           // it belongs to the end of the game, when catastrophe is already near
+      cascade: true,            // and there it is a DOMINO: it turns a bad turn into an unsurvivable one
+      // The shared damage scales with how hot the world ALREADY is. On a cool board this is one
+      // company's private disaster; on a board near annihilation it is everyone's. Same act.
+      sharedHarmScalesWithHeat: true,
+      // Candidate prices, deliberately UNSET pending the designer's ruling — but all of them are
+      // paid by the DEVELOPER, which is the part that is settled:
+      //   · SHUT one of your OWN places/regions for the rest of the game ("turns off part of
+      //     the board" — yours)
+      //   · or MORTGAGE your HQ: it keeps producing but stops paying you
+      //   · or forfeit your income for N turns to fund the station
+      // The gate to write is the same whichever is chosen: a structure that makes the owner
+      // REACH further while making the owner SMALLER — and warms the world for everyone.
+      shuts: null,              // -> a place code owned by the developer
+      mortgageTarget: null,     // -> 'HQ' | a region | null
+    },
     SPACE_ELEVATOR: {
       name: 'Space Elevator',
       effect: 'deliver without a route at all — the map stops applying to you',
       note: 'transition from oil economy to post-oil infrastructure',
       bypass: true,
+      raises: ['ELEVATOR'],
     },
   };
 
