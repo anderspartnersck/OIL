@@ -2,7 +2,11 @@
 
 Crude, capital, and everyone at the table willing to sell you out.
 
-## ▶ [PLAY IT IN YOUR BROWSER](https://anderspartnersck.github.io/OIL/)
+## ▶ [PLAY THE CURRENT GAME — gateway.html](https://anderspartnersck.github.io/OIL/gateway.html)
+
+The bare URL ([anderspartnersck.github.io/OIL](https://anderspartnersck.github.io/OIL/)) still boots
+the older ER$N-skinned build. It has a link to the gateway at the top. Which one should be the front
+door hasn't been decided yet.
 
 A Castle Killscreen game by **Anders & Partners**.
 
@@ -27,9 +31,14 @@ until it's designed properly.
 
 ## How to play
 
-Hot-seat, click-driven. Four more builds ship alongside the front door:
+Click-driven: you take one company and bots play the rest. Four more builds ship alongside the front door:
 
-- **[gateway.html](gateway.html)** — the widest build: crisis, the desk, the shipping map
+- **[gateway.html](gateway.html)** — **the current game.** The native engine with the shipping
+  map, deals, crisis and **THE PATH**: three face-up contracts on the board. You sail cargo to a
+  buyer and land it for a premium, and the prompt itemises every delivery before you commit.
+  Hold a buyer and rivals landing there pay you a toll. Megastructures become destinations you
+  own. Each company starts in its own yard. Setup has one open scoring question (does a landed
+  contract also earn control?), so both answers are selectable
 - **[oil-native.html](oil-native.html)** — the native engine instead of the ER$N substrate
 - **[diciner.html](diciner.html)** — the dice bench
 - **[test-lab.html](test-lab.html)** — the rules bench
@@ -38,6 +47,10 @@ Hot-seat, click-driven. Four more builds ship alongside the front door:
 
 - **Card art is missing.** `src/data.js` is inherited from ER$N and names ~117 card scans under `assets/cards-print/`, a directory OiL! doesn't have. Those 404 here exactly as they do locally — nothing is being hidden.
 - The front door is the ER$N skin; `gateway.html` is actually the further-along build.
+- THE PATH is a concept measured in simulation (1,000-game A/Bs), not a finished rule. A few
+  known soft spots: the bots never work onshore ground, even though a human can; starting at home
+  widens the gap between the strongest and weakest company (about 27% vs 15% win rate); and
+  straits mostly shut late, so detours are rare.
 - Core rules remain unwritten by design.
 
 ## Rebuilding this bundle

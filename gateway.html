@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" href="data:,">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OiL! — The Home Game (Native Engine)</title>
@@ -99,10 +100,19 @@
 
   /* ---------- VERDICT ---------- */
   #verdict{align-items:center;justify-content:center;background:rgba(10,7,5,.94)}
-  #verdict .card{text-align:center;max-width:540px}
+  #verdict .card{text-align:center;max-width:640px} #verdict td{white-space:nowrap}
   #verdict .crown{font-size:48px}
   #verdict h2{font-size:30px;margin:.2em 0;color:var(--gold-lite);font-family:Georgia,serif}
   #verdict .rsn{color:#9a8f7c;font-size:13px}
+  /* ---------- THE PATH (contracts) ---------- */
+  #pathbar{display:none;margin:0 10px 6px;padding:8px 10px;border-radius:10px;background:#1f170d;border:1px solid #4a3413;font-size:11px;line-height:1.5;color:#b9ab8e}
+  #pathbar.on{display:block}
+  #pathbar .h{font-size:9.5px;letter-spacing:.14em;color:#8a7550;font-weight:800}
+  #pathbar b{color:var(--gold-lite)} #pathbar .det{color:#ff9a6a} #pathbar .own{color:#2f9e5b}
+  #nprompt .ledger{margin:-6px auto 12px;font-size:12px;color:#cdbf9e;border-collapse:collapse;width:auto}
+  #nprompt .ledger td{padding:2px 10px;border-bottom:1px solid #3a2c18}
+  #nprompt .ledger td.r{text-align:right;font-weight:800;color:var(--gold-lite)}
+  #nprompt .ledger tr.neg td.r{color:#ff9a6a} #nprompt .ledger tr.tot td{border-bottom:none;font-weight:800}
   table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
   td{padding:5px 9px;border-bottom:1px solid #3a2c18;text-align:left} td.r{text-align:right;font-weight:800}
 </style>
@@ -122,6 +132,8 @@
   <div class="card">
     <div class="row"><div class="lbl">EDITION</div><div class="seg" id="segEd"></div></div>
     <div class="row"><div class="lbl">RULES</div><div class="seg" id="segOpt"></div></div>
+    <div class="row" id="rowPath"><div class="lbl">THE PATH</div><div class="seg" id="segPath"></div>
+      <span class="ss" id="pathHint" style="margin:0 0 0 10px;text-align:left;flex:1"></span></div>
     <div class="row" style="align-items:flex-start"><div class="lbl">FACTIONS</div><div class="facs" id="facs" style="flex:1"></div></div>
     <div class="row" style="justify-content:space-between">
       <span class="ss" id="setupHint" style="margin:0">Tap a faction to take it as <b>YOU</b>. Others are bots. 4–6 play.</span>
@@ -134,10 +146,11 @@
   <div id="ptop">
     <div id="stage"><canvas id="cv"></canvas><div id="edd">▼ E.D.D. PROTOCOL ▼</div>
       <div id="desk"><div class="b"><span class="w">THE DESK</span><span class="l"></span></div></div>
-      <div id="nprompt"><div class="box"><div class="pt" id="npt">—</div><div class="ps" id="nps"></div><div class="po" id="npo"></div></div></div>
+      <div id="nprompt"><div class="box"><div class="pt" id="npt">—</div><div class="ps" id="nps"></div><div id="npl"></div><div class="po" id="npo"></div></div></div>
     </div>
     <aside>
       <div class="rh"><div class="er">OiL!</div><div class="tg">NATIVE ENGINE<br><span id="rhEd">classic</span></div></div>
+      <div id="pathbar"></div>
       <div id="players"></div>
       <div id="log"></div>
     </aside>
@@ -166,6 +179,7 @@
 <script src="src/oil-skin.js"></script>
 <script src="src/oil-engine.js"></script>
 <script src="src/oil-cards.js"></script>
+<script src="src/oil-factions.js"></script>
 <script src="src/oil-deals.js"></script>
 <script src="src/oil-map.js"></script>
 <script src="src/oil-crisis.js"></script>
@@ -180,7 +194,12 @@ const colorFor=(window.OILSKIN&&OILSKIN.colorFor)||(()=>'#e0a32a');
 const cardByName={}; (window.OIL&&OIL.CARDS||[]).forEach(c=>cardByName[c.name]=c);
 
 /* ---------- setup state ---------- */
-const S={edition:'classic',expansion:true,cards:true,deals:true,map:true,crisis:true,view:'map',youCode:FAC[0]&&FAC[0].code};
+const S={edition:'classic',expansion:true,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,view:'map',youCode:FAC[0]&&FAC[0].code};
+// THE PATH presets (src/oil-engine.js pathRules; docs/THE-PATH.md). The ONLY difference is CORE-018:
+// is a landed contract worth an extra ▰? `path` says yes (and that is what makes megastructures
+// buildable); `quiet` leaves the score alone. Joe's call — both stay selectable.
+const PATH_PRESETS=[['path','CONTRACTS SCORE ▰ (recommended)','A landed contract is worth ▰1 more than a dump — the verdict can see the voyage. CORE-018: the designer\'s call.'],
+  ['quiet','CONTRACTS PAY $ ONLY (quiet)','Same contracts, tolls and structures; a landed contract pays +% but no extra ▰. CORE-018: the designer\'s call.']];
 function rosterCodes(){ return FAC.filter(f=>S.expansion||f.edition!=='EXPANSION').map(f=>f.code); }
 function activeCodes(){ // 4-6 seats: YOU + bots, capped at 6, core first
   const r=rosterCodes(); const list=[S.youCode,...r.filter(c=>c!==S.youCode)];
@@ -193,10 +212,17 @@ function buildSetup(){
     c.onclick=()=>{S.edition=k;buildSetup();}; segEd.appendChild(c);
   });
   const segOpt=$('#segOpt'); segOpt.innerHTML='';
-  [['expansion','+ Green Anders (exp)'],['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['crisis','CRISIS (fire)']].forEach(([k,l])=>{
+  [['expansion','+ Green Anders (exp)'],['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['path','THE PATH (contracts)'],['crisis','CRISIS (fire)']].forEach(([k,l])=>{
     const c=document.createElement('div'); c.className='chip'+(S[k]?' on':''); c.textContent=l;
-    c.onclick=()=>{S[k]=!S[k]; if(k==='expansion'&&!rosterCodes().includes(S.youCode))S.youCode=rosterCodes()[0]; buildSetup();}; segOpt.appendChild(c);
+    c.onclick=()=>{S[k]=!S[k]; if(k==='expansion'&&!rosterCodes().includes(S.youCode))S.youCode=rosterCodes()[0]; if(k==='map'&&S.map)S.path=true; buildSetup();}; segOpt.appendChild(c);
   });
+  // THE PATH is the default experience whenever THE MAP is on; the preset row picks the scoring
+  const pathOn=S.map&&S.path, segPath=$('#segPath'); segPath.innerHTML=''; $('#rowPath').style.opacity=pathOn?'1':'.35';
+  PATH_PRESETS.forEach(([k,l])=>{
+    const c=document.createElement('div'); c.className='chip'+(pathOn&&S.pathPreset===k?' on':''); c.textContent=l;
+    c.onclick=()=>{ if(!S.map)return; S.path=true; S.pathPreset=k; buildSetup(); }; segPath.appendChild(c);
+  });
+  $('#pathHint').textContent=pathOn?(PATH_PRESETS.find(x=>x[0]===S.pathPreset)||PATH_PRESETS[0])[2]:(S.map?'off — sell anywhere there is an HQ; no contracts.':'needs THE MAP.');
   const fg=$('#facs'); fg.innerHTML=''; const active=activeCodes();
   FAC.forEach(f=>{
     const inRoster=S.expansion||f.edition!=='EXPANSION';
@@ -232,7 +258,11 @@ function startGame(){
   stop();
   const codes=activeCodes();
   const names=codes.map(c=>(FAC.find(f=>f.code===c)||{}).brand);
-  game=new OilGame({seed:(Math.random()*1e9)|0,n_players:codes.length,expansion:S.expansion,cards:S.cards,deals:S.deals,map:S.map,crisis:S.crisis,edition:S.edition,names});
+  game=new OilGame({seed:(Math.random()*1e9)|0,n_players:codes.length,expansion:S.expansion,cards:S.cards,deals:S.deals,map:S.map,crisis:S.crisis,edition:S.edition,names,
+    path:(S.map&&S.path)?S.pathPreset:undefined,   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
+    // THE PATH seats the real roster, so each company starts in its own yard (and its power is live —
+    // the configuration path-model.js and LAB 12 measure). Off the path the table stays as it was.
+    factions:(S.map&&S.path)?codes:undefined});
   game._colors=codes.map(c=>colorFor(c));
   const youIdx=codes.indexOf(S.youCode);
   if(youIdx>=0){ game.players[youIdx].isHuman=true; game.players[youIdx].agent={decide:presentPrompt}; }
@@ -241,7 +271,7 @@ function startGame(){
   deskScar=false; deskSpike=false;
   $('#rhEd').textContent=S.edition+(game.rubberBand?' · rubber band':'');
   buildPanels(); show('play'); draw();
-  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${S.cards?'cards':'no cards'} · ${S.deals?'THE TABLE':'no deals'} · ${S.map?'THE MAP':'no map'} · ${S.crisis?'CRISIS':'no crisis'} · <b>${S.edition.toUpperCase()}</b>`);
+  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${S.cards?'cards':'no cards'} · ${S.deals?'THE TABLE':'no deals'} · ${S.map?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${S.crisis?'CRISIS':'no crisis'} · <b>${S.edition.toUpperCase()}</b>`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
 }
 function buildPanels(){
@@ -270,6 +300,12 @@ function updatePanels(){
             : `<span class="pact">⋈ PACT ${other}</span>`);});
         p.grudges.forEach(id=>{const q=game.players[id]; if(q)bits.push(`<span class="grud">⚑ ${q.name}</span>`);});
       }
+      if(game.path){ // THE PATH: which buyers this seat HOLDS (the tollbooth) and what it built
+        const held=Object.entries(game.controlTable()).filter(([k,v])=>v===p.name).map(([k])=>placeName(k));
+        if(held.length)bits.push(`<span class="trib">⌂ holds ${held.join(', ')}</span>`);
+        Object.entries(game.structureOwner).filter(([k,v])=>v===p.name).forEach(([k])=>bits.push(`<span class="pact">▲ ${((OIL_MAP.STRUCTURES||{})[k]||{}).name||k}</span>`));
+        if(p.barrels>0)bits.push(`<span style="color:#9a8f7c">🛢 ${p.barrels}</span>`);
+      }
       tie.innerHTML=bits.join(' · ');
     }
     d.classList.toggle('act',game.players[game.idx]===p&&!game.done);
@@ -277,6 +313,49 @@ function updatePanels(){
     b[0].style.width=(100*p.holdings(game.price)/mV)+'%'; b[1].style.width=(100*p.exposure/mE)+'%';
     b[2].style.width=(100*p.pips/(window.OIL_DIALS?OIL_DIALS.PIPS_START:3))+'%';
   });
+  updatePathBar();
+}
+/* ---------- THE PATH — presentation over the engine (the engine stays the authority) ---------- */
+const placeName=c=>((window.OIL_MAP&&OIL_MAP.BY[c])||{}).name||c;
+// the seat's voyage right now: nearest face-up buyer by the CURRENT map, and the same with nothing shut
+function pathInfo(g,p){
+  if(!g||!g.path||!g.map||!p)return null;
+  const MP=window.OIL_MAP, buyers=g.buyersFor(p);
+  const now=g.nearestBuyer(p,p.at), open=g.nearestBuyer(p,p.at,{closed:{},disabled:{},built:g.mapState.built});
+  const route=now.to?MP.pathOf(now.reach,now.to):[], openRoute=open.to?MP.pathOf(open.reach,open.to):[];
+  return {buyers,to:now.to,dist:now.dist,openTo:open.to,openDist:open.dist,route,openRoute,
+    detour:(now.dist!==undefined&&open.dist!==undefined&&now.dist>open.dist)?now.dist-open.dist:0,
+    owner:now.to?g.ownerOf(now.to):null};
+}
+function updatePathBar(){
+  const el=$('#pathbar'); if(!game||!game.path){el.classList.remove('on');return;}
+  const you=game.players.find(q=>q.isHuman)||game.players[0], pi=pathInfo(game,you);
+  const D=game.mapDials, pts=game.pathDial('CONSIGN_POINTS')||0;
+  const mk=c=>{const own=game.ownerOf(c);return `<b>${placeName(c)}</b>${own?` <span class="${own===you.name?'own':'det'}">(${own===you.name?'yours':'held by '+own})</span>`:''}`;};
+  let h=`<div class="h">THE PATH · FACE-UP CONTRACTS</div>${game.market.map(mk).join(' · ')||'—'}`;
+  if(pi&&you.barrels>0&&pi.to){
+    h+=`<div class="h" style="margin-top:5px">YOUR CARGO · ${you.barrels} bbl</div>nearest buyer <b>${placeName(pi.to)}</b> — ${pi.dist?pi.dist+' step'+(pi.dist===1?'':'s'):'you are there'}`+
+      (pi.detour?` <span class="det">(+${pi.detour} detour: ${pi.openRoute.slice(1,-1).filter(c=>game.mapState.closed[c]).map(placeName).join(', ')||'a route'} is shut)</span>`:'');
+    h+=`<br>land it: +${D.CONSIGN_BONUS}% of $${game.price} · ▰${1+pts}${game.path.toll&&pi.owner&&pi.owner!==you.name?` · <span class="det">${game.pathDial('TOLL_PCT')}% toll to ${pi.owner}</span>`:''}`+
+      ` &nbsp;·&nbsp; dump elsewhere: ${D.CONSIGN_DUMP}% of spot · ▰1`+(game.path.onshore?` &nbsp;·&nbsp; onshore ground: +${D.ONSHORE_PCT}% (it heats)`:'');
+  } else if(you.barrels<=0) h+=`<div style="margin-top:5px;color:#8a7550">Your hold is empty — no cargo, no contract.</div>`;
+  el.innerHTML=h; el.classList.add('on');
+}
+// a delivery's ledger, itemised (reads the engine's own preview — no maths of its own)
+function ledgerHTML(g,p){
+  const L=g.previewDelivery(p), D=g.mapDials, why=[];
+  if(L.consigned) why.push(`contract +${D.CONSIGN_BONUS}%`);
+  else if(L.domestic) why.push(`domestic ground +${D.ONSHORE_PCT}% — nothing shipped, but working it heats the place`);
+  else if(g.path) why.push(`no contract here: ${D.CONSIGN_DUMP}% of spot`);
+  if(L.premium) why.push(`freight premium +${L.premium}%`);
+  if(L.longWay) why.push(`the long way round +${D.LONGWAY_PCT}%`);
+  if(L.squeezed) why.push(`squeezed −${D.BLOCK_PCT}% per shut route`);
+  if(L.incursion) why.push(`a rival's yard +${D.INCURSION_BONUS}% (and exposure)`);
+  const rows=[[`spot $${g.price} × ${L.pct}%`,'$'+L.value],[`<span style="color:#8a7550">${why.join(' · ')||'at spot'}</span>`,'']];
+  if(L.toll) rows.push([`toll to ${L.tollTo} (holds ${placeName(p.at)})`,'−$'+L.toll,'neg']);
+  rows.push([`▰ control: the sale${L.contractPoints?' + the contract':''}`,'▰'+L.points]);
+  rows.push(['you bank',`$${L.value-L.toll} · ▰${L.points}`,'tot']);
+  return {L,html:'<table class="ledger">'+rows.map(r=>`<tr class="${r[2]||''}"><td>${r[0]}</td><td class="r">${r[1]}</td></tr>`).join('')+'</table>'};
 }
 function logLine(h){const l=$('#log');const e=document.createElement('div');e.innerHTML=h;l.appendChild(e);l.scrollTop=l.scrollHeight;while(l.children.length>70)l.removeChild(l.firstChild);}
 
@@ -311,6 +390,11 @@ async function stepOnce(){
     else if(ev.type==='deal_purge'){ logLine(`&nbsp;&nbsp;<span class="out">✖ THE TABLE DISSOLVES</span> — ${ev.n} deal(s), ${ev.cause}`); deskSay('purge',game.turn); }
     else if(ev.type==='edd_revenge'){ logLine(`&nbsp;&nbsp;<span class="out">⚑ ${ev.player} remembers ${ev.on}.</span>`); deskSay('revenge',game.turn); }
     else if(ev.type==='edd_spared'){ logLine(`&nbsp;&nbsp;<span class="grn">the cartel holds — ${ev.player} finds nobody left to eat</span>`); deskSay('spared',game.turn); }
+    else if(ev.type==='landed'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> ${ev.consigned?'<span class="grn">lands a contract</span> at':ev.domestic?'works the ground at':'dumps a cargo at'} ${placeName(ev.at)} — $${ev.value-ev.toll} · ▰${ev.points}${ev.toll?` <span class="out">(toll $${ev.toll} to ${ev.tollTo})</span>`:''}${ev.megaTo?` <span class="grn">(▲ ${ev.megaTo} scores)</span>`:''}`); }
+    else if(ev.type==='contract'){ if(ev.turn>0) logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">new contract face-up: ${placeName(ev.to)}${ev.opening?' — the grand opening':''}</span>`); }
+    else if(ev.type==='passage'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> pays ${ev.to} $${ev.paid} to pass ${ev.name}`); }
+    else if(ev.type==='control'&&game.path){ if(ev.to) logLine(`&nbsp;&nbsp;<span class="grn">⌂ ${ev.to} now HOLDS ${placeName(ev.place)}</span> — every rival cargo landed there pays the toll`); else if(ev.from) logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">${placeName(ev.place)} is contested again</span>`); }
+    else if(ev.type==='detour'){ const q=game.players.find(z=>z.name===ev.player); if(q&&q.isHuman) logLine(`&nbsp;&nbsp;<span class="out">⛔ your route to ${placeName(ev.to)} is ${ev.cost} steps (normally ${ev.normally})</span>`); }
     else if(ev.type==='slingshot'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> slingshots the price`); }
   }
   const h=hist[hist.length-1];
@@ -329,7 +413,11 @@ function verdict(){
   $('#vReason').textContent=game.end_reason+sign;
   const t=$('#vTable'); t.innerHTML='';
   r.forEach(p=>{const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${p===game.winner?'🛢️ ':''}${p.name}${p.isHuman?' · YOU':''}</td><td class="r">▰${p.control}</td><td class="r">exp ${p.exposure}</td><td class="r">$${p.holdings(game.price)|0}</td>`;
+    // THE PATH: how the ▰ was earned along the route — contracts landed, cargo dumped, tolls taken
+    const L=game.path?game.events.filter(e=>e.type==='landed'&&e.player===p.name):[];
+    const tolls=game.path?game.events.filter(e=>e.type==='toll'&&e.to===p.name).reduce((a,e)=>a+e.paid,0):0;
+    const pathCell=game.path?`<td class="r" style="font-weight:600;color:#9a8f7c">★${L.filter(e=>e.consigned).length} landed · ${L.filter(e=>!e.consigned&&!e.domestic).length} dumped${L.some(e=>e.domestic)?` · ⛏${L.filter(e=>e.domestic).length} onshore`:''}${tolls?` · toll $${tolls}`:''}</td>`:'';
+    tr.innerHTML=`<td>${p===game.winner?'🛢️ ':''}${p.name}${p.isHuman?' · YOU':''}</td><td class="r">▰${p.control}</td>${pathCell}<td class="r">exp ${p.exposure}</td><td class="r">$${p.holdings(game.price)|0}</td>`;
     t.appendChild(tr);});
   show('verdict');
 }
@@ -337,7 +425,7 @@ function verdict(){
 /* ---------- human prompt (same ask() seam as bots, E6) ---------- */
 function presentPrompt(g,p,ctx){
   return new Promise(resolve=>{
-    let title='',sub='',opts=[];
+    let title='',sub='',opts=[],ledger='';
     if(ctx.kind==='slingshot'){
       const proj=Math.max(g.dials.PRICE_MIN,Math.min(g.dials.PRICE_MAX,g.price+g.lastShove));
       title='Slingshot the market?'; sub=`CHAOTIC roll — ${diceStr()} · shove ${g.lastShove>=0?'+':''}${g.lastShove} → $${g.price}→$${proj}. Spend 1 pip (you hold ${p.pips}) to FLIP the sign. You can only bend a market that is already moving.`;
@@ -372,15 +460,49 @@ function presentPrompt(g,p,ctx){
       title='Where do you sail?';
       sub=`${diceStr()} — spread carries you ${steps}. You are at ${here?here.name:p.at}.` +
         (g.era==='CHAOTIC'?' <CHAOTIC SEASON: the sea will take cargo.>':' Seas are steady.');
+      // THE PATH: say where the cargo is going, and what the shut world is costing the voyage
+      const pi=pathInfo(g,p);
+      if(pi&&p.barrels>0&&pi.to){
+        sub+=` Your cargo is for ${placeName(pi.to)} — ${pi.dist} step${pi.dist===1?'':'s'} away`+
+          (pi.detour?`, +${pi.detour} because the way is shut (normally ${pi.openDist}, via ${pi.openRoute.map(placeName).join(' → ')}).`:'.')+
+          ` ★ = a face-up buyer · →n = steps on to the nearest one.`;
+      } else if(pi) sub+=' Your hold is empty — the contracts are not yours to chase until you carry a barrel.';
       opts=ctx.options.map(c=>{
         const pl=MP.BY[c]||{},d=r.dist[c]||0;
         const t=MP.trafficAt(c,st);
-        const tag=c===p.at?'stay':(pl.kind==='hq'?'▰':pl.kind==='gate'?'⌗':pl.kind==='cape'?'≈':pl.kind==='arctic'?'❄':'·');
-        return {label:`${tag} ${pl.name||c}${d?' ('+d+')':''}${t.blocked?' ⛔':''}`,value:c,cls:c===p.at?'no':''};
+        const tag=c===p.at?'stay':(pl.kind==='hq'?(g.hqOf&&g.hqOf(p)===c?'⌂':'▰'):pl.kind==='gate'?'⌗':pl.kind==='cape'?'≈':pl.kind==='arctic'?'❄':pl.kind==='built'?'▲':pl.kind==='onshore'?'⛏':'·');
+        let lab=`${tag} ${pl.name||c}${d?' ('+d+')':''}${t.blocked?' ⛔':''}`, tip='';
+        if(pi&&p.barrels>0){
+          if(pi.buyers.indexOf(c)>=0){ const own=g.ownerOf(c); lab='★ '+lab+(own&&own!==p.name?' ⌂'+own:'');
+            tip=own&&own!==p.name?`${own} holds this buyer — ${g.pathDial('TOLL_PCT')}% toll`:'a face-up buyer — land it here'; }
+          else { const on=g.nearestBuyer(p,c).dist; if(on!==undefined)lab+=` →${on}`; }
+          if(!tip&&g.domesticAt&&g.domesticAt(c)) tip=`onshore ground — no contract, but a sure sale at +${g.mapDials.ONSHORE_PCT}% (working it heats the place)`;
+        }
+        return {label:lab,value:c,cls:c===p.at?'no':'',tip};
+      });
+    } else if(ctx.kind==='action'){
+      // THE DELIVER STEP — one action. With THE PATH on, show the ledger BEFORE you commit.
+      const here=placeName(p.at), led=g.map?ledgerHTML(g,p):null;
+      title=`At ${here} — one action.`;
+      sub=p.barrels>0?`You carry ${p.barrels} barrel${p.barrels===1?'':'s'}.`:'Your hold is empty — nothing to deliver.';
+      if(g.path&&p.barrels>0){ const pi=pathInfo(g,p);
+        if(led&&!led.L.consigned&&pi&&pi.to) sub+=` The nearest buyer is ${placeName(pi.to)}, ${pi.dist} step${pi.dist===1?'':'s'} on — hold, and land it there for +${g.mapDials.CONSIGN_BONUS}% and ▰${1+(g.pathDial('CONSIGN_POINTS')||0)}.`;
+        if(led&&led.L.consigned) sub+=' This is a face-up buyer.';
+      }
+      if(!p.moved) sub+=` (You did not sail: holding costs +${g.dials.HOLD_PENALTY} exposure.)`;
+      if(led&&p.barrels>0) ledger=led.html;
+      opts=ctx.options.map(o=>{
+        if(o==='claim') return p.barrels>0&&led?{label:`DELIVER — $${led.L.value-led.L.toll} · ▰${led.L.points}`,value:o}:{label:'claim (empty hold)',value:o,cls:'no'};
+        if(o==='hold') return {label:'hold',value:o,cls:'no'};
+        if(o==='build') return {label:`▲ RAISE A MEGASTRUCTURE (−${g.mapDials.BUILD_COST}▰)`,value:o,tip:'Reshape the map — and own what you raise.'};
+        if(o==='iws') return {label:`call IWS ($${g.iwsPrice(p.at)})`,value:o};
+        if(o==='retainer') return {label:'IWS retainer',value:o};
+        return {label:String(o),value:o};
       });
     } else if(ctx.kind==='structure'){
       const MP=window.OIL_MAP;
-      title='Raise a megastructure.'; sub='Reshape the world. This is what the ground you hold buys you.';
+      title='Raise a megastructure.'; sub='Reshape the world. This is what the ground you hold buys you.'+
+        (g.path&&g.path.mega?` With THE PATH: you OWN what you raise — rivals pay $${g.pathDial('PASSAGE_TOLL')} to sail through it, a raised place is a new buyer, and every contract landed there scores you ▰${g.pathDial('MEGA_POINTS')}.`:'');
       opts=ctx.options.map(k=>({label:((MP.STRUCTURES||{})[k]||{}).name||k,value:k,
         tip:((MP.STRUCTURES||{})[k]||{}).effect}));
       const tips=opts.filter(x=>x.tip).map(x=>`${x.label}: ${x.tip}`);
@@ -406,7 +528,7 @@ function presentPrompt(g,p,ctx){
       }
       opts=ctx.options.map(o=>({label:o,value:o}));
     } else { title='Choose'; opts=(ctx.options||[]).map(o=>({label:String(o),value:o})); }
-    $('#npt').textContent=title; $('#nps').textContent=sub;
+    $('#npt').textContent=title; $('#nps').textContent=sub; $('#npl').innerHTML=ledger;
     const box=$('#npo'); box.innerHTML='';
     const mk=o=>{const b=document.createElement('button'); if(o.cls)b.className=o.cls; b.textContent=o.label;
       if(o.tip)b.title=o.tip;
@@ -460,7 +582,7 @@ function drawMap(){
     const liveA=MP.placeOpen(R[0],st),liveB=MP.placeOpen(R[1],st);
     const disabled=st.disabled&&st.disabled[id]>0;
     const dead=!liveA||!liveB||disabled;
-    if((A.kind==='built'||B.kind==='built')&&!(st.built&&st.built.SEA_CITY))return;
+    if((A.kind==='built'&&!liveA)||(B.kind==='built'&&!liveB))return;   // each structure's own lanes
     if((A.kind==='arctic'||B.kind==='arctic')&&!(st.built&&st.built.ARCTIC_DEV)){
       ctx.setLineDash([2*dpr,5*dpr]); ctx.strokeStyle='rgba(191,227,255,.18)';
     } else {
@@ -471,6 +593,16 @@ function drawMap(){
     ctx.beginPath(); ctx.moveTo(X(A.at),Y(A.at)); ctx.lineTo(X(B.at),Y(B.at)); ctx.stroke();
     ctx.setLineDash([]);
   });
+
+  // THE PATH — your voyage: the route to the nearest buyer as the world stands (gold), and —
+  // if a closure is lengthening it — the way it would have gone with nothing shut (red dash).
+  const you=game.players.find(q=>q.isHuman), pi=you&&you.barrels>0?pathInfo(game,you):null;
+  const line=(codes,col,w,dash)=>{ if(codes.length<2)return; ctx.setLineDash(dash||[]); ctx.strokeStyle=col; ctx.lineWidth=w*dpr;
+    ctx.beginPath(); codes.forEach((c,i)=>{const P=MP.BY[c].at; i?ctx.lineTo(X(P),Y(P)):ctx.moveTo(X(P),Y(P));}); ctx.stroke(); ctx.setLineDash([]); };
+  if(pi&&pi.to){
+    if(pi.detour) line(pi.openRoute,'rgba(226,60,42,.8)',2.2,[5*dpr,4*dpr]);
+    line(pi.route,'rgba(246,201,90,.9)',3.2);
+  }
 
   // places
   ctx.textBaseline='middle';
@@ -514,6 +646,22 @@ function drawMap(){
       ctx.fillText(pl.name.replace(/^(The |Strait of |Cape )/,''),x,y+11*dpr);
     }
   });
+
+  // THE PATH — the face-up contracts (★ on the buyer) and who HOLDS each buyer (ring in their colour)
+  if(game.path){
+    Object.entries(game.controlTable()).forEach(([code,name])=>{ const pl=MP.BY[code]; if(!pl)return;
+      const k=game.players.findIndex(z=>z.name===name); ctx.strokeStyle=game._colors[k]||'#2f9e5b'; ctx.lineWidth=2.4*dpr;
+      ctx.setLineDash([3*dpr,2*dpr]); ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),13*dpr,0,7); ctx.stroke(); ctx.setLineDash([]); });
+    game.market.forEach(code=>{ const pl=MP.BY[code]; if(!pl)return; const x=X(pl.at),y=Y(pl.at);
+      ctx.fillStyle='#f6c95a'; ctx.font=('bold '+13*dpr+'px Trebuchet MS'); ctx.textAlign='center';
+      ctx.fillText('★',x+14*dpr,y-12*dpr);
+      ctx.font=('bold '+8*dpr+'px Trebuchet MS'); ctx.fillText('CONTRACT',x,y+15*dpr); });
+    const owned=Object.entries(game.structureOwner);
+    owned.forEach(([k,name])=>{ const S=(MP.STRUCTURES||{})[k]||{}; const k2=game.players.findIndex(z=>z.name===name);
+      (S.raises||S.opens||[]).forEach(code=>{ const pl=MP.BY[code]; if(!pl)return;
+        ctx.fillStyle=game._colors[k2]||'#2f9e5b'; ctx.font=('bold '+8*dpr+'px Trebuchet MS'); ctx.textAlign='center';
+        ctx.fillText('▲ '+name,X(pl.at),Y(pl.at)-10*dpr); }); });
+  }
 
   // the seats
   game.players.forEach((q,i)=>{

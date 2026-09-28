@@ -68,6 +68,7 @@
         deals: !!opts.deals, dealDials: opts.dealDials || {},
         map: !!opts.map, mapDials: opts.mapDials || {},
         crisis: !!opts.crisis, crisisDials: opts.crisisDials || {},
+        path: opts.path || undefined,          // THE PATH (docs/THE-PATH.md); absent = baseline
       });
       facs && facs.forEach((c, k) => { if (g.players[k]) g.players[k].faction = g.players[k].faction || c; });
       await g.run();
@@ -87,6 +88,10 @@
           : /oil ran out/.test(g.end_reason || '') ? 'oil' : 'price',
         oilAdded: g._oilAdded || 0, hqSplit: g._hqSplit || 0,
         winGrudges: (w && w.grudges) ? w.grudges.length : 0,
+        ctrlTo: g.events.filter(e => e.type === 'control' && e.to).length,   // buyers/places taken (settle reads)
+        path: g.path ? Object.assign({}, g.pathStats, {
+          ctrlTo: g.events.filter(e => e.type === 'control' && e.to).length,
+          raised: g.mapStats.structures, exp: g.expansion }) : null,
       });
       if (opts.onProgress && (i % tick === 0 || i === count - 1)) { opts.onProgress(i + 1, count); await yieldUI(); }
     }
@@ -397,6 +402,74 @@
   }
 
 
+  // ---- THE PATH reporter (docs/THE-PATH.md) ----------------------------------
+  function pathReport(games) {
+    const keys = ['landed', 'dumped', 'tolls', 'tollPaid', 'passages', 'passagePaid', 'contractPoints',
+      'megaPoints', 'megaLandings', 'voyageTurns', 'detourTurns', 'ctrlTo', 'raised'];
+    const tot = {}; keys.forEach(k => { tot[k] = 0; });
+    let n = 0, ctrlGames = 0, raisedGames = 0;
+    games.forEach(g => { if (!g.path) return; n++; keys.forEach(k => { tot[k] += g.path[k] || 0; });
+      if (g.path.ctrlTo) ctrlGames++; if (g.path.raised) raisedGames++; });
+    return { n, tot, ctrlGames, raisedGames,
+      reachRate: (tot.landed + tot.dumped) ? tot.landed / (tot.landed + tot.dumped) : 0,
+      ctrlRate: n ? ctrlGames / n : 0,
+      detourRate: tot.voyageTurns ? tot.detourTurns / tot.voyageTurns : 0,
+      perGame: k => (n ? tot[k] / n : 0) };
+  }
+
+  // THE TOLLBOOTH, proved on a fixture: a seat that HOLDS a buyer takes TOLL_PCT of a rival's
+  // cargo landed there; the lander keeps the rest, and the contract refills.
+  function analyzeToll() {
+    const OG = global.OilGame, MP = global.OIL_MAP;
+    const out = { ran: false };
+    if (!OG || !MP) return out;
+    const g = new OG({ n_players: 3, seed: 4343, expansion: false, map: true, path: 'path' });
+    const [a, b] = g.players;
+    g.market = ['HADDAD', 'BRIGHT', 'STOCK'];
+    g.throughput.HADDAD = { [a.name]: 4 };                    // a holds the Gulf
+    b.at = 'HADDAD'; b.barrels = 1; b.value = 0; a.value = 0; g.price = 50; g.era = 'STABLE';
+    const pre = g.previewDelivery(b);
+    const del = g._deliveryValue(b);
+    b.barrels -= 1; b.value += del.value;
+    const L = g._landContract(b, del);
+    out.ran = true; out.owner = g.ownerOf('HADDAD'); out.value = del.value; out.toll = L.toll; out.tollTo = L.tollTo;
+    out.aGot = a.value; out.bKept = b.value; out.preview = pre; out.points = L.points;
+    out.refilled = g.market.length === 3 && g.market.indexOf('HADDAD') < 0;
+    out.pct = g.mapDials.TOLL_PCT;
+    return out;
+  }
+
+  // THE PATH's static promises: every structure that raises a place makes a place you can
+  // SELL at, and raising ALL of them with every gate shut still strands nobody.
+  function pathAudit() {
+    const OG = global.OilGame, MP = global.OIL_MAP;
+    const out = { checks: [] };
+    const add = (id, pass, detail) => out.checks.push({ id, pass: !!pass, detail });
+    const g = new OG({ n_players: 3, seed: 4444, expansion: true, map: true, path: 'path' });
+    const raisers = Object.keys(MP.STRUCTURES).filter(k => (MP.STRUCTURES[k].raises || []).length);
+    raisers.forEach(k => { g.mapState.built[k] = true; });
+    const places = raisers.reduce((a, k) => a.concat(MP.STRUCTURES[k].raises), []);
+    add('mega-destinations', places.every(c => g.sellableAt(c)),
+      `raised structures become places you can sell at: ${places.map(c => MP.BY[c].name).join(' · ')}`);
+    const off = new OG({ n_players: 3, seed: 4444, expansion: true, map: true });
+    raisers.forEach(k => { off.mapState.built[k] = true; });
+    add('mega-off-unchanged', places.every(c => !off.sellableAt(c) && !off.atHQ({ at: c })),
+      'with the path OFF they stay what they were (no sale there — baseline unchanged)');
+    const allShut = { closed: {}, built: Object.assign({ ARCTIC_DEV: true }, g.mapState.built) };
+    MP.GATES.forEach(c => { allShut.closed[c] = 99; });
+    add('mega-no-strand', MP.hqsConnected(allShut) && places.every(c => MP.reach(c, 99, allShut).places.length > 1),
+      'every structure raised + every gate shut: the 8 HQs still connect and no new place is an island');
+    // the detour, seen the way the human sees it: nearest buyer by the CURRENT map vs an open one
+    const d = new OG({ n_players: 3, seed: 4545, expansion: false, map: true, path: 'path' });
+    const p = d.players[0]; p.at = 'HARTSTARR'; p.barrels = 1; d.market = ['BRIGHT'];
+    const open = d.nearestBuyer(p, p.at).dist;
+    d.closeGate('PANAMA', 5);
+    const shut = d.nearestBuyer(p, p.at).dist;
+    add('path-detour', shut > open, `a shut gate lengthens the route to the buyer: Gulf Coast → Mainland ${open} → ${shut} with Panama shut`);
+    out.ok = out.checks.every(c => c.pass);
+    return out;
+  }
+
   // ---- CRISIS reporter + the one-page BUDGET gate -----------------------------
   function crisisReport(games) {
     const keys = ['heated', 'cooled', 'gateShuts', 'blowouts', 'fireTurns', 'oilBurnedByFire',
@@ -437,7 +510,7 @@
       ok: newKinds.length === 0 && on.perTurn <= off.perTurn * 1.05 };
   }
 
-  const LAB = { enumerateShove, greenRate, reachability, runBatch, lawReport, analyzeCard, deckIncidence, analyzeDeal, dealIncidence, dealReport, mapAudit, mapReport, analyzeDetour, crisisReport, decisionBudget, BASE };
+  const LAB = { enumerateShove, greenRate, reachability, runBatch, lawReport, analyzeCard, deckIncidence, analyzeDeal, dealIncidence, dealReport, mapAudit, mapReport, analyzeDetour, crisisReport, decisionBudget, pathReport, analyzeToll, pathAudit, BASE };
   global.OIL_LAB = LAB;
   if (typeof module !== 'undefined' && module.exports) module.exports = LAB;
 })(typeof window !== 'undefined' ? window : globalThis);

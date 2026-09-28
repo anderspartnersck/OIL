@@ -175,11 +175,13 @@
   // worth the wait; dump if it is far, because a cargo you can never land is worth what the
   // spot market gives you today.
   function shouldLandIt(g, p) {
-    if (!g.consign || !p.consignedTo) return true;          // no contract: sell as before
-    if (p.at === p.consignedTo) return true;                // you are there. land it.
+    if (!g.consign) return true;                            // no contracts: sell as before
+    const buyers = g.buyersFor(p);
+    if (!buyers.length) return true;
+    if (buyers.indexOf(p.at) >= 0) return true;             // you are there. land it.
     const MP = OilGame._mapFX();
-    const d = MP.reach(p.at, 99, g.mapState).dist[p.consignedTo];
-    return !(d !== undefined && d <= 4);                    // within reach soon -> carry it
+    const d = g.nearestBuyer(p, p.at).dist;
+    return !(d !== undefined && d <= (g.mapDials.LAND_WITHIN || 4));   // within reach soon -> carry it
   }
   function movePick(g, p, ctx) {
     const MP = OilGame._mapFX(), opts = ctx.options;
@@ -199,14 +201,22 @@
       // The seat just picked the best node in reach, exactly as before, and 73% of cargo was
       // dumped. Rewarding PROGRESS is what turns a move into a voyage — and a voyage is the only
       // thing a shut strait can actually lengthen.
-      if (g.consign && p.consignedTo) {
-        if (c === p.consignedTo) v += 30;
-        else {
-          const onward = MP.reach(c, 99, g.mapState).dist[p.consignedTo];
+      const P = g.path;
+      const buyers = g.consign ? g.buyersFor(p) : [];
+      // THE PATH: an empty hold has no buyer. (Plain consign keeps its original read.)
+      if (buyers.length && !(P && P.v2 && p.barrels <= 0)) {
+        if (buyers.indexOf(c) >= 0) {
+          v += 30;
+          // the TOLL makes WHO HOLDS the buyer matter: tend your own station, avoid paying a rival's
+          if (P && P.toll) { const own = g.ownerOf(c); if (own === p.name) v += 4; else if (own) v -= 6; }
+        } else {
+          const onward = g.nearestBuyer(p, c).dist;
           if (onward !== undefined) v += Math.max(0, 14 - onward * 2);   // closer is better
         }
       }
-      if (pl.kind === 'hq' && c !== p.faction) v += 3;         // somebody else's yard pays more
+      // a built megastructure is somewhere you can SELL once the path is on — score it like ground
+      if (P && P.mega && pl.kind === 'built' && g.sellableAt(c)) v += 7;
+      if (pl.kind === 'hq' && c !== g.hqOf(p)) v += 3;         // somebody else's yard pays more
       if (c === p.at) v -= 4;                                  // always move or suffer
       v -= MP.trafficAt(c, g.mapState).blocked * 2;            // don't sail into a squeeze
       if (g.era === 'CHAOTIC' && risky(c)) v -= (p.policy === 'stable' ? 8 : 3);
@@ -282,7 +292,16 @@
       this.log = []; this.events = [];
       this.maxTurns = opts.maxTurns || 400;   // safety only; oil depletion ends it far sooner
       this.cards = !!opts.cards;              // optional card layer (src/oil-cards.js)
-      this.consign = !!opts.consign;          // MODEL: consigned cargo (see the CONSIGN_* dials)
+      // MODEL: consigned cargo (see the CONSIGN_* dials). opts.path (docs/THE-PATH.md) is the
+      // consign model grown into the game path; either flag turns contracts on. Both OFF by
+      // default -> no new branch, no extra RNG, the frozen baseline stays byte-identical.
+      this.consign = !!(opts.consign || opts.path);
+      this.path = opts.path ? OilGame.pathRules(opts.path) : null;
+      this.market = [];                      // THE PATH: the face-up contracts (buyer place codes)
+      this.structureOwner = {};              // THE PATH: STRUCT -> the seat that raised it
+      this.pathStats = { landed: 0, dumped: 0, tolls: 0, tollPaid: 0, passages: 0, passagePaid: 0,
+        contractPoints: 0, megaPoints: 0, megaLandings: 0, domestic: 0, voyageTurns: 0, detourTurns: 0, detourSteps: 0,
+        bypass: 0 };
       if (this.cards) this._buildDecks();
 
       // ---- optional THE TABLE (negotiation layer; src/oil-deals.js) ----------
@@ -305,10 +324,17 @@
         premiums: 0, incursions: 0, squeezed: 0, closures: 0, atSea: 0, structures: 0 };
       if (this.map) {
         // you start at your faction's HQ; symmetric games spread round the 8 HQs.
-        this.players.forEach((q, i) => { q.at = (q.faction && MP.BY[q.faction]) ? q.faction : MP.HQS[i % MP.HQS.length]; });
+        // (Seats are placed BEFORE factions are assigned below, so q.faction is still null here and
+        // everyone lands on HQS[i]. That is the frozen baseline. THE PATH's `home` rule reads the
+        // roster directly, so a company really does start in its own yard.)
+        const homeOf = (q, i) => q.faction || (this.path && this.path.home && Array.isArray(opts.factions) ? this._hqCode(opts.factions[i]) : null);
+        this.players.forEach((q, i) => { const f = homeOf(q, i); q.at = (f && MP.BY[f]) ? f : MP.HQS[i % MP.HQS.length]; });
         // CONSIGNED CARGO (model): everybody starts holding a contract, or the first sale has
         // nowhere to be and the whole experiment starts a turn late.
-        if (this.consign) this.players.forEach(q => this._consign(q));
+        if (this.consign) {
+          if (this.path && this.path.mode === 'market') this._fillMarket();
+          else this.players.forEach(q => this._consign(q));
+        }
       }
 
       // ---- optional CRISIS (flashpoints / blowouts / IWS; src/oil-crisis.js) ----
@@ -336,6 +362,15 @@
         if (this.asym) this.players.forEach(p => { const f = p.faction && FX[p.faction]; if (f && f.setup) f.setup(this, p); });
       }
     }
+
+    // a seat's home yard as a PLACE code. Baseline: the raw faction code (so MC/NIK never match
+    // their HQ — frozen). THE PATH `home` rule: MC -> MILECASTLE, NIK -> NIKOYL (MP.FACTION_HQ).
+    _hqCode(f) {
+      if (!f || !(this.path && this.path.home)) return f || null;
+      return (OilGame._mapFX().FACTION_HQ || {})[f] || f;
+    }
+    hqOf(p) { return p ? this._hqCode(p.faction) : null; }
+    seatAtHQ(code, except) { return this.players.find(q => q !== except && this.hqOf(q) === code) || null; }
 
     // the crisis registry (src/oil-crisis.js); {} when the layer isn't loaded
     static _crisisFX() { return (typeof global !== 'undefined' && global.OIL_CRISIS) || OilGame.CRISIS_FX || {}; }
@@ -430,7 +465,7 @@
       let amount = n;
       if (amount >= D.ABSORB_MIN && pl.kind === 'hq') {
         const align = CR.alignmentOf ? CR.alignmentOf(place) : null;
-        const seat = this.players.find(q => q.faction === place);
+        const seat = this.seatAtHQ(place);
         if (seat && align === 'state') {
           amount -= D.STATE_ABSORB; seat.exposure += D.STATE_EXPOSURE;
           this.crisisStats.stateAbsorb++;
@@ -489,7 +524,7 @@
           }
         }
         if (pl.kind === 'hq' && !this.burningAt(code)) {
-          const seat = this.players.find(q => q.faction === code);
+          const seat = this.seatAtHQ(code);
           const cover = seat && this.retainer[seat.id] ? D.RETAINER_SHIELD : 0;
           if (h >= D.BLOWOUT_AT + cover) {
             this.fires[code] = 1; this.crisisStats.blowouts++;
@@ -505,7 +540,7 @@
       for (const code in this.fires) {
         this.fires[code]++;
         this.crisisStats.fireTurns++;
-        const seat = this.players.find(q => q.faction === code);
+        const seat = this.seatAtHQ(code);
         if (seat) seat.exposure += D.FIRE_HEAT;
       }
     }
@@ -531,7 +566,7 @@
       // Only once the trouble is VISIBLE at your own ground. The brief's whole point
       // is that the money is always needed now, so cover you cannot yet justify is
       // cover nobody buys — and the sweep has to show that, not assume it.
-      return !!(this.crisis && this.atHQ(p) && p.at === p.faction && !this.burningAt(p.at)
+      return !!(this.crisis && this.atHQ(p) && p.at === this.hqOf(p) && !this.burningAt(p.at)
         && !this.retainer[p.id] && p.value >= this.crisisDials.RETAINER_COST
         && (this.heat[p.at] || 0) >= this.crisisDials.RETAINER_AT);
     }
@@ -586,7 +621,8 @@
     closeGate(code, turns) {
       const MP = OilGame._mapFX();
       if (!this.map || !MP.BY || !MP.BY[code] || MP.BY[code].kind !== 'gate') return false;
-      const n = Math.max(1, turns || this.mapDials.CLOSE_TURNS);
+      const n = (this.path && this.path.rounds) ? Math.max(1, this.pathDial('CLOSE_ROUNDS'))
+        : Math.max(1, turns || this.mapDials.CLOSE_TURNS);
       const prev = this.mapState.closed[code];
       if (this._wouldSplit(() => { this.mapState.closed[code] = Math.max(prev || 0, n); },
                            () => { if (prev === undefined) delete this.mapState.closed[code]; else this.mapState.closed[code] = prev; })) {
@@ -612,7 +648,8 @@
       const live = (MP.ADJ[victim.at] || []).filter(r => MP.routeOpen(r, victim.at, this.mapState));
       // take the first route that can be spared without breaking the board
       for (const r of live) {
-        if (!this._wouldSplit(() => { this.mapState.disabled[r.id] = this.mapDials.CLOSE_TURNS; },
+        const dn = (this.path && this.path.rounds) ? Math.max(1, this.pathDial('CLOSE_ROUNDS')) : this.mapDials.CLOSE_TURNS;
+        if (!this._wouldSplit(() => { this.mapState.disabled[r.id] = dn; },
                               () => { delete this.mapState.disabled[r.id]; })) {
           this.emit('route_disabled', { at: victim.at, label: r.label, to: r.to });
           return true;
@@ -638,13 +675,17 @@
     // era decides what the sea does, and where you end decides what you can sell.
     async _mapPhase(p) {
       const MP = OilGame._mapFX(), D = this.mapDials;
-      this.mapGateTick();
+      // THE PATH 'rounds': a closure's clock runs in ROUNDS, not seat-turns. Ticked on every
+      // seat's turn, CLOSE_TURNS 3 never outlasted one round at 5 seats — the strait was open
+      // again before most of the table had sailed. (docs/THE-PATH.md, finding 3)
+      if (!(this.path && this.path.rounds) || this.idx === 0) this.mapGateTick();
       if (this.crisis) this._crisisTick(p);      // no new phase — upkeep, not a decision
       const steps = MP.stepsFor(this.lastDice, D);
       const from = p.at;
       const r = MP.reach(from, steps, this.mapState);
       const options = r.places.slice().sort();
       p.longWay = false; p.stayed = false; p.moved = false;
+      if (this.path) this._voyageProbe(p);       // THE PATH: measured, never asked
       if (options.length > 1) {
         const pick = await this.ask(p, 'move', options);
         const to = (options.indexOf(pick) >= 0) ? pick : from;
@@ -677,6 +718,7 @@
               this.emit('longway', { player: p.name, from, to, cost: r.dist[to] || 0, normally: wouldBe });
             }
           }
+          if (this.path) this._passageToll(p, path);
           p.at = to; p.moved = true;
           this.mapStats.moves++; this.mapStats.steps += (r.dist[to] || 0);
           this.emit('move', { player: p.name, from, to, cost: r.dist[to] || 0, steps, path, lost, longWay: p.longWay });
@@ -779,9 +821,227 @@
     _consign(p) {
       const MP = OilGame._mapFX();
       if (!MP.HQS || !MP.HQS.length) return;
-      const away = MP.HQS.filter(c => c !== p.at);
-      p.consignedTo = away.length ? away[Math.floor(this.rng.random() * away.length)] : MP.HQS[0];
+      if (this.path && this.path.v2) {                 // THE PATH: the weighted draw (cluster / mega buyers)
+        p.consignedTo = this._drawBuyer([p.at]);
+      } else {
+        const away = MP.HQS.filter(c => c !== p.at);
+        p.consignedTo = away.length ? away[Math.floor(this.rng.random() * away.length)] : MP.HQS[0];
+      }
       this.emit('consign', { player: p.name, to: p.consignedTo, from: p.at, turn: this.turn });
+    }
+
+    // ========================================================================
+    // THE PATH (opts.path — docs/THE-PATH.md). The consign model, grown into the thing a
+    // player actually does on the board: take a contract, sail it to the buyer, get paid —
+    // and find out who holds the buyer. ALL CONCEPT; every number a MAP_DIALS dial.
+    //   mode 'private' — each seat holds its own buyer (the 2026-09-24 model)
+    //   mode 'market'  — MARKET_SIZE face-up buyers everybody chases; first to land takes it
+    //   cluster  — a buyer's draw weight grows with the barrels already landed there
+    //   toll     — whoever HOLDS a buyer (control) takes TOLL_PCT of every rival cargo landed
+    //   points   — a landed contract is worth CONSIGN_POINTS extra ▰
+    //   mega     — raised structures are places you can sell at, pay their builder a passage
+    //              toll, and score MEGA_POINTS ▰ to the builder per contract landed at them
+    // ========================================================================
+    static pathRules(x) {
+      const PRESETS = {
+        private: { mode: 'private' },
+        cluster: { mode: 'private', cluster: true },
+        market:  { mode: 'market' },
+        toll:    { mode: 'private', toll: true },
+        // THE RECOMMENDED PATH (docs/THE-PATH.md): a shared face-up market dealt where nobody
+        // stands, a landed contract counted as a cargo of record on the station meter (×2),
+        // the tollbooth, megastructures as destinations — and a landed contract worth ▰1 more
+        // than a dump, so the verdict can see the path. (cluster measured ~0 effect: left out.)
+        // home + onshore: the two baseline bugs, fixed here only (docs/THE-PATH.md, findings 5–6).
+        path:    { mode: 'market', toll: true, mega: true, home: true, onshore: true, dials: { CONSIGN_THROUGHPUT: 2, CONSIGN_POINTS: 1 } },
+        // the same WITHOUT touching the score — if the verdict is not to move (Joe's call)
+        quiet:   { mode: 'market', toll: true, mega: true, home: true, onshore: true, dials: { CONSIGN_THROUGHPUT: 2 } },
+      };
+      const base = typeof x === 'string' ? (PRESETS[x] || PRESETS.private) : (x === true ? PRESETS.private : Object.assign({}, x));
+      const r = Object.assign({ mode: 'private', cluster: false, toll: false, mega: false, rounds: false, home: false, onshore: false, dials: {} }, base);
+      if (r.mode !== 'market') r.mode = 'private';
+      // v2 = anything beyond the original private model (which must stay exactly as measured)
+      r.v2 = r.mode === 'market' || r.cluster || r.toll || r.mega || r.rounds || r.home || r.onshore || !!Object.keys(r.dials).length;
+      return r;
+    }
+    // the buyers this seat is carrying toward right now
+    buyersFor(p) {
+      if (!this.consign) return [];
+      let b = this.path && this.path.mode === 'market' ? this.market.slice() : (p.consignedTo ? [p.consignedTo] : []);
+      // THE SPACE ELEVATOR (CONCEPT): "deliver without a route at all — the map stops applying
+      // to you". Its builder's contract counts as landed at ANY place it can sell.
+      if (this.path && this.path.mega && this.structureOwner.SPACE_ELEVATOR === p.name) {
+        const MP = OilGame._mapFX();
+        b = MP.CODES.filter(c => this.sellableAt(c));
+      }
+      return b;
+    }
+    // nearest buyer from `from`, by the CURRENT map (shut gates and all)
+    nearestBuyer(p, from, state) {
+      const MP = OilGame._mapFX();
+      const r = MP.reach(from, 99, state || this.mapState);
+      let best = null, bd;
+      for (const b of this.buyersFor(p)) { const d = r.dist[b]; if (d !== undefined && (bd === undefined || d < bd)) { bd = d; best = b; } }
+      return { to: best, dist: bd, reach: r };
+    }
+    // where a cargo can be landed: an HQ, or (with mega on) a raised megastructure's place
+    sellableAt(code) {
+      const MP = OilGame._mapFX(), pl = MP.BY && MP.BY[code];
+      if (!pl) return false;
+      if (pl.kind === 'hq') return true;
+      return !!(this.path && this.path.mega && pl.kind === 'built' && MP.placeOpen(code, this.mapState));
+    }
+    // who holds a place: a built structure belongs to its builder; anywhere else it is CONTROL (§2)
+    ownerOf(code) {
+      const MP = OilGame._mapFX(), pl = MP.BY && MP.BY[code];
+      if (pl && (pl.kind === 'built' || pl.kind === 'arctic') && this.path && this.path.mega) {
+        const s = pl.kind === 'arctic' ? 'ARCTIC_DEV' : pl.requires;
+        if (this.structureOwner[s]) return this.structureOwner[s];
+      }
+      return this.controlOf(code);
+    }
+    // THE PATH `onshore` rule: domestic ground can be WORKED (sold at). It is not a buyer — no
+    // contract is ever dealt there — but it is not a dump either: nothing is shipped, so the
+    // barrel sells at spot + ONSHORE_PCT, and the bill arrives as heat (HEAT_ONSHORE).
+    domesticAt(code) {
+      const MP = OilGame._mapFX(), pl = MP.BY && MP.BY[code];
+      return !!(this.path && this.path.onshore && pl && pl.kind === 'onshore');
+    }
+    // anywhere this seat's cargo can come off the hull this turn
+    canDeliverAt(code) { return this.path ? (this.sellableAt(code) || this.domesticAt(code)) : !!((OilGame._mapFX().BY || {})[code] && OilGame._mapFX().BY[code].kind === 'hq'); }
+    pathDial(k) { return (this.path && this.path.dials && this.path.dials[k] !== undefined) ? this.path.dials[k] : this.mapDials[k]; }
+    // a buyer, drawn: every sellable place except `exclude`; weighted by landed barrels if clustering
+    _drawBuyer(exclude) {
+      const MP = OilGame._mapFX();
+      const pool = MP.CODES.filter(c => this.sellableAt(c) && (exclude || []).indexOf(c) < 0);
+      if (!pool.length) return MP.HQS[0];
+      const w = pool.map(c => {
+        if (!(this.path && this.path.cluster)) return 1;
+        const t = this.throughput[c] || {};
+        return 1 + this.pathDial('CLUSTER_W') * Object.keys(t).reduce((a, n) => a + t[n], 0);
+      });
+      let r = this.rng.random() * w.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i]; }
+      return pool[pool.length - 1];
+    }
+    // THE PATH + mega: a structure belongs to whoever raised it, and a structure that RAISES a
+    // place ("new strategic locations" — Sea City, the Antarctic Station, the Elevator) opens
+    // with a contract on it: the grand opening is a buyer, face-up, for everybody.
+    _raisedOnPath(p, key) {
+      this.structureOwner[key] = p.name;
+      if (!this.path.mega) return;
+      const MP = OilGame._mapFX(), S = (MP.STRUCTURES || {})[key] || {};
+      (S.raises || []).forEach(code => {
+        if (!this.sellableAt(code)) return;
+        if (this.path.mode === 'market') {
+          if (this.market.indexOf(code) < 0) {
+            this.market.push(code);
+            if (this.market.length > Math.max(1, this.pathDial('MARKET_SIZE'))) this.market.shift();
+            this.emit('contract', { to: code, turn: this.turn, opening: key });
+          }
+        }
+      });
+    }
+    _fillMarket() {
+      const n = Math.max(1, this.pathDial('MARKET_SIZE'));
+      while (this.market.length < n) {
+        // a contract is dealt where NOBODY is standing — a buyer you are already sitting on is a
+        // formality, not a voyage (the same rule the private model's _consign keeps). Falls back
+        // to any free buyer if every one is occupied.
+        const here = this.players.map(q => q.at).filter(Boolean);
+        const free = OilGame._mapFX().CODES.filter(c => this.sellableAt(c) && this.market.indexOf(c) < 0 && here.indexOf(c) < 0);
+        const b = this._drawBuyer(free.length ? this.market.concat(here) : this.market);
+        if (this.market.indexOf(b) >= 0) break;
+        this.market.push(b);
+        this.emit('contract', { to: b, turn: this.turn });
+      }
+    }
+    // THE PATH, before the sail: is this seat's route to its buyer longer than it would be
+    // with nothing shut? A per-TURN state read, so it sees a detour spread over several turns
+    // (the per-move 'longway' flag structurally cannot — see f1e94e7).
+    _voyageProbe(p) {
+      if (!this.consign || p.barrels <= 0) return;
+      const MP = OilGame._mapFX();
+      const now = this.nearestBuyer(p, p.at);
+      if (now.dist === undefined || now.dist === 0) return;
+      this.pathStats.voyageTurns++;
+      const open = this.nearestBuyer(p, p.at, { closed: {}, disabled: {}, built: this.mapState.built });
+      if (open.dist !== undefined && now.dist > open.dist) {
+        this.pathStats.detourTurns++; this.pathStats.detourSteps += now.dist - open.dist;
+        this.emit('detour', { player: p.name, at: p.at, to: now.to, cost: now.dist, normally: open.dist });
+      }
+    }
+    // THE PATH, on the sail: sailing through a structure somebody else raised costs you a passage
+    _passageToll(p, path) {
+      if (!(this.path && this.path.mega) || !path || path.length < 2) return;
+      const MP = OilGame._mapFX(), fee = this.pathDial('PASSAGE_TOLL');
+      for (let i = 1; i < path.length; i++) {
+        const pl = MP.BY[path[i]]; if (!pl || (pl.kind !== 'built' && pl.kind !== 'arctic')) continue;
+        const own = this.ownerOf(path[i]);
+        const q = own && own !== p.name ? this.players.find(z => z.name === own) : null;
+        if (!q) continue;
+        const pay = Math.max(0, Math.min(p.value, fee));
+        p.value -= pay; q.value += pay;
+        this.pathStats.passages++; this.pathStats.passagePaid += pay;
+        this.emit('passage', { player: p.name, to: q.name, place: path[i], name: pl.name, paid: pay });
+      }
+    }
+    // THE PATH, on the landing: the contract is discharged. Who gets what — the one place
+    // the whole ledger of a delivery is added up (and emitted, so the UI can show it).
+    _landContract(p, del) {
+      const P = this.path, D = this.mapDials;
+      const ledger = { value: del.value, pct: del.pct, consigned: !!del.consigned, domestic: !!del.domestic, points: 1, toll: 0, tollTo: null,
+        contractPoints: 0, megaTo: null };
+      if (del.consigned) {
+        this.pathStats.landed++;
+        ledger.contractPoints = this.pathDial('CONSIGN_POINTS') || 0;
+        if (ledger.contractPoints) { p.control += ledger.contractPoints; ledger.points += ledger.contractPoints; this.pathStats.contractPoints += ledger.contractPoints; }
+      } else if (del.domestic) this.pathStats.domestic++;
+      else this.pathStats.dumped++;
+      // THE TOLLBOOTH (THE-CONTROL-LAYER §2: "a cut of every rival barrel moved through it")
+      if (P.toll) {
+        const own = this.ownerOf(p.at);
+        const q = own && own !== p.name ? this.players.find(z => z.name === own) : null;
+        if (q) {
+          const toll = Math.round(del.value * this.pathDial('TOLL_PCT') / 100);
+          p.value -= toll; q.value += toll;
+          ledger.toll = toll; ledger.tollTo = q.name;
+          this.pathStats.tolls++; this.pathStats.tollPaid += toll;
+          this.emit('toll', { player: p.name, to: q.name, at: p.at, paid: toll });
+        }
+      }
+      // MEGASTRUCTURE POINTS (CONCEPT): a contract landed AT a structure scores its builder
+      const MP = OilGame._mapFX(), pl = MP.BY[p.at];
+      if (P.mega && del.consigned && pl && pl.kind === 'built') {
+        const own = this.ownerOf(p.at), q = own ? this.players.find(z => z.name === own) : null;
+        const pts = this.pathDial('MEGA_POINTS') || 0;
+        if (q && pts) { q.control += pts; ledger.megaTo = q.name; this.pathStats.megaPoints += pts; }
+        this.pathStats.megaLandings++;
+      }
+      if (P.mega && del.consigned && pl && pl.kind !== 'built' && this.structureOwner.SPACE_ELEVATOR === p.name
+          && this.market.indexOf(p.at) < 0 && p.consignedTo !== p.at) this.pathStats.bypass++;
+      // the contract is discharged; the market refills / the seat takes its next
+      if (P.mode === 'market') {
+        if (del.consigned) {
+          const i = this.market.indexOf(p.at);
+          if (i >= 0) this.market.splice(i, 1);
+          else if (this.market.length) this.market.shift();   // the Elevator's bypass takes the oldest
+          this._fillMarket();
+        }
+      } else this._consign(p);
+      this.emit('landed', Object.assign({ player: p.name, at: p.at }, ledger));
+      return ledger;
+    }
+    // what a delivery HERE would pay this seat, itemised — for the human prompt (no side effects)
+    previewDelivery(p) {
+      const del = this._deliveryValue(p);
+      const out = { value: del.value, pct: del.pct, consigned: !!del.consigned, domestic: !!del.domestic, points: 1, toll: 0, tollTo: null,
+        contractPoints: 0, squeezed: del.squeezed, premium: del.premium, longWay: del.longWay, incursion: !!del.incursion };
+      if (this.path) {
+        if (del.consigned) { out.contractPoints = this.pathDial('CONSIGN_POINTS') || 0; out.points += out.contractPoints; }
+        if (this.path.toll) { const own = this.ownerOf(p.at); if (own && own !== p.name) { out.toll = Math.round(del.value * this.pathDial('TOLL_PCT') / 100); out.tollTo = own; } }
+      }
+      return out;
     }
 
     _deliveryValue(p) {
@@ -811,17 +1071,20 @@
       // the voyage; dump it anywhere else and you take what the spot market will give you. This
       // is the whole experiment — it turns 'sell' into 'arrive'.
       let consigned = null;
-      if (this.consign && p.consignedTo) {
-        consigned = (p.at === p.consignedTo);
-        pct = consigned ? pct + D.CONSIGN_BONUS : Math.round(pct * D.CONSIGN_DUMP / 100);
+      const buyers = this.consign ? this.buyersFor(p) : [];
+      const domestic = this.path ? this.domesticAt(p.at) : false;
+      if (buyers.length) {
+        consigned = buyers.indexOf(p.at) >= 0;
+        if (consigned) pct = pct + D.CONSIGN_BONUS;
+        else if (!domestic) pct = Math.round(pct * D.CONSIGN_DUMP / 100);   // domestic ground is not a dump
       }
       let incursion = null;
-      if (place && place.kind === 'hq' && place.code !== p.faction) {
+      if (place && place.kind === 'hq' && place.code !== this.hqOf(p)) {
         pct += D.INCURSION_BONUS;
-        incursion = this.players.find(q => q !== p && q.faction === place.code) || null;
+        incursion = this.seatAtHQ(place.code, p);
       }
       return { value: Math.max(0, Math.round(this.price * pct / 100)), pct, squeezed, incursion,
-        blocked: t.blocked, premium, longWay: !!p.longWay, consigned };
+        blocked: t.blocked, premium, longWay: !!p.longWay, consigned, domestic };
     }
 
     // ========================================================================
@@ -1028,7 +1291,7 @@
       //    an HQ. Mid-ocean you are IN TRANSIT: no claim, and no idleness penalty,
       //    because a hull under way is not a hull sitting still. That is exactly
       //    what a shut canal costs you: turns, and turns are oil.
-      if (this.map && !this.atHQ(p)) {
+      if (this.map && !(this.atHQ(p) || (this.path && (this.sellableAt(p.at) || this.domesticAt(p.at))))) {
         this.mapStats.atSea++;
         this.emit('intransit', { player: p.name, at: p.at, place: (OilGame._mapFX().BY[p.at] || {}).name });
       } else {
@@ -1044,15 +1307,25 @@
         else if (act === 'build' && this.canBuild(p)) {
           const opts = this.buildable();
           const pick = opts.length === 1 ? opts[0] : await this.ask(p, 'structure', opts);
-          if (this.build(opts.indexOf(pick) >= 0 ? pick : opts[0])) {
+          const raised = opts.indexOf(pick) >= 0 ? pick : opts[0];
+          if (this.build(raised)) {
             p.control -= this.mapDials.BUILD_COST; p.exposure += this.mapDials.BUILD_HEAT;
+            if (this.path) this._raisedOnPath(p, raised);   // THE PATH: you raised it, you own it
           }
         } else
         if (act === 'claim' && p.barrels >= D.CLAIM_COST) {
           const del = this._deliveryValue(p);
           p.barrels -= D.CLAIM_COST; p.control += 1;
           p.value += del.value;                      // sell a barrel into the market
-          this._addThroughput(p, p.at, D.CLAIM_COST);  // ...and that sale is your claim on the ground
+          // ...and that sale is your claim on the ground. THE PATH: a landed contract is a cargo
+          // of record, and may count for more on the station meter (CONSIGN_THROUGHPUT).
+          this._addThroughput(p, p.at, (this.path && del.consigned) ? this.pathDial('CONSIGN_THROUGHPUT') : D.CLAIM_COST);
+          if (this.path) {
+            if (del.consigned) this.mapStats.consignHit = (this.mapStats.consignHit || 0) + 1;
+            else if (del.domestic) this.mapStats.consignDomestic = (this.mapStats.consignDomestic || 0) + 1;
+            else this.mapStats.consignDump = (this.mapStats.consignDump || 0) + 1;
+            del.ledger = this._landContract(p, del);
+          } else
           if (this.consign) {                          // the contract is discharged; take the next
             if (del.consigned) this.mapStats.consignHit = (this.mapStats.consignHit || 0) + 1;
             else this.mapStats.consignDump = (this.mapStats.consignDump || 0) + 1;
@@ -1160,7 +1433,7 @@
       switch (choice) {
         case 'EAT':     if (target) { p.control += 1; p.value += target.barrels * this.price; target.barrels = 0; target.exposure += 3;
           // "acquire territory": you take their ground — they wash up at their own HQ.
-          if (this.map && target.at !== p.at) { const MP = OilGame._mapFX(); target.at = (target.faction && MP.BY[target.faction]) ? target.faction : target.at; }
+          if (this.map && target.at !== p.at) { const MP = OilGame._mapFX(); const h = this.hqOf(target); target.at = (h && MP.BY[h]) ? h : target.at; }
         } break;
         case 'DIVIDE':  if (target) { const half = Math.floor(target.control / 2); target.control -= half; p.control += half; } break;
         case 'DESTROY': if (target) { target.control = Math.max(0, target.control - 1); target.exposure += 2; this.oil = Math.max(0, this.oil - 1); }

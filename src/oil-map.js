@@ -110,6 +110,27 @@
     INCURSION_BONUS: 25,    // % bonus on the sale (selling out of their yard)
     INCURSION_HEAT: 1,      // exposure you take for it
     INCURSION_HIT: 1,       // exposure the HQ's seat takes (the swing)
+
+    // --- CONSIGNED CARGO (opts.consign — the 2026-09-24 model) ---
+    // These two were READ by the engine but never DEFINED, so every consigned delivery was
+    // worth NaN in the first A/B. The behaviour numbers (60% reached the buyer) were real,
+    // because the bots never read the value; every $ and every holdings tie-break was not.
+    CONSIGN_BONUS: 35,      // % added when you land the cargo at its named buyer
+    CONSIGN_DUMP: 45,       // % of spot you get for dumping it anywhere else
+    LAND_WITHIN: 4,         // a bot carries a cargo on (rather than dumping it) if a buyer is this close
+
+    // --- THE PATH (opts.path — docs/THE-PATH.md). ALL CONCEPT DIALS. -----------------------
+    // The shipping route as the game path: a small face-up CONTRACT MARKET everybody chases,
+    // CONTROL of a buyer paying the controller a TOLL on every rival cargo landed there, and
+    // megastructures that are places you can sell at and routes you pay to use.
+    MARKET_SIZE: 3,         // face-up contracts on the table (shared buyers, first to land takes it)
+    CLUSTER_W: 1,           // 'cluster': a buyer's weight in the draw = 1 + this × barrels landed there
+    TOLL_PCT: 20,           // % of a landed cargo's value paid to whoever holds that buyer
+    CONSIGN_THROUGHPUT: 1,  // station-meter barrels a LANDED contract counts for (1 = same as a sale)
+    CONSIGN_POINTS: 0,      // extra ▰ for landing a contract at its buyer (the verdict reads ▰ first)
+    PASSAGE_TOLL: 4,        // $ paid to a structure's builder for sailing through what they raised/opened
+    MEGA_POINTS: 1,         // ▰ to a structure's builder each time a contract is landed AT it
+    CLOSE_ROUNDS: 2,        // 'rounds': a closure lasts this many ROUNDS (the table all sails)
   };
 
   // ============================================================================
@@ -392,6 +413,10 @@
   const CODES = PLACES.map(p => p.code);
   const HQS = PLACES.filter(p => p.kind === 'hq').map(p => p.code);
   const GATES = PLACES.filter(p => p.kind === 'gate').map(p => p.code);
+  // two companies' codes are not their HQ's place code (MC sails from MILECASTLE, NIK from
+  // NIKOYL), so every `place.code === faction` test misses them. Read ONLY by THE PATH's `home`
+  // rule (OilGame.hqOf); the baseline keeps comparing raw codes, so its numbers don't move.
+  const FACTION_HQ = { MC: 'MILECASTLE', NIK: 'NIKOYL' };
 
   const ADJ = {}; CODES.forEach(c => { ADJ[c] = []; });
   ROUTES.forEach((R, id) => {
@@ -484,7 +509,7 @@
     return D.PERIL[p.kind] || 0;
   }
 
-  const REG = { MAP_DIALS, PLACES, ROUTES, STRUCTURES, BY, CODES, HQS, GATES, ADJ,
+  const REG = { MAP_DIALS, PLACES, ROUTES, STRUCTURES, BY, CODES, HQS, GATES, ADJ, FACTION_HQ,
     placeOpen, routeOpen, trafficAt, reach, pathOf, connected, hqsConnected, stepsFor, perilOf };
   global.OIL_MAP = REG;
   if (typeof module !== 'undefined' && module.exports) module.exports = REG;
