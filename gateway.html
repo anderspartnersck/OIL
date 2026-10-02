@@ -555,12 +555,129 @@ function presentPrompt(g,p,ctx){
 // Draws the designer's board art and lays the shipping network over it: routes by
 // grammar (gate / cape / arctic / pipe), shut gates struck through in red, and each
 // seat's pip where it stands. Presentation only — reads the engine, never touches it.
-const ROUTE_STYLE={gate:'#f6c95a',cape:'#8fb7d6',arctic:'#bfe3ff',ocean:'#7d6b4a',pipe:'#c98a3f',hq:'#e0a32a',built:'#2f9e5b'};
+// THE BOARD'S KEY. Every route is drawn as a TRACK of spaces (one space = one move, the route's
+// cost) in the colour of the job it does — like a printed board, you read function and distance
+// at a glance. Presentation only; the engine never sees any of this.
+const ROUTE_STYLE={gate:'#f2c14e',cape:'#a58be0',arctic:'#cfeeff',ocean:'#4f8fd0',pipe:'#cf7a33',built:'#3fc073',
+  hq:'#e0a32a',onshore:'#cf7a33'};
+const ROUTE_KEY=[
+  ['ocean','SEA LANE','open water'],
+  ['gate','CHOKEPOINT','can be SHUT'],
+  ['cape','THE LONG WAY','never shuts · risky in chaos'],
+  ['pipe','PIPELINE','overland · no weather'],
+  ['arctic','ARCTIC','iced until developed'],
+  ['built','MEGASTRUCTURE','raised in the late game']];
 function kindOfRoute(MP,a,b){
   const ka=(MP.BY[a]||{}).kind,kb=(MP.BY[b]||{}).kind;
-  for(const k of ['arctic','built','cape','gate']) if(ka===k||kb===k) return k;
-  if(ka==='hq'&&kb==='hq') return 'pipe';
+  for(const k of ['arctic','built','gate','cape']) if(ka===k||kb===k) return k;
+  const land=k=>k==='hq'||k==='onshore';
+  if(land(ka)&&land(kb)) return 'pipe';
   return 'ocean';
+}
+// one route, drawn as `n` spaces between two tokens. mode: 'live' | 'dead' | 'iced'
+function drawTrack(x1,y1,x2,y2,n,kind,mode,dpr,clear1,clear2){
+  const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy); if(L<1)return;
+  const a=Math.atan2(dy,dx), c1=clear1||9*dpr, c2=clear2||9*dpr, run=L-c1-c2; if(run<6*dpr)return;
+  const w=6.5*dpr, gap=Math.min(13*dpr,run/(n*2.5)), seg=(run-gap*(n-1))/n, col=ROUTE_STYLE[kind]||'#9a8f7c';
+  ctx.save(); ctx.translate(x1,y1); ctx.rotate(a); ctx.translate(c1,0);
+  const rr=(x,y,ww,hh,r)=>{ ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y,ww,hh,r):ctx.rect(x,y,ww,hh); };
+  if(kind==='pipe'&&mode!=='dead'){            // one continuous pipe, flanged at every space
+    rr(-1.5*dpr,-w/2-1.5*dpr,run+3*dpr,w+3*dpr,3*dpr); ctx.fillStyle='rgba(10,6,3,.9)'; ctx.fill();
+    rr(0,-w/2,run,w,2.5*dpr); ctx.fillStyle=col; ctx.fill();
+    ctx.fillStyle='rgba(255,220,170,.45)'; ctx.fillRect(1*dpr,-w/2+1*dpr,run-2*dpr,1.4*dpr);
+    ctx.fillStyle='rgba(20,10,4,.85)';
+    for(let i=0;i<=n;i++){ const fx=Math.min(run-1.6*dpr,Math.max(0,i*(seg+gap)-gap/2-0.8*dpr)); ctx.fillRect(fx,-w/2-2*dpr,1.6*dpr,w+4*dpr); }
+  } else {
+    for(let i=0;i<n;i++){ const sx=i*(seg+gap);
+      rr(sx-1.3*dpr,-w/2-1.3*dpr,seg+2.6*dpr,w+2.6*dpr,2.6*dpr); ctx.fillStyle='rgba(10,6,3,.88)'; ctx.fill();
+      rr(sx,-w/2,seg,w,2*dpr);
+      if(mode==='iced'){ ctx.fillStyle="rgba(207,238,255,.10)"; ctx.fill(); ctx.strokeStyle="rgba(207,238,255,.75)"; ctx.lineWidth=1.4*dpr; ctx.stroke(); }
+      else if(mode==='dead'){ ctx.fillStyle='rgba(120,30,22,.85)'; ctx.fill();
+        ctx.strokeStyle='#ff6a4a'; ctx.lineWidth=1.3*dpr; ctx.beginPath();
+        ctx.moveTo(sx+seg/2-2.5*dpr,-2.5*dpr); ctx.lineTo(sx+seg/2+2.5*dpr,2.5*dpr);
+        ctx.moveTo(sx+seg/2+2.5*dpr,-2.5*dpr); ctx.lineTo(sx+seg/2-2.5*dpr,2.5*dpr); ctx.stroke(); }
+      else { ctx.fillStyle=col; ctx.fill(); ctx.fillStyle='rgba(255,255,255,.28)'; ctx.fillRect(sx+1.5*dpr,-w/2+1*dpr,Math.max(0,seg-3*dpr),1.3*dpr); }
+    }
+  }
+  ctx.restore();
+}
+// a place token, by shape: HQ = big disc · strait/canal = diamond · cape = triangle · open water = ring
+// onshore = square · arctic = hexagon · megastructure = pentagon
+function drawToken(kind,x,y,fill,dpr,big){
+  const r=(big?8.5:kind==='ocean'?4.5:6)*dpr;
+  ctx.beginPath();
+  const poly=(k,rot)=>{ for(let i=0;i<k;i++){ const t=rot+i*2*Math.PI/k; i?ctx.lineTo(x+Math.cos(t)*r,y+Math.sin(t)*r):ctx.moveTo(x+Math.cos(t)*r,y+Math.sin(t)*r);} ctx.closePath(); };
+  if(kind==='gate') poly(4,-Math.PI/2);
+  else if(kind==='cape') poly(3,-Math.PI/2);
+  else if(kind==='onshore') poly(4,Math.PI/4);
+  else if(kind==='arctic') poly(6,0);
+  else if(kind==='built') poly(5,-Math.PI/2);
+  else ctx.arc(x,y,r,0,7);
+  ctx.fillStyle=fill; ctx.fill();
+  ctx.lineWidth=(big?2.4:1.8)*dpr; ctx.strokeStyle='rgba(8,5,2,.95)'; ctx.stroke();
+  if(big){ ctx.beginPath(); ctx.arc(x,y,r-2.4*dpr,0,7); ctx.strokeStyle='rgba(255,240,210,.55)'; ctx.lineWidth=1.1*dpr; ctx.stroke(); }
+  return r;
+}
+// the printed KEY, set into the empty panel of the board's control deck
+function drawKey(bx,by,bw,bh,dpr){
+  const x0=bx+bw*0.135,y0=by+bh*0.852,x1=bx+bw*0.685,y1=by+bh*0.958, W=x1-x0,H=y1-y0;
+  if(H<30*dpr)return;
+  ctx.fillStyle='rgba(12,9,5,.82)'; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x0,y0,W,H,6*dpr):ctx.rect(x0,y0,W,H); ctx.fill();
+  ctx.strokeStyle='rgba(242,193,78,.45)'; ctx.lineWidth=1.2*dpr; ctx.stroke();
+  const fs=Math.max(7,Math.min(11,H/dpr/8.5))*dpr;
+  ctx.textBaseline='middle'; ctx.textAlign='left';
+  ctx.fillStyle='#f2c14e'; ctx.font='bold '+(fs*1.1)+'px Trebuchet MS';
+  ctx.fillText('THE KEY',x0+10*dpr,y0+fs*1.1);
+  ctx.fillStyle='rgba(220,200,160,.8)'; ctx.font=(fs*.9)+'px Trebuchet MS';
+  ctx.fillText('each space on a route = 1 move',x0+10*dpr+ctx.measureText('THE KEY').width*1.25+8*dpr,y0+fs*1.1);
+  const cols=3, rows=2, top=y0+fs*2.4, cw=(W-20*dpr)/(cols+1), rh=(y1-top-4*dpr)/rows;
+  ROUTE_KEY.forEach(([k,name,what],i)=>{
+    const cx=x0+10*dpr+(i%cols)*cw, cy=top+Math.floor(i/cols)*rh+rh/2;
+    drawTrack(cx,cy,cx+46*dpr,cy,2,k,k==='arctic'?'iced':'live',dpr,1,1);
+    ctx.textAlign='left'; ctx.fillStyle=ROUTE_STYLE[k]; ctx.font='bold '+fs+'px Trebuchet MS';
+    ctx.fillText(name,cx+52*dpr,cy-fs*.5);
+    ctx.fillStyle='rgba(220,200,160,.75)'; ctx.font=(fs*.85)+'px Trebuchet MS'; ctx.fillText(what,cx+52*dpr,cy+fs*.55);
+  });
+  // tokens column
+  const tx=x0+10*dpr+cols*cw, items=[['hq','port (HQ)','#e0a32a'],['gate','strait/canal',ROUTE_STYLE.gate],['cape','cape',ROUTE_STYLE.cape],
+    ['onshore','onshore ground',ROUTE_STYLE.onshore],['ocean','open water',ROUTE_STYLE.ocean],['shut','✕ = shut',null]];
+  const th=(y1-top-4*dpr)/3;
+  items.forEach(([k,name,col],i)=>{ const ix=tx+(i%2)*cw/2, iy=top+Math.floor(i/2)*th+th/2;
+    if(k==='shut'){ ctx.fillStyle='#ff6a4a'; ctx.font='bold '+fs+'px Trebuchet MS'; ctx.textAlign='left'; ctx.fillText(name,ix,iy); return; }
+    drawToken(k,ix+6*dpr,iy,col,dpr*.8,k==='hq');
+    ctx.textAlign='left'; ctx.fillStyle='rgba(220,200,160,.85)'; ctx.font=(fs*.85)+'px Trebuchet MS'; ctx.fillText(name,ix+16*dpr,iy); });
+}
+// Greedy label placement: most important first (HQs, then gates, then the rest), each label tries
+// eight spots around its dot, then the same eight further out on a leader line, and takes the one
+// that overlaps least with dots and already-placed labels. Presentation only.
+function layoutLabels(labels,dots,box,dpr){
+  const pad=2*dpr, placed=[];
+  labels.forEach(L=>{ L.w=0; L.h=0; L.lines.forEach(l=>{ ctx.font=l.font; l.w=ctx.measureText(l.t).width;
+    l.h=parseFloat(l.font.match(/([\d.]+)px/)[1])*1.15; L.w=Math.max(L.w,l.w); L.h+=l.h; }); });
+  const hit=(a,b)=>Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0));
+  const dirs=[[0,-1],[0,1],[1,0],[-1,0],[1,-1],[1,1],[-1,-1],[-1,1]];
+  labels.slice().sort((a,b)=>a.prio-b.prio).forEach(L=>{
+    let best=null;
+    [1,2.4].forEach((far,ring)=>dirs.forEach(([dx,dy],di)=>{
+      const g=L.gap*far, cx=L.x+dx*(g+(dx?L.w/2:0)), cy=L.y+dy*(g+(dy?L.h/2:0));
+      const R={x0:cx-L.w/2-pad,x1:cx+L.w/2+pad,y0:cy-L.h/2-pad,y1:cy+L.h/2+pad};
+      let cost=ring*200*dpr*dpr+di*dpr*dpr;                       // prefer close, then the usual spot
+      placed.forEach(P=>cost+=hit(R,P)*3);
+      dots.forEach(D=>cost+=hit(R,{x0:D.x-D.r,x1:D.x+D.r,y0:D.y-D.r,y1:D.y+D.r})*(D.w||2));
+      if(R.x0<box.x0||R.x1>box.x1||R.y0<box.y0||R.y1>box.y1) cost+=1e6;
+      if(!best||cost<best.cost) best={cost,R,cx,cy,ring};
+    }));
+    placed.push(best.R);
+    if(best.ring){ ctx.strokeStyle='rgba(200,180,140,.35)'; ctx.lineWidth=dpr; ctx.beginPath();
+      ctx.moveTo(L.x,L.y); ctx.lineTo(Math.max(best.R.x0,Math.min(L.x,best.R.x1)),Math.max(best.R.y0,Math.min(L.y,best.R.y1))); ctx.stroke(); }
+    const Rp=best.R; ctx.beginPath(); ctx.roundRect?ctx.roundRect(Rp.x0-2*dpr,Rp.y0,Rp.x1-Rp.x0+4*dpr,Rp.y1-Rp.y0,3*dpr):ctx.rect(Rp.x0,Rp.y0,Rp.x1-Rp.x0,Rp.y1-Rp.y0);
+    ctx.fillStyle='rgba(12,8,4,.78)'; ctx.fill(); ctx.strokeStyle='rgba(242,193,78,.28)'; ctx.lineWidth=0.8*dpr; ctx.stroke();
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    let y=best.cy-L.h/2;
+    L.lines.forEach(l=>{ y+=l.h/2; ctx.font=l.font;
+      ctx.fillStyle='rgba(8,6,4,.85)'; ctx.fillText(l.t,best.cx+dpr,y+dpr);
+      ctx.fillStyle=l.col; ctx.fillText(l.t,best.cx,y); y+=l.h/2; });
+  });
 }
 function drawMap(){
   const MP=window.OIL_MAP; if(!MP||!game){draw0();return;}
@@ -576,23 +693,34 @@ function drawMap(){
   const st=game.mapState, X=p=>bx+bw*p[0], Y=p=>by+bh*p[1];
   const dpr=devicePixelRatio;
 
-  // routes
+  drawKey(bx,by,bw,bh,dpr);
+
+  // routes — tracks of spaces, coloured by what the route is FOR
+  const clr=pl=>(pl.kind==='hq'?11:pl.kind==='ocean'?7:9)*dpr;
+  const tracks=[];
   MP.ROUTES.forEach((R,id)=>{
     const A=MP.BY[R[0]],B=MP.BY[R[1]]; if(!A||!B)return;
     const liveA=MP.placeOpen(R[0],st),liveB=MP.placeOpen(R[1],st);
     const disabled=st.disabled&&st.disabled[id]>0;
-    const dead=!liveA||!liveB||disabled;
     if((A.kind==='built'&&!liveA)||(B.kind==='built'&&!liveB))return;   // each structure's own lanes
-    if((A.kind==='arctic'||B.kind==='arctic')&&!(st.built&&st.built.ARCTIC_DEV)){
-      ctx.setLineDash([2*dpr,5*dpr]); ctx.strokeStyle='rgba(191,227,255,.18)';
-    } else {
-      ctx.setLineDash(dead?[3*dpr,4*dpr]:[]);
-      ctx.strokeStyle=dead?'rgba(226,60,42,.55)':ROUTE_STYLE[kindOfRoute(MP,R[0],R[1])]+'66';
-    }
-    ctx.lineWidth=(dead?1.6:1.9)*dpr;
-    ctx.beginPath(); ctx.moveTo(X(A.at),Y(A.at)); ctx.lineTo(X(B.at),Y(B.at)); ctx.stroke();
-    ctx.setLineDash([]);
+    const kind=kindOfRoute(MP,R[0],R[1]);
+    const iced=kind==='arctic'&&!(st.built&&st.built.ARCTIC_DEV);
+    const mode=iced?'iced':(!liveA||!liveB||disabled)?'dead':'live';
+    tracks.push({R,A,B,kind,mode,ax:X(A.at),ay:Y(A.at),bx:X(B.at),by:Y(B.at),sx:0,sy:0});
   });
+  // two tracks leaving the same port at nearly the same heading get pushed apart, like double routes on a printed board
+  const from=(t,c)=>{ const u=c===t.R[0]?[t.bx-t.ax,t.by-t.ay]:[t.ax-t.bx,t.ay-t.by], l=Math.hypot(u[0],u[1])||1; return [u[0]/l,u[1]/l]; };
+  for(let i=0;i<tracks.length;i++)for(let j=i+1;j<tracks.length;j++){
+    const ti=tracks[i],tj=tracks[j], c=[ti.R[0],ti.R[1]].find(k=>k===tj.R[0]||k===tj.R[1]); if(!c)continue;
+    const ui=from(ti,c),uj=from(tj,c); if(ui[0]*uj[0]+ui[1]*uj[1]<Math.cos(0.3))continue;
+    [[ti,ui,uj],[tj,uj,ui]].forEach(([t,u,v])=>{ let n=[-u[1],u[0]]; if(n[0]*(u[0]-v[0])+n[1]*(u[1]-v[1])<0)n=[-n[0],-n[1]];
+      t.sx+=n[0]*4.5*dpr; t.sy+=n[1]*4.5*dpr; });
+  }
+  const trackPts=[];
+  tracks.forEach(t=>{ const ax=t.ax+t.sx,ay=t.ay+t.sy,bx2=t.bx+t.sx,by2=t.by+t.sy;
+    drawTrack(ax,ay,bx2,by2,t.R[2]||1,t.kind,t.mode,dpr,clr(t.A),clr(t.B));
+    const L=Math.hypot(bx2-ax,by2-ay), k=Math.max(1,Math.floor(L/(12*dpr)));
+    for(let i=1;i<k;i++) trackPts.push({x:ax+(bx2-ax)*i/k,y:ay+(by2-ay)*i/k,r:4*dpr,w:0.5}); });
 
   // THE PATH — your voyage: the route to the nearest buyer as the world stands (gold), and —
   // if a closure is lengthening it — the way it would have gone with nothing shut (red dash).
@@ -600,12 +728,17 @@ function drawMap(){
   const line=(codes,col,w,dash)=>{ if(codes.length<2)return; ctx.setLineDash(dash||[]); ctx.strokeStyle=col; ctx.lineWidth=w*dpr;
     ctx.beginPath(); codes.forEach((c,i)=>{const P=MP.BY[c].at; i?ctx.lineTo(X(P),Y(P)):ctx.moveTo(X(P),Y(P));}); ctx.stroke(); ctx.setLineDash([]); };
   if(pi&&pi.to){
-    if(pi.detour) line(pi.openRoute,'rgba(226,60,42,.8)',2.2,[5*dpr,4*dpr]);
-    line(pi.route,'rgba(246,201,90,.9)',3.2);
+    if(pi.detour) line(pi.openRoute,'rgba(226,60,42,.85)',2.6,[6*dpr,4*dpr]);
+    line(pi.route,'rgba(255,240,200,.35)',13);            // halo over the track
+    line(pi.route,'rgba(255,214,110,.95)',2.4,[7*dpr,5*dpr]);
   }
 
-  // places
+  // places — dots now, labels later (one layout pass so no two names land on top of each other)
   ctx.textBaseline='middle';
+  const labels=[], dots=[];
+  const contracts=game.path?new Set(game.market):new Set(), raisedBy={};
+  if(game.path) Object.entries(game.structureOwner).forEach(([k,name])=>{ const S2=(MP.STRUCTURES||{})[k]||{};
+    (S2.raises||S2.opens||[]).forEach(code=>{ raisedBy[code]=name; }); });
   MP.PLACES.forEach(pl=>{
     const open=MP.placeOpen(pl.code,st), x=X(pl.at), y=Y(pl.at);
     if(pl.kind==='built'&&!open)return;
@@ -621,11 +754,11 @@ function drawMap(){
         ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(x,y,20*dpr,0,7); ctx.fill();
       }
       const col=seat?(game._colors[game.players.indexOf(seat)]||'#e0a32a'):'#8a7550';
-      ctx.fillStyle=col; ctx.beginPath(); ctx.arc(x,y,6*dpr,0,7); ctx.fill();
-      ctx.strokeStyle='rgba(0,0,0,.7)'; ctx.lineWidth=1.5*dpr; ctx.stroke();
-      ctx.font=('bold '+9.5*dpr+'px Trebuchet MS'); ctx.textAlign='center';
-      ctx.fillStyle='rgba(8,6,4,.8)'; ctx.fillText(pl.code,x+dpr,y-11*dpr+dpr);
-      ctx.fillStyle=col; ctx.fillText(pl.code,x,y-11*dpr);
+      drawToken('hq',x,y,col,dpr,true);
+      dots.push({x,y,r:(game.path?14:9)*dpr});
+      const L=[{t:(contracts.has(pl.code)?'★ ':'')+pl.code,font:'bold '+9.5*dpr+'px Trebuchet MS',col:contracts.has(pl.code)?'#f6c95a':col}];
+      if(contracts.has(pl.code)) L.push({t:'CONTRACT',font:'bold '+7.5*dpr+'px Trebuchet MS',col:'#f6c95a'});
+      labels.push({x,y,lines:L,prio:0,gap:(game.path?15:10)*dpr});
     } else {
       const shut=(pl.kind==='gate'&&!open), iced=(pl.kind==='arctic'&&!open);
       const h=game.crisis?(game.heat[pl.code]||0):0;
@@ -634,16 +767,19 @@ function drawMap(){
         ctx.strokeStyle='rgba(226,99,42,'+(0.18+0.5*t).toFixed(2)+')'; ctx.lineWidth=(1+2*t)*dpr;
         ctx.beginPath(); ctx.arc(x,y,(7+7*t)*dpr,0,7); ctx.stroke();
       }
-      ctx.fillStyle=shut?'#e2632a':iced?'rgba(191,227,255,.35)':ROUTE_STYLE[pl.kind]||'#9a8f7c';
-      ctx.beginPath(); ctx.arc(x,y,3.4*dpr,0,7); ctx.fill();
+      drawToken(pl.kind,x,y,shut?'#e2632a':iced?'rgba(191,227,255,.35)':ROUTE_STYLE[pl.kind]||'#9a8f7c',dpr,false);
       if(shut){ // struck through: the gate is shut
         ctx.strokeStyle='#e2632a'; ctx.lineWidth=2*dpr;
         ctx.beginPath(); ctx.moveTo(x-6*dpr,y-6*dpr); ctx.lineTo(x+6*dpr,y+6*dpr);
         ctx.moveTo(x+6*dpr,y-6*dpr); ctx.lineTo(x-6*dpr,y+6*dpr); ctx.stroke();
       }
-      ctx.font=(8.5*dpr)+'px Trebuchet MS'; ctx.textAlign='center';
-      ctx.fillStyle=shut?'#ff9a6a':'rgba(200,180,140,.65)';
-      ctx.fillText(pl.name.replace(/^(The |Strait of |Cape )/,''),x,y+11*dpr);
+      dots.push({x,y,r:(shut?8:7)*dpr});
+      const name=pl.name.replace(/^(The |Strait of |Cape )/,'');
+      const L=[{t:(contracts.has(pl.code)?'★ ':'')+name,font:(pl.kind==='gate'?'bold ':'')+(8.5*dpr)+'px Trebuchet MS',col:shut?'#ff9a6a':contracts.has(pl.code)?'#f6c95a':'rgba(225,208,170,.9)'}];
+      if(contracts.has(pl.code)) L.push({t:'CONTRACT',font:'bold '+7.5*dpr+'px Trebuchet MS',col:'#f6c95a'});
+      if(raisedBy[pl.code]){ const k2=game.players.findIndex(z=>z.name===raisedBy[pl.code]);
+        L.push({t:'▲ '+raisedBy[pl.code],font:'bold '+8*dpr+'px Trebuchet MS',col:game._colors[k2]||'#2f9e5b'}); }
+      labels.push({x,y,lines:L,prio:{gate:1,onshore:2,built:2}[pl.kind]||3,gap:7*dpr});
     }
   });
 
@@ -652,16 +788,10 @@ function drawMap(){
     Object.entries(game.controlTable()).forEach(([code,name])=>{ const pl=MP.BY[code]; if(!pl)return;
       const k=game.players.findIndex(z=>z.name===name); ctx.strokeStyle=game._colors[k]||'#2f9e5b'; ctx.lineWidth=2.4*dpr;
       ctx.setLineDash([3*dpr,2*dpr]); ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),13*dpr,0,7); ctx.stroke(); ctx.setLineDash([]); });
-    game.market.forEach(code=>{ const pl=MP.BY[code]; if(!pl)return; const x=X(pl.at),y=Y(pl.at);
-      ctx.fillStyle='#f6c95a'; ctx.font=('bold '+13*dpr+'px Trebuchet MS'); ctx.textAlign='center';
-      ctx.fillText('★',x+14*dpr,y-12*dpr);
-      ctx.font=('bold '+8*dpr+'px Trebuchet MS'); ctx.fillText('CONTRACT',x,y+15*dpr); });
-    const owned=Object.entries(game.structureOwner);
-    owned.forEach(([k,name])=>{ const S=(MP.STRUCTURES||{})[k]||{}; const k2=game.players.findIndex(z=>z.name===name);
-      (S.raises||S.opens||[]).forEach(code=>{ const pl=MP.BY[code]; if(!pl)return;
-        ctx.fillStyle=game._colors[k2]||'#2f9e5b'; ctx.font=('bold '+8*dpr+'px Trebuchet MS'); ctx.textAlign='center';
-        ctx.fillText('▲ '+name,X(pl.at),Y(pl.at)-10*dpr); }); });
   }
+
+  // the labels — placed after every dot is known, so a name never sits on another place
+  layoutLabels(labels,dots.concat(trackPts),{x0:bx,y0:by,x1:bx+bw,y1:by+bh*0.84},dpr);
 
   // the seats
   game.players.forEach((q,i)=>{

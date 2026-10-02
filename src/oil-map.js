@@ -131,6 +131,18 @@
     PASSAGE_TOLL: 4,        // $ paid to a structure's builder for sailing through what they raised/opened
     MEGA_POINTS: 1,         // ▰ to a structure's builder each time a contract is landed AT it
     CLOSE_ROUNDS: 2,        // 'rounds': a closure lasts this many ROUNDS (the table all sails)
+
+    // --- DECISIONS-0928 (docs/DECISIONS-0928.md). MODEL-ONLY dials for Joe's open calls. Every
+    // one is read ONLY behind a new opts.path rule key (shut / supply / geo / botOnshore) or a
+    // dial the presets do not set, so `path`, `quiet` and the baseline are byte-identical. ---
+    HEADLINE_TURNS: 3,      // CORE-020 'headline': the round's flashpoint shuts a gate for this long
+    LIFT_TO: 2,             // CORE-022 'lift': starting a turn in your own yard tops the hold up to this
+    SUPPLY_BURN: 1,         // CORE-022: oil burned per barrel any supply rule creates (L2: never adds oil)
+    CONTRACT_LOAD: 1,       // CORE-022 'cargo': barrels loaded (the backhaul) when you land a contract
+    PRODUCE_CAP: 3,         // CORE-022 'produce': per-round production cap (yard 1 + 1 per held place)
+    CONSIGN_BUILD: 0,       // CORE-018 middle: build credit per landed contract (spends on BUILD, never scores)
+    SPREAD_EVERY: 0,        // CORE-020 cap (with `spreadRound`): 0 = once a round; N = every Nth seat-turn
+    CONSIGN_POINTS_EVERY: 1,// CORE-018 middle: CONSIGN_POINTS is paid on every Nth contract a seat lands
   };
 
   // ============================================================================
@@ -148,8 +160,8 @@
     { code: 'NIKOYL',     kind: 'hq', name: 'The Caspian',     region: 'Post-Soviet — private/oligarch sphere', at: [0.240, 0.268] },
     { code: 'HADDAD',     kind: 'hq', name: 'The Gulf',        region: 'Middle East — Gulf',                   at: [0.205, 0.360] },
     { code: 'BRIGHT',     kind: 'hq', name: 'The Mainland',    region: 'China',                                at: [0.330, 0.325] },
-    { code: 'HARTSTARR',  kind: 'hq', name: 'The Gulf Coast',  region: 'USA — South / heartland',              at: [0.712, 0.372] },
-    { code: 'STOCK',      kind: 'hq', name: 'The Northeast',   region: 'USA — Northeast / Wall Street',        at: [0.766, 0.312] },
+    { code: 'HARTSTARR',  kind: 'hq', name: 'The Gulf Coast',  region: 'USA — South / heartland',              at: [0.699, 0.325] },
+    { code: 'STOCK',      kind: 'hq', name: 'The Northeast',   region: 'USA — Northeast / Wall Street',        at: [0.745, 0.305] },
     { code: 'PETRO_SUR',  kind: 'hq', name: 'The Orinoco',     region: 'South America — Venezuela',            at: [0.792, 0.452] },
 
     // -- GATES: the canals and straits. Every one of these can be shut. --
@@ -160,7 +172,7 @@
     { code: 'PANAMA',   kind: 'gate', name: 'Panama Canal',      at: [0.746, 0.418] },
     { code: 'GIBRALTAR',kind: 'gate', name: 'Strait of Gibraltar', at: [0.108, 0.298] },
 
-    { code: 'LAWRENCE', kind: 'gate', name: 'The St Lawrence Seaway', at: [0.742, 0.268] },
+    { code: 'LAWRENCE', kind: 'gate', name: 'The St Lawrence Seaway', at: [0.766, 0.265] },
 
     // -- OPEN WATER: nobody closes the ocean. --
     { code: 'NATLANTIC', kind: 'ocean', name: 'The North Atlantic', at: [0.860, 0.250] },
@@ -173,7 +185,7 @@
     { code: 'BOSPHORUS', kind: 'ocean', name: 'The Turkish Straits', at: [0.170, 0.288] },
     { code: 'DANISH',    kind: 'ocean', name: 'The Danish Straits',  at: [0.146, 0.192] },
     { code: 'INDIAN',    kind: 'ocean', name: 'The Indian Ocean',   at: [0.262, 0.500] },
-    { code: 'PACIFIC',   kind: 'ocean', name: 'The Pacific',        at: [0.520, 0.430] },
+    { code: 'PACIFIC',   kind: 'ocean', name: 'The Pacific',        at: [0.535, 0.395] },
 
     // -- CAPES: the long ways round. Slow, unclosable, and hungry in a bad season. --
     { code: 'GOODHOPE', kind: 'cape', name: 'The Cape of Good Hope', at: [0.158, 0.640] },
@@ -215,9 +227,9 @@
     // gate. Wiring production->heat is step 3 of the build order, gated on the
     // annihilation rate staying in band.
     // ---------------------------------------------------------------------------
-    { code: 'GENESEE',  kind: 'onshore', name: 'Genesee County', at: [0.730, 0.286],
+    { code: 'GENESEE',  kind: 'onshore', name: 'Genesee County', at: [0.723, 0.288],
       note: "a company county, and what austerity did to its water — the designer's example" },
-    { code: 'REFINERY_ROW', kind: 'onshore', name: 'The Refinery Coast', at: [0.704, 0.392],
+    { code: 'REFINERY_ROW', kind: 'onshore', name: 'The Refinery Coast', at: [0.729, 0.349],
       note: 'the petrochemical corridor along the Gulf — fence-line country' },
     { code: 'THE_DELTA', kind: 'onshore', name: 'The Delta', at: [0.146, 0.470],
       note: 'spills, flaring, and what was done to the people who objected' },
@@ -424,6 +436,17 @@
     ADJ[R[0]].push({ to: R[1], cost: R[2], label: R[3], id });
     ADJ[R[1]].push({ to: R[0], cost: R[2], label: R[3], id });
   });
+  // OPTIONAL ROUTES (docs/DECISIONS-0928.md, the Caspian question). NOT in ROUTES — the board art,
+  // the route count and every static check stay as they were. Each exists only in a game whose
+  // mapState.opts names it (THE PATH `geo` rule); everywhere else routeOpen() says no and
+  // trafficAt() does not see it, so it cannot even count as a blocked route.
+  //   BTC — the Baku–Tbilisi–Ceyhan line: the Caspian's real pipe out to the Mediterranean.
+  const OPTIONAL_ROUTES = { BTC: ['NIKOYL', 'BOSPHORUS', 2, 'the BTC line (Baku–Ceyhan)'] };
+  Object.keys(OPTIONAL_ROUTES).forEach(k => {
+    const R = OPTIONAL_ROUTES[k], id = 'OPT_' + k;
+    ADJ[R[0]].push({ to: R[1], cost: R[2], label: R[3], id, opt: k });
+    ADJ[R[1]].push({ to: R[0], cost: R[2], label: R[3], id, opt: k });
+  });
 
   // ---- state helpers ---------------------------------------------------------
   // state = { closed:{GATE:turns}, disabled:{routeId:turns}, built:{STRUCT:true} }
@@ -437,12 +460,13 @@
   }
   function routeOpen(route, from, state) {
     state = state || {};
+    if (route.opt && !(state.opts && state.opts[route.opt])) return false;
     if (state.disabled && state.disabled[route.id] > 0) return false;
     return placeOpen(route.to, state) && placeOpen(from, state);
   }
   // routes out of a place, split open/blocked (the delivery squeeze reads this)
   function trafficAt(code, state) {
-    const all = ADJ[code] || [];
+    const all = (ADJ[code] || []).filter(r => !r.opt || (state && state.opts && state.opts[r.opt]));
     const open = all.filter(r => routeOpen(r, code, state));
     return { open: open.length, blocked: all.length - open.length, total: all.length, routes: all };
   }
@@ -509,7 +533,7 @@
     return D.PERIL[p.kind] || 0;
   }
 
-  const REG = { MAP_DIALS, PLACES, ROUTES, STRUCTURES, BY, CODES, HQS, GATES, ADJ, FACTION_HQ,
+  const REG = { MAP_DIALS, PLACES, ROUTES, OPTIONAL_ROUTES, STRUCTURES, BY, CODES, HQS, GATES, ADJ, FACTION_HQ,
     placeOpen, routeOpen, trafficAt, reach, pathOf, connected, hqsConnected, stepsFor, perilOf };
   global.OIL_MAP = REG;
   if (typeof module !== 'undefined' && module.exports) module.exports = REG;

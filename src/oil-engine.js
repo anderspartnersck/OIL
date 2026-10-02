@@ -179,6 +179,8 @@
     const buyers = g.buyersFor(p);
     if (!buyers.length) return true;
     if (buyers.indexOf(p.at) >= 0) return true;             // you are there. land it.
+    // DECISIONS-0928 `botOnshore` (bot policy): you only came to the ground because the buyer was far
+    if (g.path && g.path.botOnshore && g.domesticAt(p.at)) return true;
     const MP = OilGame._mapFX();
     const d = g.nearestBuyer(p, p.at).dist;
     return !(d !== undefined && d <= (g.mapDials.LAND_WITHIN || 4));   // within reach soon -> carry it
@@ -214,11 +216,24 @@
           if (onward !== undefined) v += Math.max(0, 14 - onward * 2);   // closer is better
         }
       }
+      // DECISIONS-0928 (bot policy, not rules — MODEL ONLY):
+      //  · supply 'lift': an empty hold heads home to lift, exactly as a full one heads for a buyer
+      //  · botOnshore: with the buyer out of reach (> LAND_WITHIN), the ground's +ONSHORE_PCT today
+      //    beats a voyage — scored just under a buyer (29 < 30), so a buyer in reach still wins
+      if (P && P.supply === 'lift' && p.barrels <= 0) {
+        const home = g.hqOf(p);
+        if (c === home) v += 30;
+        else { const dh = MP.reach(c, 99, g.mapState).dist[home]; if (dh !== undefined) v += Math.max(0, 14 - dh * 2); }
+      }
+      if (P && P.botOnshore && P.onshore && pl.kind === 'onshore' && p.barrels > 0) {
+        const nb = g.nearestBuyer(p, p.at).dist;
+        if (nb === undefined || nb > (g.mapDials.LAND_WITHIN || 4)) v += 22;
+      }
       // a built megastructure is somewhere you can SELL once the path is on — score it like ground
       if (P && P.mega && pl.kind === 'built' && g.sellableAt(c)) v += 7;
       if (pl.kind === 'hq' && c !== g.hqOf(p)) v += 3;         // somebody else's yard pays more
       if (c === p.at) v -= 4;                                  // always move or suffer
-      v -= MP.trafficAt(c, g.mapState).blocked * 2;            // don't sail into a squeeze
+      v -= g._trafficAt(c).blocked * 2;                          // don't sail into a squeeze
       if (g.era === 'CHAOTIC' && risky(c)) v -= (p.policy === 'stable' ? 8 : 3);
       return v;
     };
@@ -320,6 +335,8 @@
       this.map = !!(opts.map && MP.PLACES);
       this.mapDials = Object.assign({}, MP.MAP_DIALS || {}, opts.mapDials || {});
       this.mapState = { closed: {}, disabled: {}, built: Object.assign({}, opts.built || {}) };
+      // DECISIONS-0928 `geo`: an optional route exists only in this game (never in the baseline)
+      if (this.path && this.path.geo === 'btc') this.mapState.opts = { BTC: true };
       this.mapStats = { moves: 0, steps: 0, stayed: 0, perils: 0, barrelsLost: 0, longWay: 0,
         premiums: 0, incursions: 0, squeezed: 0, closures: 0, atSea: 0, structures: 0 };
       if (this.map) {
@@ -509,6 +526,8 @@
 
       // 2b. THE ARROW THAT CLOSES THE LOOP: a shut strait bleeds stress into the
       //     ground beside it. The gate shuts, and the field next to it catches.
+      //     (DECISIONS-0928 `spreadRound`: once a ROUND, so a longer closure is not a hotter one.)
+      if (!(this.path && this.path.spreadRound) || (this.pathDial('SPREAD_EVERY') > 0 ? this.turn % this.pathDial('SPREAD_EVERY') === 0 : this.idx === 0))
       for (const gc in this.mapState.closed) {
         (MP.ADJ[gc] || []).forEach(r => { if ((MP.BY[r.to] || {}).kind === 'hq') this.addHeat(r.to, D.HEAT_SPREAD, 'the strait is shut'); });
       }
@@ -665,7 +684,8 @@
       return Object.keys(MP.STRUCTURES || {}).filter(k => !this.mapState.built[k]);
     }
     canBuild(p) {
-      return !!(this.map && this.expansion && this.atHQ(p) && p.control >= this.mapDials.BUILD_CONTROL
+      // (DECISIONS-0928 CORE-018 middle: build credit counts toward the bar; 0 unless that dial is set)
+      return !!(this.map && this.expansion && this.atHQ(p) && (p.control + (this.path ? (p.buildCredit || 0) : 0)) >= this.mapDials.BUILD_CONTROL
         && this.buildable().length);
     }
     placeOf(p) { const MP = OilGame._mapFX(); return (MP.BY && MP.BY[p.at]) || null; }
@@ -685,6 +705,7 @@
       const r = MP.reach(from, steps, this.mapState);
       const options = r.places.slice().sort();
       p.longWay = false; p.stayed = false; p.moved = false;
+      if (this.path && this.path.supply === 'lift') this._liftAtYard(p);   // DECISIONS-0928 CORE-022
       if (this.path) this._voyageProbe(p);       // THE PATH: measured, never asked
       if (options.length > 1) {
         const pick = await this.ask(p, 'move', options);
@@ -710,7 +731,7 @@
           // same journey would have been cheaper with everything open, you were
           // detoured, and the cargo you land is worth more for it.
           if (Object.keys(this.mapState.closed).length || Object.keys(this.mapState.disabled).length) {
-            const openState = { closed: {}, disabled: {}, built: this.mapState.built };
+            const openState = { closed: {}, disabled: {}, built: this.mapState.built, opts: this.mapState.opts };
             const openR = MP.reach(from, 99, openState);
             const wouldBe = openR.dist[to];
             if (hitCape || (wouldBe !== undefined && (r.dist[to] || 0) > wouldBe)) {
@@ -781,6 +802,7 @@
         if (now !== was) {
           this.controlOwner[pl] = now;
           this.emit('control', { place: pl, from: was, to: now, turn: this.turn });
+          if (now && this.path && this.path.shut === 'control') this._holderShuts(pl, now);
         }
       });
     }
@@ -858,10 +880,22 @@
         quiet:   { mode: 'market', toll: true, mega: true, home: true, onshore: true, dials: { CONSIGN_THROUGHPUT: 2 } },
       };
       const base = typeof x === 'string' ? (PRESETS[x] || PRESETS.private) : (x === true ? PRESETS.private : Object.assign({}, x));
-      const r = Object.assign({ mode: 'private', cluster: false, toll: false, mega: false, rounds: false, home: false, onshore: false, dials: {} }, base);
+      // DECISIONS-0928 (docs/DECISIONS-0928.md) — MODEL-ONLY rule keys for Joe's open calls. No
+      // preset sets any of them, so `path` / `quiet` / the baseline are byte-identical:
+      //   shut       CORE-020 timing: 'headline' (a flashpoint shuts a gate every round before
+      //              E.D.D.) | 'control' (taking a gate-side place shuts its strait) | 'all' (probe)
+      //   spreadRound CORE-020 cap: a shut strait heats its shore once a ROUND, not every seat-turn
+      //   supply     CORE-022: 'lift' (top up in your own yard) | 'cargo' (a landed contract loads
+      //              the backhaul) | 'produce' (yard 1 + 1 per held place, each round)
+      //   geo        the Caspian: 'btc' opens the optional BTC pipe (OIL_MAP.OPTIONAL_ROUTES)
+      //   botOnshore bot policy, not a rule: the automa weighs a domestic sale against the voyage
+      //   squeeze    'shut': the delivery squeeze ignores routes to places not yet built/thawed
+      const r = Object.assign({ mode: 'private', cluster: false, toll: false, mega: false, rounds: false, home: false, onshore: false,
+        shut: null, spreadRound: false, supply: null, geo: null, botOnshore: false, squeeze: null, dials: {} }, base);
       if (r.mode !== 'market') r.mode = 'private';
       // v2 = anything beyond the original private model (which must stay exactly as measured)
-      r.v2 = r.mode === 'market' || r.cluster || r.toll || r.mega || r.rounds || r.home || r.onshore || !!Object.keys(r.dials).length;
+      r.v2 = r.mode === 'market' || r.cluster || r.toll || r.mega || r.rounds || r.home || r.onshore || !!Object.keys(r.dials).length
+        || !!r.shut || !!r.spreadRound || !!r.supply || !!r.geo || !!r.botOnshore || !!r.squeeze;
       return r;
     }
     // the buyers this seat is carrying toward right now
@@ -956,6 +990,75 @@
         this.emit('contract', { to: b, turn: this.turn });
       }
     }
+    // The delivery squeeze's read of a node. Baseline: MP.trafficAt as ever — which counts a route
+    // to a place that does not EXIST yet (the ice before Arctic Development, Sea City before it is
+    // raised) as a BLOCKED route, so the Mainland sells at −50% and the Volga / the Gulf Coast at
+    // −25% all game (DECISIONS-0928 finding). THE PATH `squeeze: 'shut'` (MODEL ONLY) counts only
+    // routes that are actually shut or disabled.
+    _trafficAt(code) {
+      const MP = OilGame._mapFX(), t = MP.trafficAt(code, this.mapState);
+      if (!(this.path && this.path.squeeze === 'shut')) return t;
+      const unbuilt = t.routes.filter(r => { const k = (MP.BY[r.to] || {}).kind;
+        return (k === 'arctic' || k === 'built') && !MP.placeOpen(r.to, this.mapState); }).length;
+      return Object.assign({}, t, { blocked: Math.max(0, t.blocked - unbuilt), open: t.open });
+    }
+
+    // ---- DECISIONS-0928 (docs/DECISIONS-0928.md): CORE-020, WHEN straits shut. MODEL ONLY. ----
+    // 'headline': the crisis layer's flashpoint of the round. Once a round, until E.D.D. arms, one
+    //             open gate shuts (drawn weighted by its heat + 1). Pulls closures into the midgame.
+    // 'all':      probe only — every gate the board rule allows is shut all game (the ceiling).
+    _shutShape() {
+      const MP = OilGame._mapFX(), S = this.path.shut;
+      if (!this.map || !MP.GATES) return;
+      if (S === 'all') { MP.GATES.forEach(gc => { if (!this.mapState.closed[gc]) this.closeGate(gc, 999); }); return; }
+      if (S !== 'headline' || this.edd) return;
+      const open = MP.GATES.filter(gc => !this.mapState.closed[gc]);
+      if (!open.length) return;
+      const w = open.map(gc => 1 + (this.heat[gc] || 0));
+      let r = this.rng.random() * w.reduce((a, b) => a + b, 0), pick = open[open.length - 1];
+      for (let i = 0; i < open.length; i++) { r -= w[i]; if (r <= 0) { pick = open[i]; break; } }
+      if (this.closeGate(pick, this.pathDial('HEADLINE_TURNS'))) {
+        this.pathStats.headlines = (this.pathStats.headlines || 0) + 1;
+        this.emit('flashpoint', { at: pick, name: (MP.BY[pick] || {}).name, headline: true });
+      }
+    }
+    // 'control': taking a place beside a strait lets the new holder squeeze it — the strait shuts.
+    _holderShuts(place, holder) {
+      const MP = OilGame._mapFX();
+      (MP.ADJ[place] || []).forEach(r => {
+        if ((MP.BY[r.to] || {}).kind !== 'gate' || this.mapState.closed[r.to]) return;
+        if (this.closeGate(r.to, this.mapDials.CLOSE_TURNS)) {
+          this.pathStats.holderShuts = (this.pathStats.holderShuts || 0) + 1;
+          this.emit('holder_shut', { gate: r.to, place, player: holder });
+        }
+      });
+    }
+    // ---- CORE-022, where cargo comes from. Every barrel a supply rule creates burns SUPPLY_BURN
+    // oil (the barrel is pulled out of the finite world — L2 holds: oil only goes down). ----
+    _supply(p, n, why) {
+      if (!(n > 0)) return 0;
+      p.barrels += n;
+      this.burnOil(n * (this.pathDial('SUPPLY_BURN') || 0));
+      this.pathStats.supplied = (this.pathStats.supplied || 0) + n;
+      this.emit('supply', { player: p.name, n, why, at: p.at });
+      return n;
+    }
+    // 'lift': start your turn in your own yard with a light hold, and you top it up
+    _liftAtYard(p) {
+      if (!(this.path && this.path.supply === 'lift') || !p.at || p.at !== this.hqOf(p)) return;
+      const to = this.pathDial('LIFT_TO') || 0;
+      if (p.barrels < to) this._supply(p, to - p.barrels, 'lift');
+    }
+    // 'produce': once a round, your yard makes 1 and every place you HOLD makes 1 more (capped)
+    _produceRound() {
+      if (!(this.path && this.path.supply === 'produce')) return;
+      const t = this.controlTable(), cap = this.pathDial('PRODUCE_CAP') || 0;
+      this.players.forEach(q => {
+        const held = Object.keys(t).filter(k => t[k] === q.name).length;
+        this._supply(q, Math.min(cap, 1 + held), 'produce');
+      });
+    }
+
     // THE PATH, before the sail: is this seat's route to its buyer longer than it would be
     // with nothing shut? A per-TURN state read, so it sees a detour spread over several turns
     // (the per-move 'longway' flag structurally cannot — see f1e94e7).
@@ -965,7 +1068,7 @@
       const now = this.nearestBuyer(p, p.at);
       if (now.dist === undefined || now.dist === 0) return;
       this.pathStats.voyageTurns++;
-      const open = this.nearestBuyer(p, p.at, { closed: {}, disabled: {}, built: this.mapState.built });
+      const open = this.nearestBuyer(p, p.at, { closed: {}, disabled: {}, built: this.mapState.built, opts: this.mapState.opts });
       if (open.dist !== undefined && now.dist > open.dist) {
         this.pathStats.detourTurns++; this.pathStats.detourSteps += now.dist - open.dist;
         this.emit('detour', { player: p.name, at: p.at, to: now.to, cost: now.dist, normally: open.dist });
@@ -994,7 +1097,14 @@
         contractPoints: 0, megaTo: null };
       if (del.consigned) {
         this.pathStats.landed++;
-        ledger.contractPoints = this.pathDial('CONSIGN_POINTS') || 0;
+        p.contractsLanded = (p.contractsLanded || 0) + 1;
+        // DECISIONS-0928 CORE-018 middles: ▰ on every Nth contract only; and/or BUILD credit that
+        // spends on a megastructure but never reaches the verdict. Defaults (every 1, credit 0) = as before.
+        const every = Math.max(1, this.pathDial('CONSIGN_POINTS_EVERY') || 1);
+        ledger.contractPoints = (p.contractsLanded % every === 0) ? (this.pathDial('CONSIGN_POINTS') || 0) : 0;
+        const credit = this.pathDial('CONSIGN_BUILD') || 0;
+        if (credit) { p.buildCredit = (p.buildCredit || 0) + credit; ledger.buildCredit = credit; }
+        if (this.path.supply === 'cargo') this._supply(p, this.pathDial('CONTRACT_LOAD') || 0, 'backhaul');
         if (ledger.contractPoints) { p.control += ledger.contractPoints; ledger.points += ledger.contractPoints; this.pathStats.contractPoints += ledger.contractPoints; }
       } else if (del.domestic) this.pathStats.domestic++;
       else this.pathStats.dumped++;
@@ -1038,7 +1148,11 @@
       const out = { value: del.value, pct: del.pct, consigned: !!del.consigned, domestic: !!del.domestic, points: 1, toll: 0, tollTo: null,
         contractPoints: 0, squeezed: del.squeezed, premium: del.premium, longWay: del.longWay, incursion: !!del.incursion };
       if (this.path) {
-        if (del.consigned) { out.contractPoints = this.pathDial('CONSIGN_POINTS') || 0; out.points += out.contractPoints; }
+        if (del.consigned) {
+          const every = Math.max(1, this.pathDial('CONSIGN_POINTS_EVERY') || 1);
+          out.contractPoints = ((p.contractsLanded || 0) + 1) % every === 0 ? (this.pathDial('CONSIGN_POINTS') || 0) : 0;
+          out.points += out.contractPoints;
+        }
         if (this.path.toll) { const own = this.ownerOf(p.at); if (own && own !== p.name) { out.toll = Math.round(del.value * this.pathDial('TOLL_PCT') / 100); out.tollTo = own; } }
       }
       return out;
@@ -1047,7 +1161,7 @@
     _deliveryValue(p) {
       const MP = OilGame._mapFX(), D = this.mapDials;
       if (!this.map) return { value: this.price, pct: 100 };
-      const t = MP.trafficAt(p.at, this.mapState);
+      const t = this._trafficAt(p.at);
       // THE TRANSFER. A shut gate makes freight scarce, so every cargo that can
       // still move is worth more (the premium) — while every route shut at YOUR
       // node cuts what you can move at all (the squeeze). The same closure pays
@@ -1217,7 +1331,7 @@
       const D = this.dials, p = this.players[this.idx];
       this._oilMark = this.oil;
       this.turn++;
-      if (this.idx === 0) { this.round++; this._settleControl(); }
+      if (this.idx === 0) { this.round++; this._settleControl(); if (this.path && this.path.shut) this._shutShape(); if (this.path && this.path.supply === 'produce') this._produceRound(); }
 
       // 1. roll the three core bodies (Supply / Weather / World) off the faces table
       let dice = [rollFace(this.rng, D.DIE_FACES), rollFace(this.rng, D.DIE_FACES), rollFace(this.rng, D.DIE_FACES)];
@@ -1309,7 +1423,9 @@
           const pick = opts.length === 1 ? opts[0] : await this.ask(p, 'structure', opts);
           const raised = opts.indexOf(pick) >= 0 ? pick : opts[0];
           if (this.build(raised)) {
-            p.control -= this.mapDials.BUILD_COST; p.exposure += this.mapDials.BUILD_HEAT;
+            let cost = this.mapDials.BUILD_COST;
+            if (this.path && p.buildCredit) { const c = Math.min(p.buildCredit, cost); p.buildCredit -= c; cost -= c; }   // credit spends first
+            p.control -= cost; p.exposure += this.mapDials.BUILD_HEAT;
             if (this.path) this._raisedOnPath(p, raised);   // THE PATH: you raised it, you own it
           }
         } else
