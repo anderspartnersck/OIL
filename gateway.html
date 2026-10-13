@@ -37,6 +37,7 @@
   #setup .ss{color:#9a8f7c;font-size:12px;font-weight:800;letter-spacing:.12em;margin-bottom:8px}
   .card{background:var(--panel);border:1px solid #3a2c18;border-radius:16px;padding:18px 22px;max-width:780px;width:100%;box-shadow:0 16px 40px rgba(0,0,0,.5)}
   .row{display:flex;align-items:center;gap:12px;margin:12px 0;flex-wrap:wrap}
+  #expRules .lbl{width:106px}
   .row .lbl{width:120px;color:#b9ab8e;font-weight:800;font-size:13px;letter-spacing:.04em}
   .seg{display:flex;gap:6px;flex-wrap:wrap}
   .chip{padding:7px 14px;border-radius:999px;background:#241a0f;color:#cfc4ad;font-weight:800;cursor:pointer;border:2px solid #4a3413}
@@ -130,10 +131,12 @@
   <h2>THE SPECULATORS</h2>
   <div class="ss">CLAIM YOUR FACTION · 4–6 AT THE TABLE · CONTROL THE RUIN</div>
   <div class="card">
-    <div class="row"><div class="lbl">EDITION</div><div class="seg" id="segEd"></div></div>
+    <div class="row"><div class="lbl">EXPANSION</div><div class="seg" id="segExp"></div></div>
+    <div id="expRules" style="display:none;border-left:2px solid #2f9e5b;padding-left:12px;margin-left:4px">
     <div class="row"><div class="lbl">RULES</div><div class="seg" id="segOpt"></div></div>
     <div class="row" id="rowPath"><div class="lbl">THE PATH</div><div class="seg" id="segPath"></div>
-      <span class="ss" id="pathHint" style="margin:0 0 0 10px;text-align:left;flex:1"></span></div>
+      <span class="ss" id="pathHint" style="margin:0 0 0 118px;text-align:left;flex-basis:100%"></span></div>
+    </div>
     <div class="row" style="align-items:flex-start"><div class="lbl">FACTIONS</div><div class="facs" id="facs" style="flex:1"></div></div>
     <div class="row" style="justify-content:space-between">
       <span class="ss" id="setupHint" style="margin:0">Tap a faction to take it as <b>YOU</b>. Others are bots. 4–6 play.</span>
@@ -149,7 +152,7 @@
       <div id="nprompt"><div class="box"><div class="pt" id="npt">—</div><div class="ps" id="nps"></div><div id="npl"></div><div class="po" id="npo"></div></div></div>
     </div>
     <aside>
-      <div class="rh"><div class="er">OiL!</div><div class="tg">NATIVE ENGINE<br><span id="rhEd">classic</span></div></div>
+      <div class="rh"><div class="er">OiL!</div><div class="tg">NATIVE ENGINE</div></div>
       <div id="pathbar"></div>
       <div id="players"></div>
       <div id="log"></div>
@@ -194,27 +197,30 @@ const colorFor=(window.OILSKIN&&OILSKIN.colorFor)||(()=>'#e0a32a');
 const cardByName={}; (window.OIL&&OIL.CARDS||[]).forEach(c=>cardByName[c.name]=c);
 
 /* ---------- setup state ---------- */
-const S={edition:'classic',expansion:true,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,view:'map',youCode:FAC[0]&&FAC[0].code};
+// OiL! is one game — no editions (the engine's 'benchmark' lane is a lab tool, not a player choice).
+const S={expansion:false,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,view:'map',youCode:FAC[0]&&FAC[0].code};
 // THE PATH presets (src/oil-engine.js pathRules; docs/THE-PATH.md). The ONLY difference is CORE-018:
 // is a landed contract worth an extra ▰? `path` says yes (and that is what makes megastructures
 // buildable); `quiet` leaves the score alone. Joe's call — both stay selectable.
 const PATH_PRESETS=[['path','CONTRACTS SCORE ▰ (recommended)','A landed contract is worth ▰1 more than a dump — the verdict can see the voyage. CORE-018: the designer\'s call.'],
   ['quiet','CONTRACTS PAY $ ONLY (quiet)','Same contracts, tolls and structures; a landed contract pays +% but no extra ▰. CORE-018: the designer\'s call.']];
+// The rules modules ride with the expansion: core play = none of them; they only show (and only
+// apply) once + Green Anders is on. Their toggles are remembered while the expansion is off.
+const on=k=>S.expansion&&S[k];
 function rosterCodes(){ return FAC.filter(f=>S.expansion||f.edition!=='EXPANSION').map(f=>f.code); }
 function activeCodes(){ // 4-6 seats: YOU + bots, capped at 6, core first
   const r=rosterCodes(); const list=[S.youCode,...r.filter(c=>c!==S.youCode)];
   return list.slice(0,Math.min(6,Math.max(4,list.length)));
 }
 function buildSetup(){
-  const segEd=$('#segEd'); segEd.innerHTML='';
-  [['classic','CLASSIC'],['benchmark','BENCHMARK']].forEach(([k,l])=>{
-    const c=document.createElement('div'); c.className='chip'+(S.edition===k?' on':''); c.textContent=l;
-    c.onclick=()=>{S.edition=k;buildSetup();}; segEd.appendChild(c);
-  });
+  const segExp=$('#segExp'); segExp.innerHTML='';
+  { const c=document.createElement('div'); c.className='chip'+(S.expansion?' on':''); c.textContent='+ Green Anders';
+    c.onclick=()=>{S.expansion=!S.expansion; if(!rosterCodes().includes(S.youCode))S.youCode=rosterCodes()[0]; buildSetup();}; segExp.appendChild(c); }
+  $('#expRules').style.display=S.expansion?'':'none';
   const segOpt=$('#segOpt'); segOpt.innerHTML='';
-  [['expansion','+ Green Anders (exp)'],['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['path','THE PATH (contracts)'],['crisis','CRISIS (fire)']].forEach(([k,l])=>{
+  [['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['path','THE PATH (contracts)'],['crisis','CRISIS (fire)']].forEach(([k,l])=>{
     const c=document.createElement('div'); c.className='chip'+(S[k]?' on':''); c.textContent=l;
-    c.onclick=()=>{S[k]=!S[k]; if(k==='expansion'&&!rosterCodes().includes(S.youCode))S.youCode=rosterCodes()[0]; if(k==='map'&&S.map)S.path=true; buildSetup();}; segOpt.appendChild(c);
+    c.onclick=()=>{S[k]=!S[k]; if(k==='map'&&S.map)S.path=true; buildSetup();}; segOpt.appendChild(c);
   });
   // THE PATH is the default experience whenever THE MAP is on; the preset row picks the scoring
   const pathOn=S.map&&S.path, segPath=$('#segPath'); segPath.innerHTML=''; $('#rowPath').style.opacity=pathOn?'1':'.35';
@@ -258,20 +264,19 @@ function startGame(){
   stop();
   const codes=activeCodes();
   const names=codes.map(c=>(FAC.find(f=>f.code===c)||{}).brand);
-  game=new OilGame({seed:(Math.random()*1e9)|0,n_players:codes.length,expansion:S.expansion,cards:S.cards,deals:S.deals,map:S.map,crisis:S.crisis,edition:S.edition,names,
-    path:(S.map&&S.path)?S.pathPreset:undefined,   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
+  game=new OilGame({seed:(Math.random()*1e9)|0,n_players:codes.length,expansion:S.expansion,cards:on('cards'),deals:on('deals'),map:on('map'),crisis:on('crisis'),names,
+    path:(on('map')&&S.path)?S.pathPreset:undefined,   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
     // THE PATH seats the real roster, so each company starts in its own yard (and its power is live —
     // the configuration path-model.js and LAB 12 measure). Off the path the table stays as it was.
-    factions:(S.map&&S.path)?codes:undefined});
+    factions:(on('map')&&S.path)?codes:undefined});
   game._colors=codes.map(c=>colorFor(c));
   const youIdx=codes.indexOf(S.youCode);
   if(youIdx>=0){ game.players[youIdx].isHuman=true; game.players[youIdx].agent={decide:presentPrompt}; }
   hist=[{price:game.price,oil:game.oil,era:'STABLE',edd:false}];
   $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#desk').classList.remove('on'); $('#log').innerHTML='';
   deskScar=false; deskSpike=false;
-  $('#rhEd').textContent=S.edition+(game.rubberBand?' · rubber band':'');
   buildPanels(); show('play'); draw();
-  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${S.cards?'cards':'no cards'} · ${S.deals?'THE TABLE':'no deals'} · ${S.map?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${S.crisis?'CRISIS':'no crisis'} · <b>${S.edition.toUpperCase()}</b>`);
+  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
 }
 function buildPanels(){
