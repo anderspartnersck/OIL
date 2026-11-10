@@ -2,11 +2,7 @@
 
 Crude, capital, and everyone at the table willing to sell you out.
 
-## ▶ [PLAY THE CURRENT GAME — gateway.html](https://anderspartnersck.github.io/OIL/gateway.html)
-
-The bare URL ([anderspartnersck.github.io/OIL](https://anderspartnersck.github.io/OIL/)) still boots
-the older ER$N-skinned build. It has a link to the gateway at the top. Which one should be the front
-door hasn't been decided yet.
+## ▶ [PLAY IT IN YOUR BROWSER](https://anderspartnersck.github.io/OIL/gateway.html)
 
 A Castle Killscreen game by **Anders & Partners**.
 
@@ -14,7 +10,7 @@ A Castle Killscreen game by **Anders & Partners**.
 >
 > **The earliest build here.** OiL!'s core rules are deliberately unwritten, so this runs the ER$N rules engine as a substrate with OiL!'s identity on top. Treat it as a sketch of a game, not the game.
 >
-> The finished Castle Killscreen titles are **[SUCK UP](https://anderspartnersck.github.io/suck-up/)**
+> The finished Castle Killscreen titles are **[SUCK UP](https://anderspartnersck.github.io/suck-up/3d.html?arcade)**
 > and **[ONE-TIMER: THE HIGH TABLE](https://anderspartnersck.github.io/high-table/)**. This repo
 > exists so the work can happen in the open, not because the work is done.
 
@@ -73,3 +69,9 @@ Created by **Joseph Coleman**, with Claude, ChatGPT, and Blender.
 Anders & Partners.
 
 <sub>Generated from the private Castle Killscreen tree. Edit there, not here.</sub>
+
+## ⚠︎ OLDER ER$N-SKINNED BUILD — NOT THE MAIN GAME
+
+Archived for reference only. The bare URL ([anderspartnersck.github.io/OIL](https://anderspartnersck.github.io/OIL/))
+still boots the first sketch, which ran OiL! on the ER$N rules engine. It is no longer updated.
+The game at the top of this page is the real one.
