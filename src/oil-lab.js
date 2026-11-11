@@ -69,12 +69,17 @@
         map: !!opts.map, mapDials: opts.mapDials || {},
         crisis: !!opts.crisis, crisisDials: opts.crisisDials || {},
         path: opts.path || undefined,          // THE PATH (docs/THE-PATH.md); absent = baseline
+        privilege: opts.privilege || undefined, // THE PRIVILEGE (docs/THE-PRIVILEGE.md); absent = baseline
+        momentum: opts.momentum || undefined,   // MOMENTUM (docs/THE-MOMENTUM.md); absent = baseline
+        disputes: !!opts.disputes,              // THE DISPUTE DECK (docs/THE-EXPANSION.md) — cut in round 8, dormant
+        clock: opts.clock || undefined,         // THE SEAT CLOCK (round 8): the well and the triggers scale with the seats
+        hegemony: opts.hegemony || undefined,   // HEGEMONY (round 11): the designed 2-player game
       });
       facs && facs.forEach((c, k) => { if (g.players[k]) g.players[k].faction = g.players[k].faction || c; });
       await g.run();
       const w = g.winner;
       games.push({
-        len: g.turn, rounds: g.round, finalPrice: g.price, oil: g.oil, edd: g.edd,
+        len: g.turn, rounds: g.round, oilStart: g.dials.OIL_START, eddTurn: (g.events.find(e => e.type === 'edd_begin') || {}).turn, finalPrice: g.price, oil: g.oil, edd: g.edd,
         reason: g.end_reason, eddPath: EDD_OIL_REASON.test(g.end_reason || '') ? 'oil' : 'price',
         maxTurnHit: g.turn >= g.maxTurns,
         winFaction: (w && w.faction) || null, winPolicy: (w && w.policy) || null,
@@ -92,10 +97,106 @@
         path: g.path ? Object.assign({}, g.pathStats, {
           ctrlTo: g.events.filter(e => e.type === 'control' && e.to).length,
           raised: g.mapStats.structures, exp: g.expansion }) : null,
+        priv: g.privilege ? _privSummary(g) : null,
+        disp: (g.disputes || g.privilege) ? Object.assign({}, g.disputeStats) : null,   // (the Anders bribe counts here too, disputes or not)
+        align: g.players.map(q => ({ a: q.faction && global.OIL_CRISIS ? (global.OIL_CRISIS.alignmentOf(q.faction) || 'private') : 'private', won: q === w })),
+        mom: g.momentum ? Object.assign({ atSea: g.mapStats.atSea, campSeats: g.players.filter(q => q.campLog).length,
+          campWon: !!(w && w.campLog) }, g.momStats) : null,
+        market: (() => { const m = g.events.filter(e => e.type === 'market');
+          return { n: m.length, sum: m.reduce((a, e) => a + e.shove, 0), abs: m.reduce((a, e) => a + Math.abs(e.shove), 0),
+            chaotic: m.filter(e => e.era === 'CHAOTIC').length,
+            lag: m.reduce((a, e, i) => a + (i ? e.shove * m[i - 1].shove : 0), 0) }; })(),
       });
       if (opts.onProgress && (i % tick === 0 || i === count - 1)) { opts.onProgress(i + 1, count); await yieldUI(); }
     }
     return games;
+  }
+
+  // ---- THE PRIVILEGE (docs/THE-PRIVILEGE.md) — per-game summary + batch report ----
+  // Reads only what the engine recorded; never re-implements the rule.
+  function _privSummary(g) {
+    const w = g.winner;
+    // an EPISODE is a stretch below full privilege; it RECOVERS if the seat climbs back to 3
+    const episodes = { started: 0, recovered: 0 };
+    const below = {};
+    g.events.forEach(e => {
+      if (e.type !== 'privilege') return;
+      if (e.from === 3 && e.to < 3) { episodes.started++; below[e.player] = true; }
+      if (e.to === 3 && below[e.player]) { episodes.recovered++; below[e.player] = false; }
+    });
+    return {
+      stats: JSON.parse(JSON.stringify(g.privStats)),
+      episodes,
+      seats: g.players.map(q => ({ min: q.privMin == null ? 3 : q.privMin, final: g.privilegeOf(q),
+        seized: q.seizedRolls || 0, tolled: q.tolledTurns || 0, exposure: q.exposure,
+        turns: Object.assign({ 1: 0, 2: 0, 3: 0 }, q.privTurns || {}), won: q === w })),
+      winnerMin: w ? (w.privMin == null ? 3 : w.privMin) : 3,
+      winnerFinal: w ? g.privilegeOf(w) : 3,
+    };
+  }
+  // the shared market over a batch: drift (E1), chaos, and how much one turn's shove echoes the next
+  function marketReport(games) {
+    let n = 0, sum = 0, abs = 0, chaotic = 0, lag = 0, sq = 0;
+    games.forEach(g => { const m = g.market; if (!m) return; n += m.n; sum += m.sum; abs += m.abs; chaotic += m.chaotic; lag += m.lag; });
+    return { n, mean: n ? sum / n : 0, meanAbs: n ? abs / n : 0, chaoticRate: n ? chaotic / n : 0, lagProduct: n ? lag / n : 0 };
+  }
+  // THE COST OF A BODY. In live play the seats that lose privilege are not random (they are the
+  // ones on the record), so "how often do they win" is confounded. This pins ONE seat at k bodies
+  // for a whole game, same seeds, and reads what it did to that seat — the causal price of a body.
+  async function privilegeProbe(baseOpts, privOpts, count) {
+    const OG = global.OilGame, N = count || 300;
+    const FCODES = baseOpts.factions || null;
+    const run = async force => {
+      let won = 0, ctl = 0, exp = 0, stayed = 0;
+      for (let i = 0; i < N; i++) {
+        const np = 4 + (i % 3);
+        const pol = Array.from({ length: np }, (_, k) => ['random', 'greedy', 'stable'][(i + k) % 3]);
+        const o = Object.assign({ seed: (baseOpts.seed0 || 30000) + i, n_players: np, expansion: i % 2 === 0, policies: pol }, baseOpts);
+        delete o.seed0;
+        if (FCODES) o.factions = Array.from({ length: np }, (_, k) => FCODES[(i + k) % FCODES.length]);
+        if (FCODES && baseOpts.fix0) {                      // pin seat 0's company (the private-vs-state probe)
+          const rest = FCODES.filter(c => c !== baseOpts.fix0); o.factions = [baseOpts.fix0].concat(Array.from({ length: np - 1 }, (_, k) => rest[(i + k) % rest.length])); }
+        delete o.fix0;
+        if (force) o.privilege = Object.assign({}, privOpts || {}, { PRIV_FORCE: { 0: force } });
+        const g = new OG(o); await g.run();
+        const me = g.players[0];
+        if (g.winner === me) won++; ctl += me.control; exp += me.exposure;
+        stayed += g.events.filter(e => e.type === 'stay' && e.player === me.name).length;
+      }
+      return { win: won / N, control: ctl / N, exposure: exp / N, stayed: stayed / N };
+    };
+    const out = { N, off: await run(0) };
+    for (const k of [3, 2, 1]) out[k] = await run(k);
+    return out;
+  }
+  function privilegeReport(games) {
+    const out = { n: 0, turns: { 1: 0, 2: 0, 3: 0 }, drops: 0, restores: 0, episodes: 0, recovered: 0,
+      bendOwn: 0, bendSteward: 0, bendLost: 0, stewardRolls: 0,
+      seats: 0, seatsTo2: 0, seatsTo1: 0, wins: { 1: 0, 2: 0, 3: 0 }, appear: { 1: 0, 2: 0, 3: 0 } };
+    out.stat = {}; out.victim = { seized: { n: 0, won: 0, exp: 0 }, tolled: { n: 0, won: 0, exp: 0 }, clear: { n: 0, won: 0, exp: 0 } };
+    games.forEach(g => {
+      if (!g.priv) return; out.n++;
+      const P = g.priv, S = P.stats;
+      Object.keys(S).forEach(k => { if (typeof S[k] === 'number') out.stat[k] = (out.stat[k] || 0) + S[k]; });
+      P.seats.forEach(q => { const b = q.seized ? out.victim.seized : q.tolled ? out.victim.tolled : (q.min < 3 ? out.victim.clear : null);
+        if (b) { b.n++; b.exp += q.exposure; if (q.won) b.won++; } });
+      [1, 2, 3].forEach(k => { out.turns[k] += S.turns[k] || 0; });
+      out.drops += S.drops; out.restores += S.restores;
+      out.bendOwn += S.bendOwn; out.bendSteward += S.bendSteward; out.bendLost += S.bendLost; out.stewardRolls += S.stewardRolls;
+      out.episodes += P.episodes.started; out.recovered += P.episodes.recovered;
+      P.seats.forEach(q => {
+        out.seats++; if (q.min <= 2) out.seatsTo2++; if (q.min <= 1) out.seatsTo1++;
+        out.appear[q.min]++; if (q.won) out.wins[q.min]++;
+      });
+    });
+    const T = out.turns[1] + out.turns[2] + out.turns[3] || 1;
+    out.share = { 1: out.turns[1] / T, 2: out.turns[2] / T, 3: out.turns[3] / T };
+    out.recoveryRate = out.episodes ? out.recovered / out.episodes : 0;
+    ['seized', 'tolled', 'clear'].forEach(k => { const b = out.victim[k]; b.winRate = b.n ? b.won / b.n : 0; b.avgExp = b.n ? b.exp / b.n : 0; });
+    out.perGame = k => (out.n ? (out.stat[k] || 0) / out.n : 0);
+    // win rate by the LOWEST privilege a seat fell to (the "can the penalized still win?" read)
+    out.winRateByMin = {}; [1, 2, 3].forEach(k => { out.winRateByMin[k] = out.appear[k] ? out.wins[k] / out.appear[k] : 0; });
+    return out;
   }
 
   // ---- franchise-law report over a batch (mirrors scripts/oil-sweep.js) -------
@@ -110,7 +211,9 @@
     const median = lens.length ? lens[Math.floor(lens.length / 2)] : 0;
     const avgWinExp = games.reduce((a, g) => a + g.winExposure, 0) / N;
     const avgLeadGap = games.reduce((a, g) => a + g.leadGap, 0) / N;
-    const reach = reachability(dials);
+    // the worst case is the BIGGEST well in the batch (THE SEAT CLOCK, round 8: 15 oil a seat -> up to 120)
+    const bigWell = Math.max(0, ...games.map(g => g.oilStart || 0));
+    const reach = reachability((dials && dials.OIL_START != null) || !bigWell ? dials : Object.assign({}, dials, { OIL_START: Math.max(bigWell, BASE.OIL_START) }));
 
     // win-rate by faction (wins / appearances) + by policy
     const appear = {}, fwins = {}, pwins = {};
@@ -510,7 +613,7 @@
       ok: newKinds.length === 0 && on.perTurn <= off.perTurn * 1.05 };
   }
 
-  const LAB = { enumerateShove, greenRate, reachability, runBatch, lawReport, analyzeCard, deckIncidence, analyzeDeal, dealIncidence, dealReport, mapAudit, mapReport, analyzeDetour, crisisReport, decisionBudget, pathReport, analyzeToll, pathAudit, BASE };
+  const LAB = { enumerateShove, greenRate, reachability, runBatch, lawReport, analyzeCard, deckIncidence, analyzeDeal, dealIncidence, dealReport, mapAudit, mapReport, analyzeDetour, crisisReport, decisionBudget, pathReport, analyzeToll, pathAudit, privilegeReport, privilegeProbe, marketReport, BASE };
   global.OIL_LAB = LAB;
   if (typeof module !== 'undefined' && module.exports) module.exports = LAB;
 })(typeof window !== 'undefined' ? window : globalThis);

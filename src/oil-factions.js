@@ -99,7 +99,10 @@
       // 'мина' = landmine: the buried thing your supply line runs over. The richest
       // rival is the one standing on it — and a rising price tightens the squeeze.
       text: 'The landmine under the supply line — each turn the table’s richest rival takes +1 exposure (+2 instead if the price rose this turn). No gain to Mina; pure squeeze.',
-      passive: (g, p) => { const t = g.richestOpp(p); if (t) t.exposure += (priceDelta(g) > 0 ? 2 : 1); },
+      passive: (g, p) => { const t = g.richestOpp(p);
+        // HEGEMONY 2p (CONCEPT): with one rival the mine never misses — it only goes off under a rival RICHER than Mina
+        if (t && g.heg2 && g.hegDials.MINA_RICHER && t.holdings(g.price) <= p.holdings(g.price)) return;
+        if (t) t.exposure += (priceDelta(g) > 0 ? 2 : 1); },
     },
     NIK: {
       edition: 'CORE',

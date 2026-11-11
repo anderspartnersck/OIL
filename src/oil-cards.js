@@ -50,6 +50,9 @@
     "Strait Flush": D("Strait Flush", (g, p) => {
       g.bumpPrice(4); g.forceEra('CHAOTIC');
       if (g.map) { const t = g.leaderOpp(p) || g.richestOpp(p); if (t) g._eddCloseNear(t); }
+      // THE PRIVILEGE (SEIZE · PRIZE LAW): a blockade takes prizes. If the blockaded leader is
+      // already short a body, the one who shut the strait takes it.
+      { const t = g.leaderOpp(p) || g.richestOpp(p); if (t && g.seizeFrom) g.seizeFrom(p, t, 'Strait Flush'); }
     }),
     // "Two routes now. Neither of them yours." With the map on, one of the leader's
     // routes is taken out of service as well as a control point.
@@ -59,16 +62,20 @@
     }),
     // the rare cooler: the market comes off the boil (STABLE + price −2, revaluing every
     // hoarder's barrels down) and the peacemaker banks a slingshot (+1 pip). "Nobody dies."
-    "Ocean of Serenity": D("Ocean of Serenity", (g, p) => { g.forceEra('STABLE'); g.bumpPrice(-2); p.pips = Math.min(g.dials.PIPS_START, p.pips + 1); }),
+    "Ocean of Serenity": D("Ocean of Serenity", (g, p) => { g.forceEra('STABLE'); g.bumpPrice(-2); p.pips = Math.min(g.pipCap ? g.pipCap(p) : g.dials.PIPS_START, p.pips + 1); }),
     "It's Just A Little Chop": D("It's Just A Little Chop", (g, p) => { g.bumpPrice(-1); g.burnOil(1); }),
     // "Everything freezes. The countdown does not." You keep your tempo (+1 pip) while
     // every rival loses one (−1 pip) — time stutters for them, not you. Tempo denial.
-    "Ocean of Time": D("Ocean of Time", (g, p) => { p.pips = Math.min(g.dials.PIPS_START, p.pips + 1); g.players.forEach(q => { if (q !== p) q.pips = Math.max(0, q.pips - 1); }); }),
+    "Ocean of Time": D("Ocean of Time", (g, p) => { p.pips = Math.min(g.pipCap ? g.pipCap(p) : g.dials.PIPS_START, p.pips + 1); g.players.forEach(q => { if (q !== p) q.pips = Math.max(0, q.pips - 1); }); }),
     // "I crossed an ocean. The least you can do is pay." You deliver and collect the toll
     // FROM the richest rival — their value (up to one price) crosses the table to you.
-    "I've Travelled Across For You": D("I've Travelled Across For You", (g, p) => { const t = g.richestOpp(p); if (t) { const toll = Math.min(t.value, g.price); t.value -= toll; p.value += toll; } }),
+    // THE PRIVILEGE (TOLL): the card already says it — "the least you can do is pay". If the richest
+    // rival is short a body, the toll keeps running: they throw it, you take what it earns.
+    "I've Travelled Across For You": D("I've Travelled Across For You", (g, p) => { const t = g.richestOpp(p); if (t) { const toll = Math.min(t.value, g.price); t.value -= toll; p.value += toll; } if (t && g.tollOn) g.tollOn(p, t, "I've Travelled Across For You"); }),
     "Cash Wave": D("Cash Wave", (g, p) => { g.players.forEach(q => { q.value += 10; }); g.bumpPrice(2); }),
-    "Rogue Wave": D("Rogue Wave", (g, p) => { const t = g.richestOpp(p); if (t) t.barrels = Math.max(0, t.barrels - 2); }),
+    // THE PRIVILEGE (TOLL · SALVAGE): the wave wrecks the richest rival's cargo; whoever is there to
+    // pull the hull off the rocks claims salvage on a seat already short a body.
+    "Rogue Wave": D("Rogue Wave", (g, p) => { const t = g.richestOpp(p); if (t) t.barrels = Math.max(0, t.barrels - 2); if (t && g.tollOn) g.tollOn(p, t, 'Rogue Wave'); }),
     "Doldrums": D("Doldrums", (g, p) => { g.players.forEach(q => { if (q !== p) q.exposure += 1; }); }),
     "Chiiiiiiiina": D("Chiiiiiiiina", (g, p) => { g.bumpPrice(-5); }),
     "Cymbals and Gongs": D("Cymbals and Gongs", (g, p) => { g.bumpPrice(p.barrels > 0 ? 2 : -2); }),
@@ -80,7 +87,9 @@
     "Force Majeure": D("Force Majeure", (g, p) => { const mid = Math.round((g.dials.PRICE_MIN + g.dials.PRICE_MAX) / 2); g.bumpPrice(Math.round((mid - g.price) / 2)); g.forceEra('STABLE'); }),
     // the watcher sees the BIGGEST operator first: the leader is marked (+exposure),
     // and you keep the foresight (+1 pip). Surveillance as pressure, not a self-buff.
-    "Leviathan Knows": D("Leviathan Knows", (g, p) => { const t = g.leaderOpp(p); if (t) t.exposure += 2; p.pips = Math.min(g.dials.PIPS_START, p.pips + 1); }),
+    // THE PRIVILEGE (SEIZE, docs/THE-PRIVILEGE.md): the sovereign that watches you is the one that
+    // takes the dice off you. If the mark leaves the leader short a body, you throw it for them.
+    "Leviathan Knows": D("Leviathan Knows", (g, p) => { const t = g.leaderOpp(p); if (t) t.exposure += 2; p.pips = Math.min(g.pipCap ? g.pipCap(p) : g.dials.PIPS_START, p.pips + 1); if (t && g.seizeFrom) g.seizeFrom(p, t, 'Leviathan Knows'); }),
     // "Nasty, brutish, and this round." With THE TABLE on, this is the card's LITERAL
     // text at last: every standing deal on the table dissolves at once (each walk-out
     // marked as the betrayal it is) — the war of all against all. Everyone +1 exposure.
@@ -103,14 +112,23 @@
     "Measured Austerity": D("Measured Austerity", (g, p) => { g.bumpPrice(-2); g.players.forEach(q => { q.value = Math.max(0, q.value - 5); }); }),
     // diplomacy by other means: you SEIZE a control point from the leader (their −1,
     // your +1) and the occupation is dirty (+1 exposure). Ground taken, not built.
-    "Boots On The Ground": D("Boots On The Ground", (g, p) => { const t = g.leaderOpp(p); if (t) t.control = Math.max(0, t.control - 1); p.control += 1; p.exposure += 1; }),
-    "Dog-Wagged": D("Dog-Wagged", (g, p) => { g.bumpPrice(-2 * g.lastShove); }),
+    // THE PRIVILEGE (SEIZE): an occupation runs the occupied's supply. If the leader is short a
+    // body, the occupier throws it.
+    "Boots On The Ground": D("Boots On The Ground", (g, p) => { const t = g.leaderOpp(p); if (t) t.control = Math.max(0, t.control - 1); p.control += 1; p.exposure += 1; if (t && g.seizeFrom) g.seizeFrom(p, t, 'Boots On The Ground'); }),
+    // THE PRIVILEGE (SEIZE): the tail wags the dog — you manufacture somebody else's World. Lands on
+    // the rival holding the FEWEST bodies (ties: the control leader).
+    "Dog-Wagged": D("Dog-Wagged", (g, p) => { g.bumpPrice(-2 * g.lastShove);
+      if (g.seizeFrom && g.privilege) { const o = g.players.filter(q => q !== p);
+        const t = o.reduce((a, b) => (g.privilegeOf(b) < g.privilegeOf(a) || (g.privilegeOf(b) === g.privilegeOf(a) && b.control > a.control)) ? b : a, o[0]);
+        if (t) g.seizeFrom(p, t, 'Dog-Wagged'); } }),
     "Tugger, No!": D("Tugger, No!", (g, p) => { const t = g.leaderOpp(p); if (t) t.exposure += 2; }),
     "Drones R Us": D("Drones R Us", (g, p) => { const t = g.richestOpp(p); if (t) { t.control = Math.max(0, t.control - 1); t.exposure += 1; } g.forceEra('CHAOTIC'); }),
     // expansion megastructure: the map itself moves — control shifts off the leader to
     // you, and the supply reroute jolts the market (+2 price). Reshapes the board. (concept)
     "The Titan Shifts": D("The Titan Shifts", (g, p) => { const t = g.leaderOpp(p); if (t) t.control = Math.max(0, t.control - 1); p.control += 1; g.bumpPrice(2); }),
-    "Oligarcheology": D("Oligarcheology", (g, p) => { const t = g.leaderOpp(p); if (t) { t.control = Math.max(0, t.control - 1); t.value = Math.max(0, t.value - g.price); } }),
+    // THE PRIVILEGE (TOLL): the oligarch digs up what you built and bills you for the dig. If the
+    // leader is short a body, they work it and you take the cut.
+    "Oligarcheology": D("Oligarcheology", (g, p) => { const t = g.leaderOpp(p); if (t) { t.control = Math.max(0, t.control - 1); t.value = Math.max(0, t.value - g.price); } if (t && g.tollOn) g.tollOn(p, t, 'Oligarcheology'); }),
     // visible calm, hidden collapse: you impose quiet (STABLE) and bury the unrest on the
     // loudest operator — the leader takes the blame (+1 exposure) while the world depletes.
     "Quiet Over Peace": D("Quiet Over Peace", (g, p) => { g.forceEra('STABLE'); const t = g.leaderOpp(p); if (t) t.exposure += 1; g.burnOil(2); }),
@@ -118,7 +136,7 @@
     // the American President negotiates with himself on TV: spectacle bends the price his
     // way + hands him a free lever (the photo-op), but it's on camera (+exposure) and the
     // world depletes while he preens (oil -1). Nothing structural changes — no opponent moves.
-    "Negotiating With A Worthy Adversary": D("Negotiating With A Worthy Adversary", (g, p) => { g.bumpPrice(p.barrels > 0 ? 2 : -2); p.pips = Math.min(g.dials.PIPS_START, p.pips + 1); p.exposure += 1; g.burnOil(1); }),
+    "Negotiating With A Worthy Adversary": D("Negotiating With A Worthy Adversary", (g, p) => { g.bumpPrice(p.barrels > 0 ? 2 : -2); p.pips = Math.min(g.pipCap ? g.pipCap(p) : g.dials.PIPS_START, p.pips + 1); p.exposure += 1; g.burnOil(1); }),
   };
 
   global.OIL_CARD_FX = FX;

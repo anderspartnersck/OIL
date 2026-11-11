@@ -108,21 +108,18 @@
   // any roll resolution (that is toolkit stub CORE-002, unresolved).
   const DICE = {
     core: [
-      { name: 'Red Die',   color: '#c0392b', locked: true,
-        reading: 'external pressure — war / sanctions / panic / disruption',
-        reading_confidence: 'CONCEPT (~80%, not certified)' },
-      { name: 'Black Die', color: '#1c1c1c', locked: true,
-        reading: 'system response — price movement / shortages / consequences',
-        reading_confidence: 'CONCEPT (~80%, not certified)' },
+      // designer 2026-10-23: "Supply can be red, weather can be yellow, blue can be world"
+      { name: 'Supply',  color: '#c0392b', locked: true, reading: 'did the oil move?', reading_confidence: 'CONCEPT' },
+      { name: 'Weather', color: '#e0b020', locked: true, reading: 'did nature interfere?', reading_confidence: 'CONCEPT' },
+      { name: 'World',   color: '#2f6fb8', locked: true, reading: 'did politics react?', reading_confidence: 'CONCEPT' },
     ],
     expansion: [
       { name: 'Green Anders Die', color: '#2f8f5b', locked: true,
         reading: 'the wildcard — intervention / corruption / opportunity / IWS / unexpected outcomes',
         reading_confidence: 'CONCEPT (~80%, not certified)' },
     ],
-    open: 'Count discrepancy: toolkit data.py records 3 core / 4 expansion dice ' +
-          '(designer-confirmed 2026-06-06); thread-recovery has Red+Black core + ' +
-          'Green expansion. Unresolved — surfaced, not guessed (stub CORE-002).',
+    open: 'RESOLVED: 3 core dice (model A, 2026-06-15) + Green Anders; colours red / yellow / blue + green ' +
+          '(designer 2026-10-23). The April Red+Black pair is history (docs/DICE-GENERATIONS.md).',
   };
 
   // Expansion megastructures (CONCEPT brainstorm — see docs/EXPANSION-NOTES.md).

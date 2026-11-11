@@ -447,12 +447,55 @@
     ADJ[R[0]].push({ to: R[1], cost: R[2], label: R[3], id, opt: k });
     ADJ[R[1]].push({ to: R[0], cost: R[2], label: R[3], id, opt: k });
   });
+  // WEST COAST REACH (docs/DECISIONS-1110.md; Joe 2026-10-25: "the port of los angeles or alaska and then siberia
+  // need some control or flash points … I imagine japan and australia might dictate some oil need"). MODEL ONLY.
+  // Like BTC these places are NOT in PLACES/CODES/ROUTES: the board art, the counts and every baseline loop never
+  // see them. A place exists only in a game whose mapState.opts names its set (THE PATH `west` rule):
+  //   W_RIM    — THE RIM: Los Angeles, Valdez (Alaska), Vladivostok (Siberia). Ports you can sell at and HOLD (the
+  //              station meter, like any buyer), and FLASHPOINTS: a chaotic season leans on them like a strait,
+  //              and a hot one shuts (and its shut bleeds heat into the yard next door).
+  //   W_DEMAND — THE PACIFIC BUYS: Japan and Australia, two buyers with no company of their own — contracts
+  //              get dealt out there, so a cargo has a reason to cross the Pacific.
+  // kind 'port' (a kind no baseline place has): placeOpen says no unless the set is on, or while it is shut.
+  const OPTIONAL_PLACES = [
+    { code: 'LA',        kind: 'port', set: 'W_RIM', flash: true, name: 'The Port of Los Angeles', at: [0.625, 0.335] },
+    { code: 'ALASKA',    kind: 'port', set: 'W_RIM', flash: true, name: 'Valdez (Alaska)',         at: [0.585, 0.170] },
+    { code: 'SIBERIA',   kind: 'port', set: 'W_RIM', flash: true, name: 'Vladivostok (Siberia)',   at: [0.395, 0.205] },
+    { code: 'JAPAN',     kind: 'port', set: 'W_DEMAND', name: 'Tokyo Bay (Japan)',                 at: [0.405, 0.290] },
+    { code: 'AUSTRALIA', kind: 'port', set: 'W_DEMAND', name: 'Port Hedland (Australia)',          at: [0.400, 0.640] },
+  ];
+  const OPTIONAL_WEST_ROUTES = [
+    ['W_RIM', 'HARTSTARR', 'LA', 2, 'the Southwest line (overland)'],
+    ['W_RIM', 'LA', 'PACIFIC', 1, 'out of Long Beach'],
+    ['W_RIM', 'LA', 'ALASKA', 2, 'the Alaska tanker run'],
+    ['W_RIM', 'ALASKA', 'PACIFIC', 2, 'the Gulf of Alaska run'],
+    ['W_RIM', 'ALASKA', 'NWP', 1, 'the Beaufort coast'],
+    ['W_RIM', 'ALASKA', 'SIBERIA', 2, 'the Bering Sea'],
+    ['W_RIM', 'SIBERIA', 'BRIGHT', 1, 'the Sea of Japan'],
+    ['W_RIM', 'SIBERIA', 'MINA', 4, 'ESPO (overland)'],
+    ['W_RIM', 'SIBERIA', 'NSR', 1, 'the Bering approach (west)'],
+    ['W_DEMAND', 'JAPAN', 'BRIGHT', 1, 'the East China Sea'],
+    ['W_DEMAND', 'JAPAN', 'PACIFIC', 2, 'the Kuroshio run'],
+    ['W_DEMAND', 'AUSTRALIA', 'MALACCA', 2, 'the Timor run'],
+    ['W_DEMAND', 'AUSTRALIA', 'PACIFIC', 3, 'the Coral Sea'],
+    ['W_DEMAND', 'AUSTRALIA', 'SOUTHERN', 2, 'the Great Australian Bight'],
+  ];
+  const OPT_BY_ID = {};      // optional route id -> [a, b, cost, label] (+ sub: MOMENTUM may subdivide it)
+  Object.keys(OPTIONAL_ROUTES).forEach(k => { OPT_BY_ID['OPT_' + k] = OPTIONAL_ROUTES[k]; });
+  OPTIONAL_PLACES.forEach(p => { BY[p.code] = p; ADJ[p.code] = []; });
+  OPTIONAL_WEST_ROUTES.forEach(([set, a, b, cost, label]) => {
+    const id = 'OPT_' + set + '_' + a + '_' + b, R = [a, b, cost, label]; R.sub = true; R.set = set; OPT_BY_ID[id] = R;
+    ADJ[a].push({ to: b, cost, label, id, opt: set });
+    ADJ[b].push({ to: a, cost, label, id, opt: set });
+  });
 
   // ---- state helpers ---------------------------------------------------------
   // state = { closed:{GATE:turns}, disabled:{routeId:turns}, built:{STRUCT:true} }
   function placeOpen(code, state) {
     state = state || {};
     const p = BY[code]; if (!p) return false;
+    if (state.forbid && state.forbid[code]) return false;   // OIL LEVELS 'two': water this seat is not licensed for
+    if (p.kind === 'port') return !!(state.opts && state.opts[p.set]) && !(state.closed && state.closed[code] > 0);   // WEST COAST (model)
     if (p.kind === 'gate') return !(state.closed && state.closed[code] > 0);
     if (p.kind === 'arctic') return !!(state.built && state.built.ARCTIC_DEV);
     if (p.kind === 'built') return !!(state.built && state.built[p.requires]);
@@ -533,7 +576,7 @@
     return D.PERIL[p.kind] || 0;
   }
 
-  const REG = { MAP_DIALS, PLACES, ROUTES, OPTIONAL_ROUTES, STRUCTURES, BY, CODES, HQS, GATES, ADJ, FACTION_HQ,
+  const REG = { MAP_DIALS, PLACES, ROUTES, OPTIONAL_ROUTES, OPTIONAL_PLACES, OPT_BY_ID, STRUCTURES, BY, CODES, HQS, GATES, ADJ, FACTION_HQ,
     placeOpen, routeOpen, trafficAt, reach, pathOf, connected, hqsConnected, stepsFor, perilOf };
   global.OIL_MAP = REG;
   if (typeof module !== 'undefined' && module.exports) module.exports = REG;

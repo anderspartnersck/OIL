@@ -119,6 +119,9 @@
         d.a.pips -= D.SCAPE_PIP; d.b.pips -= D.SCAPE_PIP;
         [d.a, d.b].forEach(q => { q.exposure = clamp0(q.exposure - D.SCAPE_SHED); });
         if (v) v.exposure += D.SCAPE_DUMP;
+        // THE PRIVILEGE (TOLL chain): pin it on somebody already short a body and the one who
+        // proposed it bills them for it — they work the body, the proposer takes what it earns.
+        if (v && g.tollOn) g.tollOn(d.a, v, 'scapegoat');
         d.victim = nameOf(v);
       },
     },
@@ -137,6 +140,9 @@
         for (const q of g.players) if (q !== p && TYPES[t].ok(g, p, q)) opts.push(t + ':' + q.id);
       }
     }
+    // THE PRIVILEGE (SEIZE): a SNARE is a trap, not a deal — no acceptance, and "No Words." does not
+    // stop it. Only on the menu when the privilege seize variant is on (baseline untouched).
+    if (g.canSnare) for (const q of g.players) if (g.canSnare(p, q)) opts.push('SNARE:' + q.id);
     return opts;
   }
   // parse a move string back into {type, target} / {breakUid}
@@ -146,6 +152,7 @@
     const i = m.indexOf(':');
     if (i < 0) return null;
     const type = m.slice(0, i), b = g.players[+m.slice(i + 1)];
+    if (type === 'SNARE') return b ? { snare: true, target: b } : null;
     return (TYPES[type] && b) ? { type, target: b } : null;
   }
 
@@ -177,7 +184,16 @@
       if (breaks.length && p.policy !== 'stable') {
         if (g.edd || R.random() < 0.15) return R.pick(breaks);
       }
-      const offers = (ctx.options || []).filter(o => o.indexOf(':') > 0 && o.indexOf('BREAK:') !== 0);
+      // THE PRIVILEGE (SEIZE): the greedy lay snares on whoever is closest to losing a body.
+      const snares = (ctx.options || []).filter(o => String(o).indexOf('SNARE:') === 0);
+      // HEGEMONY (bot policy): a rival part-way through collecting a pawn gets a snare (a standing snare stops it)
+      if (snares.length && g.heg2 && p.policy !== 'random') { const c = snares.find(o => g.hegCourting(g.players[+o.slice(6)])); if (c) return c; }
+      if (snares.length && p.policy === 'greedy' && R.random() < (g.privDials.SNARE_RATE || 0)) {
+        const clean = Math.min.apply(null, g.players.map(q => q.exposure)), step = Math.max(1, g.privDials.PRIV_STEP);
+        const margin = o => { const q = g.players[+o.slice(6)]; return step - ((q.exposure - clean) % step); };
+        return snares.reduce((a, b) => (margin(b) < margin(a) ? b : a));
+      }
+      const offers = (ctx.options || []).filter(o => o.indexOf(':') > 0 && o.indexOf('BREAK:') !== 0 && o.indexOf('SNARE:') !== 0);
       const wantsDeal = offers.length && R.random() < D.OFFER_RATE;
       const wantsCard = cards.length && R.random() < 0.6;
       // when both are live it is a real choice; the steward talks, the greedy play.

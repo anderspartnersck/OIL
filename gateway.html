@@ -48,7 +48,15 @@
   .fac .fb{font-weight:800;font-size:13px}
   .fac .fr{font-size:10px;color:#9a8f7c}
   .fac .seat{font-size:10px;font-weight:800;letter-spacing:.08em;margin-top:4px}
-  .fac .seat.you{color:var(--gold-lite)} .fac .seat.bot{color:#7d6b4a} .fac .seat.out{color:#5a4a2e}
+  .fac .seat.you{color:var(--gold-lite)} .fac .seat.bot{color:#7d6b4a} .fac .seat.out{color:#5a4a2e} .fac .seat.human{color:#9fd8a8}
+  .fac.hu{box-shadow:0 0 0 2px #9fd8a8}
+  .fac .facbtns{display:flex;justify-content:space-between;margin-top:4px;font-size:10px;font-weight:800}
+  .fac .rbk{color:#caa15e;text-decoration:underline;cursor:pointer} .fac .mkyou{color:var(--gold-lite);cursor:pointer}
+  .chip.box{display:flex;flex-direction:column;align-items:flex-start;border-radius:12px;padding:9px 14px;max-width:340px}
+  .chip.box small{font-weight:600;font-size:10.5px;opacity:.8;margin-top:2px;letter-spacing:0}
+  #labRules{margin:6px 0 0;color:#8a7c63;font-size:12px} #labRules summary{cursor:pointer;font-weight:800;letter-spacing:.08em}
+  #npw{font-size:11px;font-weight:800;letter-spacing:.12em;margin-bottom:6px;display:none} #npw.on{display:block}
+  button:disabled{cursor:not-allowed}
 
   /* ---------- PLAY ---------- */
   #play{flex-direction:column;background:#0c0a08}
@@ -66,6 +74,8 @@
   .pl.you{box-shadow:0 0 0 2px var(--gold-lite)} .pl.act{background:#2e2110}
   .pl .nm{font-weight:800;font-size:12.5px;display:flex;justify-content:space-between}
   .pl .nm .ctl{color:var(--gold-lite)}
+  .pl .nm .pv{color:#e8c46a;letter-spacing:.06em;font-size:14px;line-height:1;margin-right:6px}
+  .pl .nm .pv.low{color:#e2632a}
   .pl .tie{margin-top:4px;font-size:9px;font-weight:700;letter-spacing:.04em;color:#7d6b4a;min-height:11px}
   .pl .tie .pact{color:#caa15e} .pl .tie .trib{color:#2f9e5b} .pl .tie .grud{color:#e2632a}
   .pl .bars{display:flex;gap:5px;margin-top:5px;font-size:9px;color:#9a8f7c;font-weight:700}
@@ -116,6 +126,8 @@
   #nprompt .ledger tr.neg td.r{color:#ff9a6a} #nprompt .ledger tr.tot td{border-bottom:none;font-weight:800}
   table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
   td{padding:5px 9px;border-bottom:1px solid #3a2c18;text-align:left} td.r{text-align:right;font-weight:800}
+  /* carry-over #5 (⊛ the firm holds a die — "tiny"): #firm=big previews it enlarged, with a green ring. Joe's yes/no. */
+  body.firmbig .firm{font-size:1.6em;line-height:1;vertical-align:-.15em;display:inline-block;border-radius:50%;box-shadow:0 0 0 2px #2f9e5b,0 0 8px #2f9e5b;padding:0 .08em}
 </style>
 </head>
 <body>
@@ -125,19 +137,23 @@
   <div class="tag">EXTRACT. &nbsp;<b>MOVE BARRELS.</b>&nbsp; OUTLAST THE WORLD.</div>
   <div class="sub">THE HOME GAME · NATIVE ENGINE · the oil-rig table</div>
   <button class="go" id="bootGo">FUEL UP ▸</button>
+  <button class="alt sm" id="rbBoot" style="margin-top:14px">📖 READ THE RULES</button>
 </section>
 
 <section id="setup" class="screen">
   <h2>THE SPECULATORS</h2>
-  <div class="ss">CLAIM YOUR FACTION · 4–6 AT THE TABLE · CONTROL THE RUIN</div>
+  <div class="ss">OPEN THE BOX · SEAT THE COMPANIES · CONTROL THE RUIN</div>
   <div class="card">
-    <div class="row"><div class="lbl">EXPANSION</div><div class="seg" id="segExp"></div></div>
+    <div class="row"><div class="lbl">THE BOX</div><div class="seg" id="segExp"></div><button class="alt sm" id="rbSetup" style="margin-left:auto">📖 RULEBOOK</button></div>
+    <div class="row" id="rowLevels" title="OIL LEVELS (prototype, O2): works with the CORE box and with the expansion"><div class="lbl">LEVELS</div><div class="seg" id="segLevels"></div>
+      <span class="ss" id="levelsHint" style="margin:0 0 0 118px;text-align:left;flex-basis:100%"></span></div>
+    <details id="labRules"><summary>LAB — single modules, for testing (the box above sets them)</summary>
     <div id="expRules" style="display:none;border-left:2px solid #2f9e5b;padding-left:12px;margin-left:4px">
     <div class="row"><div class="lbl">RULES</div><div class="seg" id="segOpt"></div></div>
     <div class="row" id="rowPath"><div class="lbl">THE PATH</div><div class="seg" id="segPath"></div>
       <span class="ss" id="pathHint" style="margin:0 0 0 118px;text-align:left;flex-basis:100%"></span></div>
-    </div>
-    <div class="row" style="align-items:flex-start"><div class="lbl">FACTIONS</div><div class="facs" id="facs" style="flex:1"></div></div>
+    </div></details>
+    <div class="row" style="align-items:flex-start"><div class="lbl">THE COMPANIES<div class="ss" style="margin:4px 0 0;font-size:9.5px;letter-spacing:.04em;font-weight:700">tap: — → BOT → PLAYER → —<br>★ = you</div></div><div class="facs" id="facs" style="flex:1"></div></div>
     <div class="row" style="justify-content:space-between">
       <span class="ss" id="setupHint" style="margin:0">Tap a faction to take it as <b>YOU</b>. Others are bots. 4–6 play.</span>
       <button id="startGo">OPEN THE MARKET ▸</button>
@@ -149,7 +165,7 @@
   <div id="ptop">
     <div id="stage"><canvas id="cv"></canvas><div id="edd">▼ E.D.D. PROTOCOL ▼</div>
       <div id="desk"><div class="b"><span class="w">THE DESK</span><span class="l"></span></div></div>
-      <div id="nprompt"><div class="box"><div class="pt" id="npt">—</div><div class="ps" id="nps"></div><div id="npl"></div><div class="po" id="npo"></div></div></div>
+      <div id="nprompt"><div class="box"><div id="npw"></div><div class="pt" id="npt">—</div><div class="ps" id="nps"></div><div id="npl"></div><div class="po" id="npo"></div></div></div>
     </div>
     <aside>
       <div class="rh"><div class="er">OiL!</div><div class="tg">NATIVE ENGINE</div></div>
@@ -162,8 +178,9 @@
     <button class="alt sm" id="viewBtn">◍ MAP</button>
     <button class="alt sm" id="stepBtn">STEP</button>
     <button class="sm" id="runBtn">▶ RUN</button>
-    <span class="lede">Red+Black+fate → three-body price · oil is the monotonic clock · scarcity spikes price · E.D.D. = Eat/Divide/Destroy.</span>
+    <span class="lede">Supply (red) · Weather (yellow) · World (blue) → three-body price · oil is the monotonic clock · scarcity spikes price · E.D.D. = Eat/Divide/Destroy.</span>
     <label class="ss" style="margin:0">speed <select id="spd"><option value="420">slow</option><option value="200" selected>med</option><option value="80">fast</option></select></label>
+    <button class="alt sm" id="rbPlay">📖 RULES</button>
     <button class="alt sm" id="quitBtn">NEW</button>
   </div>
 </section>
@@ -186,7 +203,11 @@
 <script src="src/oil-deals.js"></script>
 <script src="src/oil-map.js"></script>
 <script src="src/oil-crisis.js"></script>
+<script src="src/oil-momentum.js"></script>
 <script src="src/oil-desk.js"></script>
+<script src="src/oil-cardtext.js"></script>
+<script src="src/oil-rulebook.js"></script>
+<script src="src/oil-rulebook-text.js"></script>
 <script>
 (function(){
 "use strict";
@@ -197,49 +218,97 @@ const colorFor=(window.OILSKIN&&OILSKIN.colorFor)||(()=>'#e0a32a');
 const cardByName={}; (window.OIL&&OIL.CARDS||[]).forEach(c=>cardByName[c.name]=c);
 
 /* ---------- setup state ---------- */
-// OiL! is one game — no editions (the engine's 'benchmark' lane is a lab tool, not a player choice).
-const S={expansion:false,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,view:'map',youCode:FAC[0]&&FAC[0].code};
+// THE BOX (Joe 2026-10-23: "build this as the game for now … think of it as a board game first").
+// Two boxes, like the shelf: CORE (the one sheet: three dice, the map, the decks, deals, fire, the companies'
+// powers) and CORE + EXPANSION (+ Green Anders and ★ THE FULL EXPANSION: the privilege, momentum, pirates and
+// the firm, the seat clock, the ducks / RICO; at 2 players, HEGEMONY). The module chips stay under LAB for testing.
+const S={expansion:false,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,privilege:false,momentum:false,disputes:false,clock:false,hegemony:false,ducks:false,view:'map',
+  youCode:FAC[0]&&FAC[0].code, seat:{}};
+// default table: you + three bots, core companies in order
+FAC.filter(f=>f.edition!=='EXPANSION').slice(0,4).forEach((f,i)=>{S.seat[f.code]=i?'bot':'you';});
 // THE PATH presets (src/oil-engine.js pathRules; docs/THE-PATH.md). The ONLY difference is CORE-018:
 // is a landed contract worth an extra ▰? `path` says yes (and that is what makes megastructures
 // buildable); `quiet` leaves the score alone. Joe's call — both stay selectable.
 const PATH_PRESETS=[['path','CONTRACTS SCORE ▰ (recommended)','A landed contract is worth ▰1 more than a dump — the verdict can see the voyage. CORE-018: the designer\'s call.'],
   ['quiet','CONTRACTS PAY $ ONLY (quiet)','Same contracts, tolls and structures; a landed contract pays +% but no extra ▰. CORE-018: the designer\'s call.']];
-// The rules modules ride with the expansion: core play = none of them; they only show (and only
-// apply) once + Green Anders is on. Their toggles are remembered while the expansion is off.
-const on=k=>S.expansion&&S[k];
+// core modules (the one sheet) are always the game; the expansion modules need the expansion box
+// OIL LEVELS (PROTOTYPE, O2): the chip row in THE BOX. #levels=two|voyage still preselects it (test seam).
+const LEVEL_PRESETS=[['off','OFF (today)','No levels: every company may sail anywhere the map allows.'],
+  ['two','TWO LEVELS (a licence)','WILDCAT → THE LANES. Land a cargo and pay $40 for the licence to the gates, capes and ice; a seizure or a dirty record takes it back and tows you home.'],
+  ['voyage','VOYAGE LEVELS (cargo climbs)','Every cargo starts at WILDCAT; sail it through a gate, cape or the ice and it is paid +35% (THE LANES). An incident on the way knocks it back.']];
+S.levels=((/levels=(two|voyage)/.exec(location.hash+location.search))||[])[1]||'off';
+if(/firm=big/.test(location.hash+location.search)) document.body.classList.add('firmbig');   // carry-over #5 preview
+const CORE_MODS={cards:1,deals:1,map:1,path:1,crisis:1};
+const on=k=>CORE_MODS[k]?S[k]:(S.expansion&&S[k]);
+const SEATS=()=>S.expansion?[2,8]:[4,6];   // core 4–6 (the one sheet); expansion 2–8 (the seat clock; 2 = HEGEMONY)
 function rosterCodes(){ return FAC.filter(f=>S.expansion||f.edition!=='EXPANSION').map(f=>f.code); }
-function activeCodes(){ // 4-6 seats: YOU + bots, capped at 6, core first
-  const r=rosterCodes(); const list=[S.youCode,...r.filter(c=>c!==S.youCode)];
-  return list.slice(0,Math.min(6,Math.max(4,list.length)));
+function seated(){ const r=rosterCodes(); return r.filter(c=>S.seat[c]); }
+function activeCodes(){ // the companies at the table, YOU first
+  const r=rosterCodes(); let list=seated(); if(!list.includes(S.youCode)&&list.length) S.youCode=list.find(c=>S.seat[c]==='you')||list[0];
+  list=[S.youCode,...list.filter(c=>c!==S.youCode)];
+  if(on('hegemony')&&on('map')) return list.concat(r.filter(c=>!list.includes(c))).slice(0,2);   // LAB: HEGEMONY forces the 2-player game
+  { const m=/seats=(\d)/.exec(location.hash); if(m){ const all=list.concat(r.filter(c=>!list.includes(c))); return all.slice(0,Math.max(2,Math.min(+m[1],all.length))); } }   // test seam: #seats=N
+  return list;
 }
+function setFull(v){ S.privilege=v; S.momentum=v; S.clock=v; S.ducks=v; if(v){S.map=true;S.path=true;} }
 function buildSetup(){
   const segExp=$('#segExp'); segExp.innerHTML='';
-  { const c=document.createElement('div'); c.className='chip'+(S.expansion?' on':''); c.textContent='+ Green Anders';
-    c.onclick=()=>{S.expansion=!S.expansion; if(!rosterCodes().includes(S.youCode))S.youCode=rosterCodes()[0]; buildSetup();}; segExp.appendChild(c); }
+  [['core','CORE GAME','three dice · the map · three decks · deals · fire · eight… six companies'],['exp','+ Green Anders — CORE + EXPANSION','the fourth die · the privilege · momentum · pirates & the firm · the seat clock · the ducks · 2-player HEGEMONY']].forEach(([k,l,sub])=>{
+    const c=document.createElement('div'); const isOn=(k==='exp')===S.expansion; c.className='chip box'+(isOn?' on':''); c.innerHTML=`${l}<small>${sub.replace('eight… ','')}</small>`;
+    c.onclick=()=>{ const v=k==='exp'; if(S.expansion===v)return; S.expansion=v; setFull(v);
+      if(!v){ FAC.forEach(f=>{ if(f.edition==='EXPANSION') delete S.seat[f.code]; }); if(!S.seat[S.youCode]){ S.youCode=seated()[0]||FAC[0].code; S.seat[S.youCode]='you'; } }
+      // the box sets the table size: top up with bots to the box's minimum, trim to its maximum
+      const [lo2,hi2]=SEATS(); let cur=seated();
+      rosterCodes().filter(c=>!S.seat[c]).forEach(c=>{ if(cur.length<lo2){ S.seat[c]='bot'; cur.push(c); } });
+      cur.slice().reverse().forEach(c=>{ if(seated().length>hi2&&S.seat[c]!=='you') delete S.seat[c]; });
+      buildSetup(); }; segExp.appendChild(c); });
   $('#expRules').style.display=S.expansion?'':'none';
   const segOpt=$('#segOpt'); segOpt.innerHTML='';
-  [['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['path','THE PATH (contracts)'],['crisis','CRISIS (fire)']].forEach(([k,l])=>{
+  [['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['path','THE PATH (contracts)'],['crisis','CRISIS (fire)'],['privilege','THE PRIVILEGE (dice ●●●)'],['momentum','MOMENTUM (must move)'],['clock','SEAT CLOCK (oil scales)'],['hegemony','HEGEMONY (2 players)']].forEach(
+  ([k,l])=>{
     const c=document.createElement('div'); c.className='chip'+(S[k]?' on':''); c.textContent=l;
-    c.onclick=()=>{S[k]=!S[k]; if(k==='map'&&S.map)S.path=true; buildSetup();}; segOpt.appendChild(c);
+    c.onclick=()=>{S[k]=!S[k]; if(k==='map'&&S.map)S.path=true; if(k==='disputes'&&S.disputes)S.privilege=true; buildSetup();}; segOpt.appendChild(c);
   });
+  { // THE EXPANSION, as one switch: THE PRIVILEGE + MOMENTUM + THE SEAT CLOCK (+ the map they ride on) — round 8
+    const all=S.privilege&&S.momentum&&S.clock&&S.map, c=document.createElement('div'); c.className='chip'+(all?' on':''); c.textContent='★ THE FULL EXPANSION';
+    c.title='THE PRIVILEGE (dice, the sea\'s law, the state, pirates) + MOMENTUM (must move) + THE SEAT CLOCK (the oil scales with the seats; E.D.D. a round from the end) — docs/THE-EXPANSION.md';
+    c.onclick=()=>{ setFull(!all); buildSetup(); }; segOpt.appendChild(c); }
   // THE PATH is the default experience whenever THE MAP is on; the preset row picks the scoring
   const pathOn=S.map&&S.path, segPath=$('#segPath'); segPath.innerHTML=''; $('#rowPath').style.opacity=pathOn?'1':'.35';
   PATH_PRESETS.forEach(([k,l])=>{
     const c=document.createElement('div'); c.className='chip'+(pathOn&&S.pathPreset===k?' on':''); c.textContent=l;
     c.onclick=()=>{ if(!S.map)return; S.path=true; S.pathPreset=k; buildSetup(); }; segPath.appendChild(c);
   });
+  { // OIL LEVELS (O2 prototype; docs/RESUME-2026-11-10.md) — off / two / voyage; needs THE MAP
+    const segL=$('#segLevels'); segL.innerHTML=''; $('#rowLevels').style.opacity=S.map?'1':'.35';
+    LEVEL_PRESETS.forEach(([k,l])=>{ const c=document.createElement('div'); c.className='chip'+(S.levels===k?' on':''); c.textContent=l;
+      c.onclick=()=>{ if(!S.map)return; S.levels=k; buildSetup(); }; segL.appendChild(c); });
+    $('#levelsHint').textContent=S.map?(LEVEL_PRESETS.find(x=>x[0]===S.levels)||LEVEL_PRESETS[0])[2]:'needs THE MAP.'; }
   $('#pathHint').textContent=pathOn?(PATH_PRESETS.find(x=>x[0]===S.pathPreset)||PATH_PRESETS[0])[2]:(S.map?'off — sell anywhere there is an HQ; no contracts.':'needs THE MAP.');
-  const fg=$('#facs'); fg.innerHTML=''; const active=activeCodes();
+  // THE COMPANIES — each player takes a placard. Tap: — → BOT → PLAYER (pass-and-play) → —. ★ = you (tap ★ to move it).
+  const fg=$('#facs'); fg.innerHTML=''; const active=activeCodes(), [lo,hi]=SEATS(), n=active.length;
   FAC.forEach(f=>{
     const inRoster=S.expansion||f.edition!=='EXPANSION';
-    const seat=f.code===S.youCode?'you':(active.includes(f.code)?'bot':'out');
-    const d=document.createElement('div'); d.className='fac'+(seat==='you'?' on':''); d.style.setProperty('--fc',colorFor(f.code));
-    if(!inRoster)d.style.opacity='.4';
+    const st=active.includes(f.code)?(f.code===S.youCode?'you':(S.seat[f.code]==='human'?'human':'bot')):'out';
+    const d=document.createElement('div'); d.className='fac'+(st==='you'?' on':st==='human'?' hu':''); d.style.setProperty('--fc',colorFor(f.code));
+    if(!inRoster)d.style.opacity='.35';
     d.innerHTML=`<div class="fb">${f.brand}${f.edition==='EXPANSION'?' <span style="color:#2f9e5b;font-size:8px">⊕EXP</span>':''}</div>
-      <div class="fr">${f.region}</div><div class="seat ${seat}">${seat==='you'?'▸ YOU':seat==='bot'?'BOT':'—'}</div>`;
-    d.onclick=()=>{ if(inRoster){ S.youCode=f.code; buildSetup(); } };
+      <div class="fr">${f.region}</div><div class="seat ${st}">${st==='you'?'★ YOU':st==='human'?'▸ PLAYER':st==='bot'?'BOT':'— tap to seat'}</div>
+      <div class="facbtns">${inRoster?`<span class="rbk" title="read this company's placard">placard ▸</span>`:''}${st!=='out'&&st!=='you'?'<span class="mkyou" title="make this your company">★</span>':''}</div>`;
+    d.onclick=e=>{ if(!inRoster)return;
+      if(e.target.classList.contains('rbk')){ window.OIL_RULEBOOK&&OIL_RULEBOOK.open('companies'); setTimeout(()=>{const el=[...document.querySelectorAll('#rulebook .rb-placard')].find(x=>x.querySelector('.rb-brand').textContent===f.brand); el&&el.scrollIntoView();},30); return; }
+      if(e.target.classList.contains('mkyou')){ if(S.seat[S.youCode]==='you')S.seat[S.youCode]='human'; S.seat[f.code]='you'; S.youCode=f.code; buildSetup(); return; }
+      const cur=S.seat[f.code];
+      if(cur==='you'){ return; }
+      if(!cur){ if(n>=hi)return; S.seat[f.code]='bot'; }
+      else if(cur==='bot'){ S.seat[f.code]='human'; }
+      else { delete S.seat[f.code]; }
+      buildSetup(); };
     fg.appendChild(d);
   });
+  const two=S.expansion&&n===2, ok=n>=lo&&n<=hi, humans=active.filter(c=>c===S.youCode||S.seat[c]==='human').length;
+  $('#setupHint').innerHTML=`${n} at the table${two?' — <b style="color:#2f9e5b">HEGEMONY</b> (the 2-player game)':''} · ${humans} player${humans>1?'s':''} (pass-and-play), ${n-humans} bot${n-humans===1?'':'s'} · ${S.expansion?'2–8':'4–6'} play${ok?'':` — <b style="color:#ff9a6a">seat ${n<lo?'at least '+lo:'at most '+hi}</b>`}`;
+  $('#startGo').disabled=!ok&&!/seats=/.test(location.hash)&&!(on('hegemony')&&on('map')); $('#startGo').style.opacity=$('#startGo').disabled?'.4':'1';
 }
 
 /* ---------- the board art ---------- */
@@ -251,6 +320,9 @@ let game=null,hist=[],running=false,timer=0;
 const cv=$('#cv'),ctx=cv.getContext('2d');
 const AXES=['Supply','Weather','World'];
 const diceStr=()=>game.lastDice.join('-');
+// die colours (designer 2026-10-23): Supply red · Weather yellow · World blue — the log shows each body in its colour
+const DIE_COL=['#e0533f','#e8c23a','#5b93d6'];
+const diceHtml=()=>game.lastDice.map((v,i)=>`<b style="color:${DIE_COL[i]}" title="${AXES[i]}">${v}</b>`).join('-');
 
 // THE DESK — running commentary (presentation only; own line index)
 let deskBudget=0,deskScar=false,deskSpike=false,deskTimer=0;
@@ -265,25 +337,35 @@ function startGame(){
   const codes=activeCodes();
   const names=codes.map(c=>(FAC.find(f=>f.code===c)||{}).brand);
   game=new OilGame({seed:(Math.random()*1e9)|0,n_players:codes.length,expansion:S.expansion,cards:on('cards'),deals:on('deals'),map:on('map'),crisis:on('crisis'),names,
-    path:(on('map')&&S.path)?S.pathPreset:undefined,   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
+    privilege:on('privilege'),
+    momentum:on('map')&&on('momentum'),
+    disputes:on('privilege')&&on('disputes'),   // round 8: cut — no chip sets it
+    clock:on('clock'),
+    hegemony:on('map')&&(on('hegemony')||on('ducks')),   // round 12: the ducks ride ★ THE FULL EXPANSION at every table under 8   // HEGEMONY (round 11; docs/THE-HEGEMONY.md): 2 seats, 6 sitting-duck pawns   // THE SEAT CLOCK (round 8): oil 15 a seat, E.D.D. arms with ~a round left   // THE DISPUTE DECK (docs/THE-EXPANSION.md)   // MOMENTUM (docs/THE-MOMENTUM.md): typed spaces, you MUST move, camping = demurrage   // THE PRIVILEGE (docs/THE-PRIVILEGE.md): penalties -> how many of the three bodies you roll
+    path:(on('map')&&S.path)?S.pathPreset:undefined,
+    crisisDials:(/retainer=(policy|rider|cut)/.exec(location.hash)||[])[1]?{RETAINER_MODE:/retainer=(policy|rider|cut)/.exec(location.hash)[1]}:undefined,   // RETAINER REWORK preview (docs/DECISIONS-1110.md): #retainer=policy|rider|cut
+    west:(/west=(rim|demand|both)/.exec(location.hash)||[])[1],   // WEST COAST preview (docs/DECISIONS-1110.md): #west=rim|demand|both
+    levels:(on('map')&&S.levels!=='off')?S.levels:undefined,   // OIL LEVELS prototype (O2, docs/RESUME-2026-11-10.md): THE BOX chip, or #levels=two | #levels=voyage   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
     // THE PATH seats the real roster, so each company starts in its own yard (and its power is live —
     // the configuration path-model.js and LAB 12 measure). Off the path the table stays as it was.
     factions:(on('map')&&S.path)?codes:undefined});
   game._colors=codes.map(c=>colorFor(c));
   const youIdx=codes.indexOf(S.youCode);
   if(youIdx>=0){ game.players[youIdx].isHuman=true; game.players[youIdx].agent={decide:presentPrompt}; }
+  // pass-and-play: every seated PLAYER is a human at this screen (the prompt says whose turn it is)
+  codes.forEach((c,i)=>{ if(i!==youIdx&&S.seat[c]==='human'){ game.players[i].isHuman=true; game.players[i].agent={decide:presentPrompt}; } });
   hist=[{price:game.price,oil:game.oil,era:'STABLE',edd:false}];
   $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#desk').classList.remove('on'); $('#log').innerHTML='';
   deskScar=false; deskSpike=false;
   buildPanels(); show('play'); draw();
-  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}`);
+  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
 }
 function buildPanels(){
   const w=$('#players'); w.innerHTML='';
   game.players.forEach((p,i)=>{
     const d=document.createElement('div'); d.className='pl'+(p.isHuman?' you':''); d.id='pl'+i; d.style.setProperty('--c',game._colors[i]);
-    d.innerHTML=`<div class="nm"><span>${p.name}${p.isHuman?' <span style="color:#f6c95a">· YOU</span>':''}</span><span class="ctl">▰0</span></div>
+    d.innerHTML=`<div class="nm"><span>${p.name}${p.isHuman?' <span style="color:#f6c95a">· YOU</span>':''}</span><span><span class="pv" title="THE PRIVILEGE — how many of Supply · Weather · World this company rolls itself"></span><span class="ctl">▰0</span></span></div>
       <div class="tie"></div>
       <div class="bars"><span>VAL<div class="bar"><i style="background:var(--gold)"></i></div></span>
       <span>EXP<div class="bar"><i style="background:var(--red)"></i></div></span>
@@ -294,7 +376,24 @@ function buildPanels(){
 function updatePanels(){
   const mV=Math.max(1,...game.players.map(p=>p.holdings(game.price))), mE=Math.max(1,...game.players.map(p=>p.exposure));
   game.players.forEach((p,i)=>{ const d=$('#pl'+i); if(!d)return;
-    d.querySelector('.ctl').textContent='▰'+p.control;
+    d.querySelector('.ctl').textContent='▰'+p.control+(game.heg2?` ◇${game._hegStake(p)}`:'');
+    if(game.heg2) d.querySelector('.ctl').title=`▰ ${p.control} held · ◇ ${game._hegStake(p)} stake in the partner matrix (counts in the verdict)${p.heg&&p.heg.progress?` · courting ${p.heg.at} (${p.heg.progress})`:''}`;
+    { const pv=d.querySelector('.pv'); // THE PRIVILEGE: ●●● clean · ●●○ / ●○○ on the record; a claimed ○ wears the rival's colour
+      if(pv){ if(game.privilege){ const k=game.privilegeOf(p), B=game.privilegeBodies(p); pv.classList.toggle('low',k<3);
+        const col=n=>{const i=game.players.findIndex(q=>q.name===n);return i>=0?game._colors[i]:'#e2632a';};
+        pv.innerHTML=B.map((b,i)=>b.own?`<span style="color:${DIE_COL[i]||'#e8c46a'}" title="${AXES[i]||''} — you roll it">●</span>`:b.how==='seize'?`<span style="color:${col(b.by)}" title="seized — ${b.by} throws this body">◉</span>`
+          :b.how==='toll'?`<span style="color:${col(b.by)}" title="tolled — you throw it, ${b.by} takes what it earns">◐</span>`
+          :b.how==='gov'?(b.by?`<span style="color:${col(b.by)}" title="requisitioned by the state — ${b.by} (state-held) throws it">◉</span>`
+            :(p._requisition&&p._requisition.cause==='pirates'?`<span style="color:#e8e8e8" title="held for RANSOM by PIRATES — the house throws it">☠</span>`
+              :p._requisition&&p._requisition.cause==='anders'?`<span class="firm" style="color:var(--green)" title="held by THE FIRM — Anders &amp; Partners filed the Protocol on you; nobody at the table throws it (${p._requisition.rolls} roll${p._requisition.rolls>1?'s':''})">⊛</span>`
+              :`<span style="color:#9aa3ad" title="requisitioned by the STATE — wartime powers; nobody at the table throws it">◉</span>`))
+          :'<span style="opacity:.55">○</span>').join('');
+        if(p._transit&&game.privDials.PRIV_WATER){const w=game.privDials.PRIV_WATER==='dues'?game.gateWarden(p._transit,p):null; // round 7: no warden unless 'dues'
+          pv.innerHTML+=`<span style="color:${w?col(w.name):'#6fa8c9'};font-size:10px" title="came through ${placeName(p._transit)} — a body short on the next roll${w?', dues to '+w.name:' (it goes to the house)'}"> ≈</span>`;}
+        const snared=game.snares&&game.snares[p.id];
+        if(snared)pv.innerHTML+=`<span style="color:${col(snared.by.name)};font-size:9px" title="${snared.by.name} has laid a SNARE — it springs the turn you lose a body"> ⌇</span>`;
+        pv.title=k===3?'rolls all three bodies':`rolls ${k} of the three — the house throws the rest, unless a rival has claimed one`; }
+        else pv.textContent=''; } }
     const tie=d.querySelector('.tie');
     if(tie){
       const bits=[];
@@ -311,6 +410,20 @@ function updatePanels(){
         Object.entries(game.structureOwner).filter(([k,v])=>v===p.name).forEach(([k])=>bits.push(`<span class="pact">▲ ${((OIL_MAP.STRUCTURES||{})[k]||{}).name||k}</span>`));
         if(p.barrels>0)bits.push(`<span style="color:#9a8f7c">🛢 ${p.barrels}</span>`);
       }
+      if(game.levels){ // OIL LEVELS (O2): where this seat stands — TWO: WILDCAT / LANES licence · VOYAGE: how deep this cargo has climbed
+        const L=game.lvDials;
+        if(game.levels==='two'){
+          if(p.level>=2) bits.push(`<span class="pact" title="licensed for THE LANES — the gates, capes and the ice are open to you. An enforcement hit (seizure, pirates, requisition, a dirty inspection) or a record ${L.LICENCE_KEEP}+ over the cleanest takes it back.">◆ LANES</span>`);
+          else { const gap=game._lvGap(p), need=[];
+            if((p.lvSales||0)<L.LICENCE_SALES) need.push(`land ${L.LICENCE_SALES-(p.lvSales||0)} cargo`);
+            if(gap>=L.LICENCE_GAP) need.push(`record ${gap} over the cleanest (needs under ${L.LICENCE_GAP})`);
+            if(L.LICENCE_FEE&&p.value<L.LICENCE_FEE) need.push(`$${L.LICENCE_FEE} for the fee`);
+            bits.push(`<span class="grud" title="WILDCAT — no gates, capes or ice until you hold the licence. ${need.length?'Still needed: '+need.join(' · '):'Granted at the start of your next turn'+(L.LICENCE_FEE?' ($'+L.LICENCE_FEE+')':'')}.">◇ WILDCAT${need.length?'':' ✓'}</span>`); }
+        } else if(p.barrels>0&&(p.voyLevel||1)>1) bits.push(`<span class="pact" title="this cargo has climbed to THE LANES: +${(L.VOY_PCT[(p.voyLevel||1)-1]||0)}% when it lands. An incident on the way knocks it back.">▲ cargo LANES +${L.VOY_PCT[(p.voyLevel||1)-1]||0}%</span>`);
+      }
+      if(game.disputes&&(p.disputes||[]).length)bits.push(`<span class="pact" title="dispute cards held: ${(p.disputes||[]).join(', ')}">⚖×${p.disputes.length}</span>`);
+      if(game.momentum){ if(p.under)bits.push(`<span style="color:#6fa8c9">~ at sea → ${placeName(p.at)}</span>`);
+        if(p.campTurns)bits.push(`<span class="grud" title="camping: demurrage rises each turn">⚓ camped ${p.campTurns}</span>`); }
       tie.innerHTML=bits.join(' · ');
     }
     d.classList.toggle('act',game.players[game.idx]===p&&!game.done);
@@ -354,6 +467,7 @@ function ledgerHTML(g,p){
   else if(g.path) why.push(`no contract here: ${D.CONSIGN_DUMP}% of spot`);
   if(L.premium) why.push(`freight premium +${L.premium}%`);
   if(L.longWay) why.push(`the long way round +${D.LONGWAY_PCT}%`);
+  if(g.levels==='voyage'&&(p.voyLevel||1)>1) why.push(`the cargo climbed to THE LANES +${g.lvDials.VOY_PCT[(p.voyLevel||1)-1]||0}%`);
   if(L.squeezed) why.push(`squeezed −${D.BLOCK_PCT}% per shut route`);
   if(L.incursion) why.push(`a rival's yard +${D.INCURSION_BONUS}% (and exposure)`);
   const rows=[[`spot $${g.price} × ${L.pct}%`,'$'+L.value],[`<span style="color:#8a7550">${why.join(' · ')||'at spot'}</span>`,'']];
@@ -378,10 +492,15 @@ async function stepOnce(){
     else if(ev.type==='blowout'){ logLine(`&nbsp;&nbsp;<span class="out">🔥 BLOWOUT — ${ev.name.toUpperCase()} IS ALIGHT</span>${ev.player?' ('+ev.player+')':''}`); deskSay('blowout',game.turn); }
     else if(ev.type==='flashpoint'){ logLine(`&nbsp;&nbsp;<span class="out">⛔ FLASHPOINT — ${ev.name} shuts</span> <span style="color:#7d6b4a">(heat ${ev.heat})</span>`); deskSay('flashpoint',game.turn); }
     else if(ev.type==='iws'){ logLine(`&nbsp;&nbsp;<span class="grn">IWS caps the well at ${(OIL_MAP.BY[ev.at]||{}).name||ev.at}</span> — <span class="t">${ev.player}</span> pays $${ev.cost} after ${ev.burned} turn(s) burning`); deskSay('iws',game.turn); }
-    else if(ev.type==='retainer'){ logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a"><span class="t">${ev.player}</span> puts IWS on retainer ($${ev.cost})</span>`); }
+    else if(ev.type==='retainer'){ logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a"><span class="t">${ev.player}</span> ${ev.policy?'takes out an IWS policy':ev.rider?'sells and puts IWS on retainer':'puts IWS on retainer'} ($${ev.cost})</span>`); }
+    else if(ev.type==='retainer_save'){ logLine(`&nbsp;&nbsp;<span class="grn">IWS ${ev.policy?'policy pays out':'retainer holds'} at ${(OIL_MAP.BY[ev.at]||{}).name||ev.at}</span> — <span class="t">${ev.player}</span>'s yard does not blow`); }
     else if(ev.type==='absorb'){ if(ev.how==='state') logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">the state absorbs it at ${(OIL_MAP.BY[ev.at]||{}).name||ev.at} — ${ev.player} pays in legitimacy</span>`);
       else logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">${ev.player} lobbies it away at ${(OIL_MAP.BY[ev.at]||{}).name||ev.at} — $${ev.fee}</span>`); }
+    else if(ev.type==='move'&&ev.momentum&&ev.momentum.halted==='stop'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> halts at the ◆ STOP line — ${placeName(ev.to)}`); }
+    else if(ev.type==='move'&&ev.momentum){ if(ev.lost||ev.momentum.putIn) logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> ${ev.momentum.putIn?'puts in at':'is carried to'} ${placeName(ev.to)}${ev.lost?' <span class="out">(lost '+ev.lost+')</span>':''}`); }
     else if(ev.type==='move'){ if(ev.lost||ev.longWay||ev.cost>=3) logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> sails ${ev.path.map(c=>(OIL_MAP.BY[c]||{}).name||c).join(' → ')}${ev.longWay?' <span class="out">(the long way round)</span>':''}`); }
+    else if(ev.type==='level_up'){ logLine(`&nbsp;&nbsp;<span class="grn">▲ <span class="t">${ev.player}</span> ${ev.voyage?'— this cargo climbs to':'is licensed for'} ${ev.name}</span>`); }
+    else if(ev.type==='level_fall'){ logLine(`&nbsp;&nbsp;<span class="out">▼ <span class="t">${ev.player}</span> ${ev.from?'— the cargo is knocked back a level':'loses the licence — back to WILDCAT'}${ev.towed?' (towed home)':''}</span> <span style="color:#7d6b4a">(${ev.cause})</span>`); }
     else if(ev.type==='peril'){ logLine(`&nbsp;&nbsp;<span class="out">⚠ ${ev.name}</span> takes ${ev.lost} barrel(s) off <span class="t">${ev.player}</span>`); }
     else if(ev.type==='gate_close'){ logLine(`&nbsp;&nbsp;<span class="out">⛔ ${ev.name} IS SHUT</span> — ${ev.turns} turns`); }
     else if(ev.type==='gate_open'){ logLine(`&nbsp;&nbsp;<span class="grn">${(OIL_MAP.BY[ev.gate]||{}).name||ev.gate} reopens</span>`); }
@@ -400,10 +519,57 @@ async function stepOnce(){
     else if(ev.type==='passage'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> pays ${ev.to} $${ev.paid} to pass ${ev.name}`); }
     else if(ev.type==='control'&&game.path){ if(ev.to) logLine(`&nbsp;&nbsp;<span class="grn">⌂ ${ev.to} now HOLDS ${placeName(ev.place)}</span> — every rival cargo landed there pays the toll`); else if(ev.from) logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">${placeName(ev.place)} is contested again</span>`); }
     else if(ev.type==='detour'){ const q=game.players.find(z=>z.name===ev.player); if(q&&q.isHuman) logLine(`&nbsp;&nbsp;<span class="out">⛔ your route to ${placeName(ev.to)} is ${ev.cost} steps (normally ${ev.normally})</span>`); }
-    else if(ev.type==='slingshot'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> slingshots the price`); }
+    else if(ev.type==='slingshot'){ logLine(ev.forSeat
+      ? `&nbsp;&nbsp;<span class="t">${ev.player}</span> ${ev.how==='toll'?'takes the toll':'holds the seized body'} — <span class="out">flips ${ev.forSeat}'s market</span>`
+      : `&nbsp;&nbsp;<span class="t">${ev.player}</span> slingshots the price`); if(ev.forSeat) deskSay(ev.how==='toll'?'toll':'seize',game.turn); }
+    else if(ev.type==='snare'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> lays a <span class="out">SNARE</span> on ${ev.on} — it springs the turn they lose a body`); deskSay('snare',game.turn); }
+    else if(ev.type==='snare_sprung'){ logLine(`&nbsp;&nbsp;<span class="out">⌇ the snare springs</span> — ${ev.on} is short a body and ${ev.player} was waiting`); }
+    else if(ev.type==='snare_rust'){ logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">${ev.player}'s snare on ${ev.on} rusts — they stayed clean</span>`); }
+    else if(ev.type==='seize'){ logLine(`&nbsp;&nbsp;<span class="out">◉ ${ev.player} ${ev.cause==='arrest'?'ARRESTS '+ev.on+'\'s vessel in port and takes a body':'SEIZES a body from '+ev.on}</span>${ev.cause!=='snare'&&ev.cause!=='arrest'?' ('+ev.cause+')':''} — they throw it for ${ev.rolls} rolls, and hold ${ev.on}'s flip`); deskSay(ev.cause==='arrest'?'arrest':'seize',game.turn); }
+    else if(ev.type==='seize_end'){ logLine(`&nbsp;&nbsp;<span class="grn">${ev.on} takes the body back</span> from ${ev.player}${ev.why==='regained'?' — clean again':''}`); }
+    else if(ev.type==='claim_toll'){ logLine(`&nbsp;&nbsp;<span class="out">◐ ${ev.player} ${ev.cause==='salvage'?'claims SALVAGE on':'TOLLS'} ${ev.on}</span> (${ev.cause}) — ${ev.on} throws the body; ${ev.player} takes what it earns, ${ev.turns} turns`); deskSay(ev.cause==='salvage'?'salvage':'toll',game.turn); }
+    else if(ev.type==='toll_paid'){ logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">${ev.player} pays ${ev.to} $${ev.cut} of the sale${ev.control?' and the ▰':''} — the toll</span>`); }
+    else if(ev.type==='pirate_mood'){ logLine(ev.mood==='quiet'?`<span style="color:#9aa3ad">☠ the pirate waters go QUIET</span>`
+      :`<span class="out">☠ the pirates are ${ev.mood==='severe'?'out in force — the world is at war':'awake — the world is unsettled'}</span>`); deskSay(ev.mood==='quiet'?'piratesQuiet':'piratesWake',game.turn); }
+    else if(ev.type==='pirates'){ logLine(ev.who==='the embargo'?`&nbsp;&nbsp;<span class="out">☠ THE EMBARGO</span> stops ${ev.on} (${ev.where}) — caught running the embargo, Cuba style; piracy with a flag. The house throws ${ev.roll}: a body held, ${ev.rolls} rolls`
+      :`&nbsp;&nbsp;<span class="out">☠ PIRATES</span> board ${ev.on} (${ev.where}) — the house throws ${ev.roll}: a body held for ransom, ${ev.rolls} rolls`); deskSay('pirates',game.turn); }
+    else if(ev.type==='dispute'){ logLine(`&nbsp;&nbsp;<span class="${ev.won?'grn':'out'}">⚖ DISPUTE</span> — ${ev.player} contests ${ev.against}'s ${ev.kind} with <b>${ev.card}</b>: ${ev.def.join('-')||'—'} vs ${ev.by.join('-')}${ev.anders!=null?` · tie → <span class="grn">Anders ${ev.anders}</span>`:''} → ${ev.won?'CLAIM VOID':'the claim stands'}`); deskSay(ev.anders!=null?'arbiter':'dispute',game.turn); }
+    // ROUND 9 — the firm files the Protocol (ANDERS_ROLE 'protocol'); THE DESK reads it in its existing lines
+    // HEGEMONY (round 11): the matrix, the courting, the collection (THE DESK reads it in its EAT lines)
+    else if(ev.type==='hegemony'){ logLine(`<span class="t">HEGEMONY</span> · ${ev.matrix} matrix · ducks ${ev.pawns.map(z=>z.code+' '+z.w.join(':')).join(' · ')}`); }
+    else if(ev.type==='heg_courting'){ logLine(`&nbsp;&nbsp;<span class="grn">◇ courting</span> — ${ev.player} docks at ${placeName(ev.at)} for the ${ev.pawn} duck (${ev.need} turns)`); }
+    else if(ev.type==='heg_broken'){ logLine(`&nbsp;&nbsp;<span style="color:#9aa3ad">◇ the courting breaks</span> — ${ev.player} at ${placeName(ev.at)} (${ev.why})`); }
+    // round 12 — THE RICO PROTOCOL ("ducks on a pond, we all go down"); THE DESK reads it in its existing E.D.D. lines
+    else if(ev.type==='rico'){ logLine(`&nbsp;&nbsp;<span class="out">⛓ RICO</span> — ${ev.player}'s ${ev.outcome} on ${ev.on} spreads (${ev.why})${ev.hit.length?': '+ev.hit.join(', ')+' go down with them (▰-1)':''}${ev.duck?` · the ${ev.duck} duck is knocked off the pond`:''}`); deskSay('edd',game.turn); }
+    else if(ev.type==='rico_armed'){ logLine(`&nbsp;&nbsp;<span class="out">⛓ ${ev.player} plays ${ev.card}</span> — the next strike will spread`); }
+    else if(ev.type==='heg_throw'){ logLine(`&nbsp;&nbsp;<span style="color:#9aa3ad">◇ influence</span> — ${ev.player} throws ${ev.mine} vs ${ev.theirs} for ${ev.pawn}${ev.won?' — won':''}`); }
+    else if(ev.type==='heg_collect'){ logLine(`&nbsp;&nbsp;<span class="out">◆ ${ev.player} COLLECTS ${ev.pawn}</span> off the board — ${ev.on} loses ◇${ev.hurt}; ${ev.player} banks ◇${ev.banked} and takes the ground (▰+1)`); deskSay('EAT',game.turn); }
+    else if(ev.type==='anders_files'){ logLine(`&nbsp;&nbsp;<span class="grn">⊛ Anders &amp; Partners FILE THE PROTOCOL</span> — ${ev.player}'s strike is aimed at the leader, ${ev.on}. No grudge, no partner spares them.`); deskSay('arbiter',game.turn); }
+    else if(ev.type==='anders_holds'){ logLine(`&nbsp;&nbsp;<span class="grn">⊛ THE FIRM HOLDS A BODY</span> — ${ev.on}'s (${ev.why}), ${ev.rolls} rolls. The striker gets the ground; the firm keeps the dice.`); deskSay('green',game.turn); }
+    else if(ev.type==='anders_bribe'){ logLine(`&nbsp;&nbsp;<span class="grn">⊛ Anders &amp; Partners</span> — ${ev.player} is waved through inspection off ${ev.name} (green ${ev.die}). It is on the record.`); deskSay('bribe',game.turn); }
+    else if(ev.type==='camp'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> <span class="out">⚓ CAMPS</span> at ${placeName(ev.at)} — demurrage $${ev.paid}${ev.exposure?' + '+ev.exposure+' exposure':''} (turn ${ev.campTurn} camped)`); deskSay('camp',game.turn); }
+    else if(ev.type==='inspection'){ logLine(`&nbsp;&nbsp;<span class="out">⚖ INSPECTION</span> off ${ev.name} — ${ev.player} is on the record: halted, fined $${ev.fine}`); deskSay('inspection',game.turn); }
+    else if(ev.type==='current'){ logLine(`&nbsp;&nbsp;<span style="color:#6fd0d8">» ${ev.name}</span> carries ${ev.player} on ${ev.push}`); }
+    else if(ev.type==='storm'){ logLine(`&nbsp;&nbsp;<span class="out">⚠ STORM</span> — ${ev.player} loses ${ev.lost} over the side`); deskSay('storm',game.turn); }
+    else if(ev.type==='doldrums'){ logLine(`&nbsp;&nbsp;<span style="color:#9aa3ad">⚠ the DOLDRUMS</span> — ${ev.player} is becalmed`); }
+    else if(ev.type==='becalmed'){ logLine(`&nbsp;&nbsp;<span style="color:#9aa3ad">${ev.player} sits becalmed</span>`); }
+    else if(ev.type==='stuck'){ logLine(`&nbsp;&nbsp;<span style="color:#9aa3ad">${ev.player} has nowhere the sea can take them</span> — held, no demurrage`); }
+    else if(ev.type==='event_space'){ logLine(`&nbsp;&nbsp;<span class="grn">✦ ${ev.player} lands on an EVENT space</span> — the sea deals the news`); }
+    else if(ev.type==='dues'){ logLine(`&nbsp;&nbsp;<span style="color:#6fa8c9">≈ TRANSIT DUES</span> — ${ev.on} came through ${placeName(ev.gate)}; ${ev.player} (the warden) takes what that body earns`); deskSay('dues',game.turn); }
+    else if(ev.type==='wartime'){ logLine(`<span class="out">☢ WARTIME ${ev.level===2?'(the Protocol is armed)':'— '+(ev.heat!=null&&ev.heat>=game.privDials.GOV_HEAT_AT?'the board is burning':'the oil is running out')}</span> — governments start requisitioning dice`); deskSay('wartime',game.turn); }
+    else if(ev.type==='requisition'){ logLine(`&nbsp;&nbsp;<span style="color:#9aa3ad">◉ REQUISITIONED</span> — the state takes a body from ${ev.on}${ev.by?' (thrown by '+ev.by+')':''} for ${ev.rolls} rolls${ev.cause!=='wartime'?' · '+ev.cause:''}`); deskSay('requisition',game.turn); }
+    else if(ev.type==='requisition_end'){ logLine(`&nbsp;&nbsp;<span class="grn">${ev.on} gets the requisitioned body back</span>`); }
+    else if(ev.type==='toll_end'){ logLine(`&nbsp;&nbsp;<span class="grn">${ev.on} is off ${ev.player}'s toll</span>`); }
+    else if(ev.type==='privilege'){ const dots='●'.repeat(ev.to)+'○'.repeat(3-ev.to);
+      logLine(ev.restored
+        ? `&nbsp;&nbsp;<span class="grn">${dots} ${ev.player} gets a body back</span> — rolls ${ev.to} of the three`
+        : `&nbsp;&nbsp;<span class="out">${dots} ${ev.player} loses privilege</span> — rolls ${ev.to} of the three; the house throws the rest`);
+      deskSay(ev.restored?'privBack':'privLost',game.turn); }
+    else if(ev.type==='steward'){ const q=game.players.find(z=>z.name===ev.player), st=game.players.find(z=>z.name===ev.steward);
+      if((q&&q.isHuman)||(st&&st.isHuman)) logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a">${ev.steward} rolls ${ev.bodies===2?'Weather + World':'World'} for ${ev.player}</span>`); }
   }
   const h=hist[hist.length-1];
-  if(h.era==='CHAOTIC') logLine(`<span class="t">T${game.turn}</span> ${diceStr()} · shove ${h.shove>=0?'+':''}${h.shove} <span class="spike">CHAOTIC</span> · $${game.price}`);
+  if(h.era==='CHAOTIC') logLine(`<span class="t">T${game.turn}</span> ${diceHtml()} · shove ${h.shove>=0?'+':''}${h.shove} <span class="spike">CHAOTIC</span> · $${game.price}`);
   // desk reads the tape (scarcity onset > price spike > generic chaos)
   if(game.oil<=game.dials.SCARCITY_BAND && !deskScar){ deskScar=true; deskSay('scarcity',game.turn); }
   else if(game.price>=90 && !deskSpike){ deskSpike=true; deskSay('spike',game.turn); }
@@ -422,8 +588,12 @@ function verdict(){
     const L=game.path?game.events.filter(e=>e.type==='landed'&&e.player===p.name):[];
     const tolls=game.path?game.events.filter(e=>e.type==='toll'&&e.to===p.name).reduce((a,e)=>a+e.paid,0):0;
     const pathCell=game.path?`<td class="r" style="font-weight:600;color:#9a8f7c">★${L.filter(e=>e.consigned).length} landed · ${L.filter(e=>!e.consigned&&!e.domestic).length} dumped${L.some(e=>e.domestic)?` · ⛏${L.filter(e=>e.domestic).length} onshore`:''}${tolls?` · toll $${tolls}`:''}</td>`:'';
-    tr.innerHTML=`<td>${p===game.winner?'🛢️ ':''}${p.name}${p.isHuman?' · YOU':''}</td><td class="r">▰${p.control}</td>${pathCell}<td class="r">exp ${p.exposure}</td><td class="r">$${p.holdings(game.price)|0}</td>`;
+    tr.innerHTML=`<td>${p===game.winner?'🛢️ ':''}${p.name}${p.isHuman?' · YOU':''}</td><td class="r">▰${p.control}</td>${pathCell}<td class="r">exp ${p.exposure}${game.privilege?` <span style="color:${game.privilegeOf(p)<3?'#e2632a':'#e8c46a'};font-size:9px" title="THE PRIVILEGE at the end">${game.privilegeDots(p)}</span>`:''}</td><td class="r">$${p.holdings(game.price)|0}</td>`;
     t.appendChild(tr);});
+  // THE PRIVILEGE: who held whose dice (seizures + tolls over the game) — the verdict's footnote
+  if(game.privilege){ const rows=Object.values(game.privLedger||{}).map(r=>({...r,n:r.seize+r.toll})).sort((a,b)=>b.n-a.n).slice(0,3);
+    const req=game.events.filter(e=>e.type==='requisition').length;
+    const tr=document.createElement('tr'); tr.id='vLedger'; tr.innerHTML=`<td colspan="6" style="font-size:10px;color:#9a8f7c;padding-top:8px">WHO HELD WHOSE DICE — ${rows.length?rows.map(r=>`${r.by} held ${r.on}'s ${r.seize?'◉'+r.seize:''}${r.seize&&r.toll?' ':''}${r.toll?'◐'+r.toll:''}`).join(' · '):'nobody took anybody\'s dice'}${req?` · the state requisitioned ${req}×`:''}</td>`; t.appendChild(tr); }
   show('verdict');
 }
 
@@ -431,9 +601,18 @@ function verdict(){
 function presentPrompt(g,p,ctx){
   return new Promise(resolve=>{
     let title='',sub='',opts=[],ledger='';
-    if(ctx.kind==='slingshot'){
+    if(ctx.kind==='slingshot'&&ctx.forSeat){
+      // THE PRIVILEGE: you SEIZED one of their bodies (or you are TOLLING them) — the flip on their turn is yours
       const proj=Math.max(g.dials.PRICE_MIN,Math.min(g.dials.PRICE_MAX,g.price+g.lastShove));
-      title='Slingshot the market?'; sub=`CHAOTIC roll — ${diceStr()} · shove ${g.lastShove>=0?'+':''}${g.lastShove} → $${g.price}→$${proj}. Spend 1 pip (you hold ${p.pips}) to FLIP the sign. You can only bend a market that is already moving.`;
+      const flip=Math.max(g.dials.PRICE_MIN,Math.min(g.dials.PRICE_MAX,g.price-g.lastShove));
+      const why=ctx.how==='toll'?`they threw the body you are tolling, and it landed in the MIDDLE — the work is theirs, the lever is yours`
+        :`you seized one of their bodies and threw it yourself — while you hold it, their flip is yours`;
+      title=`Flip ${ctx.forSeat}'s market?`; sub=`It is ${ctx.forSeat}'s turn — ${why}. CHAOTIC roll ${diceStr()} · shove ${g.lastShove>=0?'+':''}${g.lastShove} → $${g.price}→$${proj}. Spend 1 pip (you hold ${p.pips}) to FLIP it — all three dice upside down → $${g.price}→$${flip}.`;
+      opts=[{label:'FLIP (−1 pip)',value:'flip'},{label:'leave it',value:'keep',cls:'no'}];
+    } else if(ctx.kind==='slingshot'){
+      const proj=Math.max(g.dials.PRICE_MIN,Math.min(g.dials.PRICE_MAX,g.price+g.lastShove));
+      const flip=Math.max(g.dials.PRICE_MIN,Math.min(g.dials.PRICE_MAX,g.price-g.lastShove));
+      title='Slingshot the market?'; sub=`CHAOTIC roll — ${diceStr()} · shove ${g.lastShove>=0?'+':''}${g.lastShove} → $${g.price}→$${proj}. Spend 1 pip (you hold ${p.pips}) to FLIP it — all three dice upside down, shove ${g.lastShove>0?'−':'+'}${Math.abs(g.lastShove)} → $${g.price}→$${flip}. You can only flip a market that is already moving.`;
       opts=[{label:'FLIP (−1 pip)',value:'flip'},{label:'keep',value:'keep',cls:'no'}];
     } else if(ctx.kind==='table'){
       // ONE table action: the card in your hand competes with the deal on the table.
@@ -452,16 +631,41 @@ function presentPrompt(g,p,ctx){
           const q=g.players[+String(m).slice(String(m).indexOf(':')+1)];
           opts.push({group:(TY[t]&&TY[t].label)||t,gtip:TY[t]&&TY[t].blurb,
             label:(q||{}).name||'?',value:m,tip:TY[t]&&TY[t].blurb});});});
+      // THE PRIVILEGE (seize): a SNARE is a trap, not a deal — no acceptance
+      moves.filter(m=>String(m).indexOf('SNARE:')===0).forEach(m=>{const q=g.players[+String(m).slice(6)];
+        opts.push({group:'Lay a SNARE',gtip:'1 pip, +1 exposure. Springs the turn they lose a body: you throw it for '+g.privDials.SEIZE_ROLLS+' rolls and hold their flip.',
+          label:(q||{}).name||'?',value:m,tip:`${(q||{}).name} is ${q?q.exposure-Math.min(...g.players.map(z=>z.exposure)):'?'} over the cleanest seat (a body is lost every ${g.privDials.PRIV_STEP})`});});
       breaks.forEach(m=>{
         const dl=g.standing.find(x=>String(x.uid)===String(m).slice(6));
         const other=dl?(dl.a===p?dl.b:dl.a).name:'?';
         opts.push({group:'Walk out',label:'✖ '+other,value:m,
           tip:'Take the spoils, the exposure, and their grudge.'});});
       opts.push({group:'',label:'say nothing',value:'pass',cls:'no'});
+    } else if(ctx.kind==='move'&&ctx.momentum){
+      // MOMENTUM: the sea decides how far; you decide the fork — or you camp and pay demurrage
+      const MP=window.OIL_MAP,MM=window.OIL_MOMENTUM,here=MP.BY[p.at];
+      const where=p.under?`at sea on ${MM.spacesOf(p.under.rid,g.momDials).label}, heading for ${placeName(p.at)}`:`at ${here?here.name:p.at}`;
+      title='The sea carries you — choose the fork.';
+      sub=`${diceStr()} — momentum ${ctx.points} spaces, and you MUST use them. You are ${where}. You may only stop early at a ◆ STOP line (it halts you), a ⚖ inspection (if you are dirty), or by putting in to a port you pass.`+
+        (p.under?'':` Or CAMP here: demurrage ${'$'+(g.momDials.DEMURRAGE[Math.min((p.campTurns||0)+1,g.momDials.CAMP_CAP)]||0)}${(g.momDials.DEMURRAGE_EXP[Math.min((p.campTurns||0)+1,g.momDials.CAMP_CAP)]||0)?' + '+g.momDials.DEMURRAGE_EXP[Math.min((p.campTurns||0)+1,g.momDials.CAMP_CAP)]+' exposure':''}, rising each turn you stay.`);
+      if(g.levels==='two'&&p.level<2) sub+=` ◇ WILDCAT: no fork into a gate, a cape or the ice until you hold the licence (land ${g.lvDials.LICENCE_SALES} cargo, record under ${g.lvDials.LICENCE_GAP} over the cleanest${g.lvDials.LICENCE_FEE?', $'+g.lvDials.LICENCE_FEE:''}).`;   // OIL LEVELS
+      else if(g.levels==='voyage'&&p.barrels>0) sub+=(p.voyLevel||1)>1?` ▲ This cargo has climbed to THE LANES: +${g.lvDials.VOY_PCT[(p.voyLevel||1)-1]||0}% when it lands.`:` Through a gate, a cape or the ice, this cargo climbs to THE LANES (+${g.lvDials.VOY_PCT[1]||0}%).`;
+      const G={INSPECT:'⚖',EVENT:'✦',CURRENT:'»',HAZARD:'⚠',PIRATE:'☠'};
+      opts=ctx.options.map(o=>{
+        if(o==='CAMP') return {label:`⚓ CAMP at ${placeName(p.at)}${p.campTurns?' (turn '+(p.campTurns+1)+')':''}`,value:o,cls:'no',tip:'stay put — escalating demurrage'};
+        const w=ctx.momentum[o]; const passed=w.trail.filter(x=>x.type).map(x=>G[x.type]).join('');
+        const lab=w.under?`~ at sea → ${placeName(w.at)} (${w.left} to go)${w.landed?' '+G[w.landed]:''}`
+          :`${w.halted==='stop'?'◆ ':w.putIn?'⚓ ':''}${placeName(w.at)}${w.halted==='stop'?' (STOP)':''}`;
+        const tip=[w.halted==='inspect'?'halted at INSPECTION: you are on the record — a fine, and arrest in a rival\'s water':'',
+          w.landed==='CURRENT'?'a current will push you on':'', w.landed==='HAZARD'?'rough water: the Weather body decides (storm / doldrums)':'',
+          w.landed==='EVENT'?'an EVENT space: draw':'', passed?'passes '+passed:''].filter(Boolean).join(' · ');
+        return {label:lab+(w.halted==='inspect'?' ⚖✗':'')+(passed&&!w.under?' '+passed:''),value:o,tip};
+      });
     } else if(ctx.kind==='move'){
       const MP=window.OIL_MAP,st=g.mapState,here=MP.BY[p.at];
-      const steps=MP.stepsFor(g.lastDice,g.mapDials);
-      const r=MP.reach(p.at,steps,st);
+      let steps=MP.stepsFor(g.lastDice,g.mapDials);
+      if(g.privilege) steps=Math.max(g.mapDials.MOVE_MIN,g.privSteps(p,steps));   // THE PRIVILEGE: a penalized seat's reach is capped
+      const r=MP.reach(p.at,steps,g.levels?g._lvState(p):st);   // OIL LEVELS: the distances this seat may actually sail
       title='Where do you sail?';
       sub=`${diceStr()} — spread carries you ${steps}. You are at ${here?here.name:p.at}.` +
         (g.era==='CHAOTIC'?' <CHAOTIC SEASON: the sea will take cargo.>':' Seas are steady.');
@@ -472,16 +676,23 @@ function presentPrompt(g,p,ctx){
           (pi.detour?`, +${pi.detour} because the way is shut (normally ${pi.openDist}, via ${pi.openRoute.map(placeName).join(' → ')}).`:'.')+
           ` ★ = a face-up buyer · →n = steps on to the nearest one.`;
       } else if(pi) sub+=' Your hold is empty — the contracts are not yours to chase until you carry a barrel.';
+      if(g.levels==='two'&&p.level<2) sub+=` ◇ WILDCAT: the gates, capes and the ice are closed to you until you hold the licence (land ${g.lvDials.LICENCE_SALES} cargo, keep your record under ${g.lvDials.LICENCE_GAP} over the cleanest${g.lvDials.LICENCE_FEE?', pay $'+g.lvDials.LICENCE_FEE:''}).`;
+      else if(g.levels==='voyage'&&p.barrels>0) sub+=(p.voyLevel||1)>1?` ▲ This cargo has climbed to THE LANES: +${g.lvDials.VOY_PCT[(p.voyLevel||1)-1]||0}% when it lands.`:` Sail it through a gate, a cape or the ice and it climbs to THE LANES (+${g.lvDials.VOY_PCT[1]||0}%).`;
       opts=ctx.options.map(c=>{
         const pl=MP.BY[c]||{},d=r.dist[c]||0;
         const t=MP.trafficAt(c,st);
-        const tag=c===p.at?'stay':(pl.kind==='hq'?(g.hqOf&&g.hqOf(p)===c?'⌂':'▰'):pl.kind==='gate'?'⌗':pl.kind==='cape'?'≈':pl.kind==='arctic'?'❄':pl.kind==='built'?'▲':pl.kind==='onshore'?'⛏':'·');
+        const tag=c===p.at?'stay':(pl.kind==='hq'||pl.kind==='port'?(g.hqOf&&g.hqOf(p)===c?'⌂':'▰'):pl.kind==='gate'?'⌗':pl.kind==='cape'?'≈':pl.kind==='arctic'?'❄':pl.kind==='built'?'▲':pl.kind==='onshore'?'⛏':'·');
         let lab=`${tag} ${pl.name||c}${d?' ('+d+')':''}${t.blocked?' ⛔':''}`, tip='';
         if(pi&&p.barrels>0){
           if(pi.buyers.indexOf(c)>=0){ const own=g.ownerOf(c); lab='★ '+lab+(own&&own!==p.name?' ⌂'+own:'');
             tip=own&&own!==p.name?`${own} holds this buyer — ${g.pathDial('TOLL_PCT')}% toll`:'a face-up buyer — land it here'; }
           else { const on=g.nearestBuyer(p,c).dist; if(on!==undefined)lab+=` →${on}`; }
           if(!tip&&g.domesticAt&&g.domesticAt(c)) tip=`onshore ground — no contract, but a sure sale at +${g.mapDials.ONSHORE_PCT}% (working it heats the place)`;
+        }
+        if(g.privilege&&g.privDials.PRIV_WATER&&c!==p.at){ // THE SEA'S LAW: say what a canal costs before you choose it
+          const route=MP.pathOf(MP.reach(p.at,99,st),c)||[], gate=route.slice(1).find(x=>g.gateCosts(x,p));
+          if(gate){ const w=g.privDials.PRIV_WATER==='dues'?g.gateWarden(gate,p):null; lab+=' ≈'; tip=(tip?tip+' · ':'')+`through ${placeName(gate)} — a body short next roll${w?', dues to '+w.name:''}`; }
+          const port=g.seatAtHQ(c,p); if(port&&g.privilegeOf(p)<3&&g._seizeOn()&&g.privDials.PRIV_ARREST&&!(g.deals&&g.dealBetween(port,p))){ lab+=' ⚓'; tip=(tip?tip+' · ':'')+`${port.name}'s home port — you are short a body: they can ARREST you`; }
         }
         return {label:lab,value:c,cls:c===p.at?'no':'',tip};
       });
@@ -501,7 +712,8 @@ function presentPrompt(g,p,ctx){
         if(o==='hold') return {label:'hold',value:o,cls:'no'};
         if(o==='build') return {label:`▲ RAISE A MEGASTRUCTURE (−${g.mapDials.BUILD_COST}▰)`,value:o,tip:'Reshape the map — and own what you raise.'};
         if(o==='iws') return {label:`call IWS ($${g.iwsPrice(p.at)})`,value:o};
-        if(o==='retainer') return {label:'IWS retainer',value:o};
+        if(o==='retainer') return g.crisisDials.RETAINER_MODE==='policy'?{label:`IWS policy ($${g.crisisDials.POLICY_COST})`,value:o,tip:'Pays out once: the next time your HQ would blow, it does not.'}:{label:'IWS retainer',value:o};
+        if(o==='cover') return {label:`DELIVER + COVER — $${led?led.L.value-led.L.toll-g.crisisDials.RETAINER_COST:'?'}`,value:o,tip:`Sell, and put IWS on retainer for your HQ ($${g.crisisDials.RETAINER_COST} off the top): +${g.crisisDials.RETAINER_SHIELD} heat before it blows, for ${g.crisisDials.RIDER_OWN_TURNS} of your turns.`};
         return {label:String(o),value:o};
       });
     } else if(ctx.kind==='structure'){
@@ -512,7 +724,13 @@ function presentPrompt(g,p,ctx){
         tip:((MP.STRUCTURES||{})[k]||{}).effect}));
       const tips=opts.filter(x=>x.tip).map(x=>`${x.label}: ${x.tip}`);
       if(tips.length)sub+='  —  '+tips.join('   ·   ');
-        } else if(ctx.kind==='dealoffer'){
+        } else if(ctx.kind==='dealoffer'&&ctx.dispute){
+      // THE DISPUTE DECK: a claim stands on you — accept it, or contest it with a dispute card
+      const D=ctx.dispute, what={seize:'SEIZE a body',toll:'TOLL a body',requisition:'REQUISITION a body (the state)',pirates:'hold a body for RANSOM (pirates)',dues:'take the canal DUES'}[D.kind]||D.kind;
+      title=`${D.by||'The house'} moves to ${what}.`;
+      sub=`(${D.cause}) Contest it with a dispute card: you throw the bodies your privilege holds (${g.privilegeBase(p)}), ${D.by||'the house'} throws theirs${D.by?'':' (all three)'}; the highest face wins.${g.expansion?' A tie goes to the firm — the green Anders die decides.':' A tie stands the claim.'} The card is spent either way.`;
+      opts=ctx.options.map(o=>o==='accept'?{label:'let it stand',value:o,cls:'no'}:{label:'CONTEST — '+o.slice(8),value:o,tip:(cardByName[o.slice(8)]&&cardByName[o.slice(8)].effects||[])[0]||''});
+    } else if(ctx.kind==='dealoffer'){
       const d=ctx.deal,TY=(window.OIL_DEALS_FX||{}).TYPES||{},DD=g.dealDials;
       title=d.a.name+' offers you a '+((TY[d.type]&&TY[d.type].label)||d.type)+'.';
       if(d.type==='PACT') sub=`Hold the line together for ${d.ticks} turns: you each bank $${DD.PACT_SKIM} a turn and each take +${DD.PACT_HEAT} exposure. While it stands, neither of you can be eaten by the other at E.D.D. Either of you can walk out.`;
@@ -533,9 +751,11 @@ function presentPrompt(g,p,ctx){
       }
       opts=ctx.options.map(o=>({label:o,value:o}));
     } else { title='Choose'; opts=(ctx.options||[]).map(o=>({label:String(o),value:o})); }
+    { const hum=g.players.filter(q=>q.isHuman), w=$('#npw');   // pass-and-play: say whose call it is
+      if(hum.length>1){ w.textContent='▸ '+p.name.toUpperCase()+' — YOUR CALL'; w.style.color=(g._colors||[])[g.players.indexOf(p)]||'#f6c95a'; w.classList.add('on'); } else w.classList.remove('on'); }
     $('#npt').textContent=title; $('#nps').textContent=sub; $('#npl').innerHTML=ledger;
     const box=$('#npo'); box.innerHTML='';
-    const mk=o=>{const b=document.createElement('button'); if(o.cls)b.className=o.cls; b.textContent=o.label;
+    const mk=o=>{const b=document.createElement('button'); if(o.cls)b.className=o.cls; b.textContent=o.label; b.dataset.v=String(o.value);
       if(o.tip)b.title=o.tip;
       b.onclick=()=>{$('#nprompt').classList.remove('on'); resolve(o.value);}; return b;};
     if(opts.some(o=>o.group)){
@@ -564,7 +784,7 @@ function presentPrompt(g,p,ctx){
 // cost) in the colour of the job it does — like a printed board, you read function and distance
 // at a glance. Presentation only; the engine never sees any of this.
 const ROUTE_STYLE={gate:'#f2c14e',cape:'#a58be0',arctic:'#cfeeff',ocean:'#4f8fd0',pipe:'#cf7a33',built:'#3fc073',
-  hq:'#e0a32a',onshore:'#cf7a33'};
+  hq:'#e0a32a',onshore:'#cf7a33',port:'#e8c46a'};   // port: the WEST COAST model's optional ports (#west=)
 const ROUTE_KEY=[
   ['ocean','SEA LANE','open water'],
   ['gate','CHOKEPOINT','can be SHUT'],
@@ -580,7 +800,7 @@ function kindOfRoute(MP,a,b){
   return 'ocean';
 }
 // one route, drawn as `n` spaces between two tokens. mode: 'live' | 'dead' | 'iced'
-function drawTrack(x1,y1,x2,y2,n,kind,mode,dpr,clear1,clear2){
+function drawTrack(x1,y1,x2,y2,n,kind,mode,dpr,clear1,clear2,types){
   const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy); if(L<1)return;
   const a=Math.atan2(dy,dx), c1=clear1||9*dpr, c2=clear2||9*dpr, run=L-c1-c2; if(run<6*dpr)return;
   const w=6.5*dpr, gap=Math.min(13*dpr,run/(n*2.5)), seg=(run-gap*(n-1))/n, col=ROUTE_STYLE[kind]||'#9a8f7c';
@@ -602,10 +822,24 @@ function drawTrack(x1,y1,x2,y2,n,kind,mode,dpr,clear1,clear2){
         ctx.moveTo(sx+seg/2-2.5*dpr,-2.5*dpr); ctx.lineTo(sx+seg/2+2.5*dpr,2.5*dpr);
         ctx.moveTo(sx+seg/2+2.5*dpr,-2.5*dpr); ctx.lineTo(sx+seg/2-2.5*dpr,2.5*dpr); ctx.stroke(); }
       else { ctx.fillStyle=col; ctx.fill(); ctx.fillStyle='rgba(255,255,255,.28)'; ctx.fillRect(sx+1.5*dpr,-w/2+1*dpr,Math.max(0,seg-3*dpr),1.3*dpr); }
+      const ty=types&&types[i+1]; if(ty&&mode==='live') drawSpaceMark(sx+seg/2,0,ty,dpr,-a);
     }
   }
+  if(kind==='pipe'&&types&&mode!=='dead') for(let i=0;i<n;i++){ const ty=types[i+1]; if(ty) drawSpaceMark(i*(seg+gap)+seg/2,0,ty,dpr,-a); }
   ctx.restore();
 }
+// MOMENTUM: a typed space — Game-of-Life marks, readable at a glance (and in THE KEY)
+// HAZARD (⚠) and EVENT (✦) stay mapped for their dormant dials (OIL_MOMENTUM HAZARDS / EVENTS) — rounds 7 and 8 cut them, so no route carries one
+const SPACE_MARK={INSPECT:['⚖','#ff8a5a'],EVENT:['✦','#ffe27a'],CURRENT:['»','#6fd0d8'],HAZARD:['⚠','#ff5a4a'],PIRATE:['☠','#e8e8e8']};
+function drawSpaceMark(x,y,ty,dpr,rot,moodOverride){ const m=SPACE_MARK[ty]; if(!m)return;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0);
+  // ☠ PIRATE water reads the state of the world: DIM when the waters are quiet, a red glow when awake / severe
+  const mood=ty==='PIRATE'?(moodOverride||(game&&game.pirateMood?game.pirateMood():'quiet')):null;
+  if(mood==='quiet') ctx.globalAlpha=.32;
+  if(mood==='awake'||mood==='severe'){ ctx.beginPath(); ctx.arc(0,0,(mood==='severe'?9:7.5)*dpr,0,7); ctx.fillStyle=mood==='severe'?'rgba(255,60,40,.55)':'rgba(255,120,60,.38)'; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(0,0,5.4*dpr,0,7); ctx.fillStyle='rgba(10,6,3,.92)'; ctx.fill(); ctx.strokeStyle=m[1]; ctx.lineWidth=1.2*dpr; ctx.stroke();
+  ctx.fillStyle=m[1]; ctx.font='bold '+(7.6*dpr)+'px Trebuchet MS'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(m[0],0,0.4*dpr);
+  ctx.restore(); }
 // a place token, by shape: HQ = big disc · strait/canal = diamond · cape = triangle · open water = ring
 // onshore = square · arctic = hexagon · megastructure = pentagon
 function drawToken(kind,x,y,fill,dpr,big){
@@ -634,7 +868,14 @@ function drawKey(bx,by,bw,bh,dpr){
   ctx.fillStyle='#f2c14e'; ctx.font='bold '+(fs*1.1)+'px Trebuchet MS';
   ctx.fillText('THE KEY',x0+10*dpr,y0+fs*1.1);
   ctx.fillStyle='rgba(220,200,160,.8)'; ctx.font=(fs*.9)+'px Trebuchet MS';
-  ctx.fillText('each space on a route = 1 move',x0+10*dpr+ctx.measureText('THE KEY').width*1.25+8*dpr,y0+fs*1.1);
+  const kx=x0+10*dpr+ctx.measureText('THE KEY').width*1.25+8*dpr;
+  if(game&&game.momentum){ // MOMENTUM: the space types, in the printed key
+    ctx.fillText('you MUST move the roll ·',kx,y0+fs*1.1); let mx=kx+ctx.measureText('you MUST move the roll ·').width+8*dpr;
+    [['INSPECT','inspection']].concat(game.momDials.EVENTS?[['EVENT','event']]:[]).concat([['CURRENT','current']]).concat(game.momDials.HAZARDS?[['HAZARD','hazard']]:[]).concat(game.privilege&&game.privDials.PIRATES?[['PIRATE','pirates: '+game.pirateMood().toUpperCase()]]:[]).forEach(([t,l])=>{ drawSpaceMark(mx+5*dpr,y0+fs*1.1,t,dpr*.85,0);
+      ctx.fillStyle='rgba(220,200,160,.85)'; ctx.font=(fs*.85)+'px Trebuchet MS'; ctx.textAlign='left'; ctx.fillText(l,mx+12*dpr,y0+fs*1.1); mx+=ctx.measureText(l).width+22*dpr; });
+    ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.3*dpr; ctx.setLineDash([2.5*dpr,2*dpr]); ctx.beginPath(); ctx.arc(mx+5*dpr,y0+fs*1.1,5*dpr,0,7); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillText('◆ stop line',mx+13*dpr,y0+fs*1.1);
+  } else ctx.fillText('each space on a route = 1 move',kx,y0+fs*1.1);
   const cols=3, rows=2, top=y0+fs*2.4, cw=(W-20*dpr)/(cols+1), rh=(y1-top-4*dpr)/rows;
   ROUTE_KEY.forEach(([k,name,what],i)=>{
     const cx=x0+10*dpr+(i%cols)*cw, cy=top+Math.floor(i/cols)*rh+rh/2;
@@ -698,12 +939,14 @@ function drawMap(){
   const st=game.mapState, X=p=>bx+bw*p[0], Y=p=>by+bh*p[1];
   const dpr=devicePixelRatio;
 
-  drawKey(bx,by,bw,bh,dpr);
+  drawKey(bx,by,bw,bh,dpr); drawKey2(bx,by,bw,bh,dpr);
 
   // routes — tracks of spaces, coloured by what the route is FOR
   const clr=pl=>(pl.kind==='hq'?11:pl.kind==='ocean'?7:9)*dpr;
   const tracks=[];
-  MP.ROUTES.forEach((R,id)=>{
+  // WEST COAST (model): the optional ports and their lanes, drawn only in a game that opened them
+  const westRoutes=Object.entries(MP.OPT_BY_ID||{}).filter(([id,R])=>R.sub&&st.opts&&st.opts[R.set]).map(([id,R])=>[R,id]);
+  MP.ROUTES.map((R,id)=>[R,id]).concat(westRoutes).forEach(([R,id])=>{
     const A=MP.BY[R[0]],B=MP.BY[R[1]]; if(!A||!B)return;
     const liveA=MP.placeOpen(R[0],st),liveB=MP.placeOpen(R[1],st);
     const disabled=st.disabled&&st.disabled[id]>0;
@@ -711,7 +954,7 @@ function drawMap(){
     const kind=kindOfRoute(MP,R[0],R[1]);
     const iced=kind==='arctic'&&!(st.built&&st.built.ARCTIC_DEV);
     const mode=iced?'iced':(!liveA||!liveB||disabled)?'dead':'live';
-    tracks.push({R,A,B,kind,mode,ax:X(A.at),ay:Y(A.at),bx:X(B.at),by:Y(B.at),sx:0,sy:0});
+    tracks.push({R,rid:id,A,B,kind,mode,ax:X(A.at),ay:Y(A.at),bx:X(B.at),by:Y(B.at),sx:0,sy:0});
   });
   // two tracks leaving the same port at nearly the same heading get pushed apart, like double routes on a printed board
   const from=(t,c)=>{ const u=c===t.R[0]?[t.bx-t.ax,t.by-t.ay]:[t.ax-t.bx,t.ay-t.by], l=Math.hypot(u[0],u[1])||1; return [u[0]/l,u[1]/l]; };
@@ -723,7 +966,9 @@ function drawMap(){
   }
   const trackPts=[];
   tracks.forEach(t=>{ const ax=t.ax+t.sx,ay=t.ay+t.sy,bx2=t.bx+t.sx,by2=t.by+t.sy;
-    drawTrack(ax,ay,bx2,by2,t.R[2]||1,t.kind,t.mode,dpr,clr(t.A),clr(t.B));
+    const MSP=game.momentum&&window.OIL_MOMENTUM?OIL_MOMENTUM.spacesOf(t.rid,game.momDials):null;
+    drawTrack(ax,ay,bx2,by2,MSP?MSP.N:(t.R[2]||1),t.kind,t.mode,dpr,clr(t.A),clr(t.B),MSP?MSP.types:null);
+    t.gx=[ax,ay,bx2,by2];
     const L=Math.hypot(bx2-ax,by2-ay), k=Math.max(1,Math.floor(L/(12*dpr)));
     for(let i=1;i<k;i++) trackPts.push({x:ax+(bx2-ax)*i/k,y:ay+(by2-ay)*i/k,r:4*dpr,w:0.5}); });
 
@@ -744,7 +989,7 @@ function drawMap(){
   const contracts=game.path?new Set(game.market):new Set(), raisedBy={};
   if(game.path) Object.entries(game.structureOwner).forEach(([k,name])=>{ const S2=(MP.STRUCTURES||{})[k]||{};
     (S2.raises||S2.opens||[]).forEach(code=>{ raisedBy[code]=name; }); });
-  MP.PLACES.forEach(pl=>{
+  MP.PLACES.concat((MP.OPTIONAL_PLACES||[]).filter(q=>st.opts&&st.opts[q.set])).forEach(pl=>{
     const open=MP.placeOpen(pl.code,st), x=X(pl.at), y=Y(pl.at);
     if(pl.kind==='built'&&!open)return;
     if(pl.kind==='hq'){
@@ -763,9 +1008,18 @@ function drawMap(){
       dots.push({x,y,r:(game.path?14:9)*dpr});
       const L=[{t:(contracts.has(pl.code)?'★ ':'')+pl.code,font:'bold '+9.5*dpr+'px Trebuchet MS',col:contracts.has(pl.code)?'#f6c95a':col}];
       if(contracts.has(pl.code)) L.push({t:'CONTRACT',font:'bold '+7.5*dpr+'px Trebuchet MS',col:'#f6c95a'});
+      if(game.hegemony){ // HEGEMONY: the sitting-duck pawn in this yard, and the matrix — each player's stake in it
+        const dk=game.pawns.find(z=>z.hq===pl.code);
+        if(dk&&!dk.by){ ctx.strokeStyle='#e8dcc0'; ctx.lineWidth=1.6*dpr; ctx.beginPath(); ctx.moveTo(x,y-12*dpr); ctx.lineTo(x+12*dpr,y); ctx.lineTo(x,y+12*dpr); ctx.lineTo(x-12*dpr,y); ctx.closePath(); ctx.stroke();
+          const court=game.players.find(q=>q.heg&&q.heg.progress&&q.heg.at===pl.code);
+          L[0].t='◇ '+dk.code+(court?' · courted':'');
+          game.players.forEach((q,k)=>{ if(dk.w[q.id]>0) L.push({t:`◇${dk.w[q.id]} ${q.name.split(/[ /(]/)[0]}`,font:'bold '+7.5*dpr+'px Trebuchet MS',col:game._colors[k]||'#e0a32a'}); }); }
+        else if(dk&&dk.by==='RICO') L.push({t:'✕ gone down — RICO',font:'bold '+7.5*dpr+'px Trebuchet MS',col:'#ff9a6a'});   // knocked off the pond: nobody took it
+        else if(dk&&dk.by){ const k=game.players.indexOf(dk.by); L.push({t:'✕ taken by '+dk.by.name.split(/[ /(]/)[0],font:'bold '+7.5*dpr+'px Trebuchet MS',col:game._colors[k]||'#e0a32a'}); }
+      }
       labels.push({x,y,lines:L,prio:0,gap:(game.path?15:10)*dpr});
     } else {
-      const shut=(pl.kind==='gate'&&!open), iced=(pl.kind==='arctic'&&!open);
+      const shut=((pl.kind==='gate'||pl.kind==='port')&&!open), iced=(pl.kind==='arctic'&&!open);
       const h=game.crisis?(game.heat[pl.code]||0):0;
       if(h>0){ // stress ring — the world leaning on this place
         const t=Math.min(1,h/(game.crisisDials.BLOWOUT_AT||8));
@@ -798,10 +1052,20 @@ function drawMap(){
   // the labels — placed after every dot is known, so a name never sits on another place
   layoutLabels(labels,dots.concat(trackPts),{x0:bx,y0:by,x1:bx+bw,y1:by+bh*0.84},dpr);
 
+  // MOMENTUM: the ◆ STOP lines get a white collar (you must halt there)
+  if(game.momentum&&window.OIL_MOMENTUM) MP.PLACES.forEach(pl=>{ if(!OIL_MOMENTUM.isStop(pl.code,game.momDials))return;
+    ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.6*dpr; ctx.setLineDash([2.5*dpr,2*dpr]);
+    ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),10*dpr,0,7); ctx.stroke(); ctx.setLineDash([]); });
   // the seats
   game.players.forEach((q,i)=>{
+    if(game.momentum&&q.under){ // under way: drawn ON the route, at its space
+      const t=tracks.find(z=>z.rid===q.under.rid); if(!t||!t.gx)return;
+      const N=OIL_MOMENTUM.spacesOf(q.under.rid,game.momDials).N, f=(q.under.k-0.5*(q.under.dir>0?1:-1))/N;
+      const x=t.gx[0]+(t.gx[2]-t.gx[0])*Math.max(0.05,Math.min(0.95,q.under.k/N)), y=t.gx[1]+(t.gx[3]-t.gx[1])*Math.max(0.05,Math.min(0.95,q.under.k/N));
+      ctx.fillStyle=game._colors[i]||'#f6c95a'; ctx.beginPath(); ctx.moveTo(x,y-6*dpr); ctx.lineTo(x+5*dpr,y+4*dpr); ctx.lineTo(x-5*dpr,y+4*dpr); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle=q.isHuman?'#fff':'rgba(0,0,0,.85)'; ctx.lineWidth=(q.isHuman?2:1.2)*dpr; ctx.stroke(); return; }
     const pl=MP.BY[q.at]; if(!pl)return;
-    const n=game.players.filter(z=>z.at===q.at).length, k=game.players.filter(z=>z.at===q.at).indexOf(q);
+    const here=game.players.filter(z=>z.at===q.at&&!(game.momentum&&z.under)), n=here.length, k=here.indexOf(q);
     const a=(k/Math.max(1,n))*Math.PI*2, r=(n>1?11:0)*dpr;
     const x=X(pl.at)+Math.cos(a)*r, y=Y(pl.at)+Math.sin(a)*r;
     ctx.fillStyle=game._colors[i]||'#f6c95a';
@@ -815,18 +1079,51 @@ function drawMap(){
   const D=game.dials;
   ctx.textAlign='left'; ctx.font=('bold '+12*dpr+'px Trebuchet MS');
   ctx.fillStyle=game.era==='CHAOTIC'?'#e2632a':'#f6c95a';
-  ctx.fillText(`$${game.price}  ·  OIL ${game.oil}/${D.OIL_START}  ·  ${game.era}`,10*dpr,16*dpr);
+  ctx.fillText(`$${game.price}  ·  OIL ${game.oil}/${D.OIL_START}  ·  ${game.era}${game.hegemony?`  ·  ${game.heg2?'HEGEMONY ':''}◇${game.pawns.filter(z=>!z.by).length} ducks`:''}`,10*dpr,16*dpr);
   const shutList=Object.keys(st.closed||{});
   if(shutList.length){ ctx.fillStyle='#e2632a'; ctx.font=(10.5*dpr)+'px Trebuchet MS';
-    ctx.fillText('SHUT: '+shutList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),10*dpr,32*dpr); }
+    ctx.fillText('SHUT: '+shutList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),10*dpr,31*dpr); }
   const fireList=game.crisis?Object.keys(game.fires):[];
   if(fireList.length){ ctx.fillStyle='#ff8a4a'; ctx.font=('bold '+11*dpr+'px Trebuchet MS');
-    ctx.fillText('ON FIRE: '+fireList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),10*dpr,(shutList.length?46:32)*dpr); }
+    ctx.fillText('ON FIRE: '+fireList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),10*dpr,(shutList.length?46:31)*dpr); }
   const builtList=Object.keys(st.built||{}).filter(k=>st.built[k]);
   if(builtList.length){ ctx.fillStyle='#2f9e5b'; ctx.font=(10.5*dpr)+'px Trebuchet MS';
-    ctx.fillText('RAISED: '+builtList.map(k=>((MP.STRUCTURES||{})[k]||{}).name||k).join(' · '),10*dpr,((shutList.length?1:0)+(fireList.length?1:0)+2)*14*dpr); }
+    // (sanity check, round 6: this line used to sit on top of SHUT — one 15px line per status, in order)
+    ctx.fillText('RAISED: '+builtList.map(k=>((MP.STRUCTURES||{})[k]||{}).name||k).join(' · '),10*dpr,(16+15*(1+(shutList.length?1:0)+(fireList.length?1:0)))*dpr); }
   ctx.textAlign='right'; ctx.fillStyle='#9a8f7c'; ctx.font=(10.5*dpr)+'px Trebuchet MS';
-  ctx.fillText('turn '+game.turn+' · '+diceStr(),W-10*dpr,16*dpr);
+  const dw=drawDiceRow(W-10*dpr,16*dpr,dpr);
+  ctx.textAlign='right'; ctx.fillStyle='#9a8f7c'; ctx.font=(10.5*dpr)+'px Trebuchet MS'; ctx.textBaseline='middle';
+  ctx.fillText('turn '+game.turn+' ·',W-16*dpr-dw,16*dpr);
+}
+// the last roll as the three bodies, in their colours (designer 2026-10-23): Supply red · Weather yellow · World blue.
+// Right-aligned at (xr, y); returns the width drawn.
+function drawDiceRow(xr,y,dpr){
+  const d=(game&&game.lastDice)||[], s=13*dpr, gap=4*dpr, w=d.length*s+(d.length-1)*gap;
+  d.forEach((v,i)=>{ const x=xr-w+i*(s+gap);
+    ctx.fillStyle=DIE_COL[i]; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y-s/2,s,s,3*dpr):ctx.rect(x,y-s/2,s,s); ctx.fill();
+    ctx.fillStyle='#140c04'; ctx.font='bold '+(9*dpr)+'px Trebuchet MS'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v,x+s/2,y+0.5*dpr); });
+  return w;
+}
+// THE KEY, part two — set into the empty panels right of THE KEY: the dice and the marks on the table
+function drawKey2(bx,by,bw,bh,dpr){
+  const x0=bx+bw*0.700,y0=by+bh*0.852,x1=bx+bw*0.865,y1=by+bh*0.958, W=x1-x0,H=y1-y0;
+  if(H<30*dpr||W<90*dpr)return;
+  ctx.fillStyle='rgba(12,9,5,.82)'; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x0,y0,W,H,6*dpr):ctx.rect(x0,y0,W,H); ctx.fill();
+  ctx.strokeStyle='rgba(242,193,78,.45)'; ctx.lineWidth=1.2*dpr; ctx.stroke();
+  const fs=Math.max(7,Math.min(10.5,H/dpr/8.5))*dpr, s=fs*1.05;
+  ctx.textBaseline='middle'; ctx.textAlign='left';
+  ctx.fillStyle='#f2c14e'; ctx.font='bold '+(fs*1.05)+'px Trebuchet MS'; ctx.fillText('THE DICE',x0+8*dpr,y0+fs*1.1);
+  const dice=[['Supply',DIE_COL[0]],['Weather',DIE_COL[1]],['World',DIE_COL[2]]].concat(game&&game.expansion?[['Anders','#2f9e5b']]:[]);
+  let dx=x0+8*dpr, dy=y0+fs*2.5;
+  ctx.font=(fs*.85)+'px Trebuchet MS';
+  dice.forEach(([n,c])=>{ ctx.fillStyle=c; ctx.beginPath(); ctx.roundRect?ctx.roundRect(dx,dy-s/2,s,s,2*dpr):ctx.rect(dx,dy-s/2,s,s); ctx.fill();
+    ctx.fillStyle='rgba(220,200,160,.85)'; ctx.textAlign='left'; ctx.fillText(n,dx+s+3*dpr,dy); dx+=s+3*dpr+ctx.measureText(n).width+7*dpr; });
+  const marks=[['▰','control'],['●','your die']].concat(game&&game.privilege?[['☠','held'],['⊛','the firm']]:[]).concat(game&&game.hegemony?[['◇','duck']]:[]).concat([['▼','E.D.D.']]);
+  let mx=x0+8*dpr, my=y0+fs*4.1;
+  marks.forEach(([g2,l])=>{ ctx.fillStyle=g2==='⊛'?'#2f9e5b':g2==='▼'?'#ff5a4a':'#f2c14e'; ctx.font='bold '+fs+'px Trebuchet MS'; ctx.fillText(g2,mx,my);
+    const gw=ctx.measureText(g2).width; ctx.fillStyle='rgba(220,200,160,.8)'; ctx.font=(fs*.82)+'px Trebuchet MS'; ctx.fillText(l,mx+gw+3*dpr,my);
+    mx+=gw+3*dpr+ctx.measureText(l).width+8*dpr; if(mx>x1-40*dpr){ mx=x0+8*dpr; my+=fs*1.35; } });
+  ctx.fillStyle='rgba(202,161,94,.75)'; ctx.font='italic '+(fs*.8)+'px Trebuchet MS'; ctx.fillText('full key: 📖 RULES › THE BOARD',x0+8*dpr,Math.min(y1-fs*.7,my+fs*1.35));
 }
 
 function draw(){ if(game&&game.map&&S.view==='map')return drawMap(); return draw0(); }
@@ -865,7 +1162,9 @@ async function run(){ if(running)return; running=true; $('#runBtn').textContent=
 function stop(){running=false;clearTimeout(timer);const b=$('#runBtn');if(b)b.textContent='▶ RUN';}
 
 $('#bootGo').onclick=()=>{buildSetup();show('setup');};
-$('#startGo').onclick=startGame;
+$('#startGo').onclick=()=>{ if(!$('#startGo').disabled) startGame(); };
+// THE RULEBOOK (src/oil-rulebook.js): the board game, in the game — from the box, the setup and the table
+['#rbBoot','#rbSetup','#rbPlay'].forEach(id=>{ const b=$(id); if(b) b.onclick=()=>window.OIL_RULEBOOK&&OIL_RULEBOOK.open(); });
 $('#viewBtn').onclick=()=>{S.view=S.view==='map'?'chart':'map';$('#viewBtn').textContent=S.view==='map'?'◍ MAP':'▤ TAPE';draw();};
 $('#stepBtn').onclick=async()=>{stop();await stepOnce();};
 $('#runBtn').onclick=()=>{running?stop():run();};
@@ -874,6 +1173,8 @@ $('#vAgain').onclick=()=>{buildSetup();show('setup');};
 
 // capture hooks
 if(location.hash.indexOf('setup')>=0){buildSetup();show('setup');}
+// test hook (scripts/e2e_gateway.mjs): read-only handle on the live game, only with #e2e in the URL
+if(location.hash.indexOf('e2e')>=0) window.__OIL_GAME=()=>game;
 if(location.hash.indexOf('autoplay')>=0){
   buildSetup();startGame();$('#spd').value='80';
   setInterval(()=>{const pr=$('#nprompt');if(pr.classList.contains('on'))pr.querySelector('button').click();},40);
@@ -881,5 +1182,6 @@ if(location.hash.indexOf('autoplay')>=0){
 }
 })();
 </script>
+<script src="src/oil-menu.js"></script>
 </body>
 </html>

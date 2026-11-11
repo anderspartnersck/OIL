@@ -90,6 +90,22 @@
     RETAINER_COST: 22,      // pre-pay, at your own HQ, before anything is alight
     RETAINER_SHIELD: 4,     // raises your HQ's blowout threshold by this...
     RETAINER_TURNS: 8,      // ...for this many turns
+    RETAINER_CLOCK: 'table',// carry-over #13 (2026-11-10, A/B in scripts/oil-carryovers.js): 'table' = every seat's turn
+                            //    ticks it (frozen; 8 table turns = 2 rounds at 4p, 1 round at 8p) · 'own' = only the
+                            //    owner's turns tick it, RETAINER_OWN_TURNS of them (the same cover at every table size)
+    RETAINER_OWN_TURNS: 2,
+    // RETAINER REWORK (2026-11-10, docs/DECISIONS-1110.md; A/B in scripts/decisions-1110.js). The classic retainer is
+    // near-dead: offered ~0.12×/game (own HQ AND heat 3+ AND it costs your sale), bought ~0.04×/game. Knob, default 'classic'.
+    //   'classic' — today (frozen) · 'cut' — the round-7 chisel: no retainer at all
+    //   'policy'  — R1 THE POLICY: $POLICY_COST at your own HQ, NO heat gate, no clock. It pays out ONCE: the next time
+    //               your HQ would blow it doesn't, the ground cools as if IWS had come, and the policy is spent.
+    //   'rider'   — R2 THE RIDER: cover rides ANY SALE (the action prompt offers DELIVER + COVER beside DELIVER; no new
+    //               prompt) once your HQ's heat is RIDER_AT+; $RETAINER_COST off the top, the classic +4 shield on your
+    //               HQ for RIDER_OWN_TURNS of YOUR turns.
+    RETAINER_MODE: 'classic',
+    POLICY_COST: 15,
+    RIDER_AT: 1,
+    RIDER_OWN_TURNS: 3,
 
     // ---- capitalism and communism: the world acting on the companies ----
     // A government decision lands on both, and both shed the same heat — they just

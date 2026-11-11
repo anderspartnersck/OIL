@@ -71,6 +71,8 @@
     <div class="ctl"><label>Edition</label><select id="ed"><option value="classic" selected>classic</option><option value="benchmark">benchmark</option><option value="both">compare both</option></select></div>
     <div class="ctl"><label>Cards</label><select id="cards"><option value="1" selected>on</option><option value="0">off</option></select></div>
     <div class="ctl"><label>THE TABLE</label><select id="deals"><option value="1" selected>on</option><option value="0">off</option></select></div>
+    <div class="ctl"><label>THE PRIVILEGE</label><select id="priv"><option value="0" selected>off</option><option value="gap">on · gap</option><option value="recent">on · recent</option><option value="abs">on · abs</option></select></div>
+    <div class="ctl"><label>RIVAL CLAIMS</label><select id="rival"><option value="both" selected>seize + toll</option><option value="seize">seize</option><option value="toll">toll</option><option value="none">none (house)</option></select></div>
     <div class="ctl"><label>Factions</label><select id="asym"><option value="1" selected>asymmetric</option><option value="0">symmetric</option></select></div>
     <button id="run">▶ RUN SWEEP</button>
   </div>
@@ -140,7 +142,8 @@ function cfg(edition){
     nPlayers: $('#players').value==='mix'?'mix':+$('#players').value,
     expansion: $('#exp').value==='mix'?'mix':$('#exp').value==='1',
     cards: $('#cards').value==='1', deals: $('#deals').value==='1', asym: $('#asym').value==='1', factions:FCODES,
-    dials: extraDials, seed0: 7000 };
+    dials: extraDials, seed0: 7000,
+    privilege: $('#priv').value==='0'?undefined:{PRIV_MEASURE:$('#priv').value,PRIV_RIVAL:$('#rival').value} };   // docs/THE-PRIVILEGE.md
 }
 
 let running=false;
@@ -182,7 +185,17 @@ function render(reps){
     ['games',primary.N],['length median',`${s.median} (${s.lenMin}–${s.lenMax})`],
     ['E.D.D. spike',(100*s.spikePct).toFixed(0)+'%'],['E.D.D. oil-out',(100*s.oilOutPct).toFixed(0)+'%'],
     ['avg winner exposure',s.avgWinExp.toFixed(1)],['avg leader gap',s.avgLeadGap.toFixed(1)],
-  ].map(([k,val])=>`<div class="stat"><div class="k">${k}</div><div class="v">${val}</div></div>`).join('');
+  ].concat((()=>{ // THE PRIVILEGE (docs/THE-PRIVILEGE.md) — only when it was on for this batch
+    const P=LAB.privilegeReport(primary._games||[]); if(!P.n)return [];
+    const f=x=>(100*x).toFixed(0)+'%';
+    return [['seat-turns ●●● / ●●○ / ●○○',`${f(P.share[3])} / ${f(P.share[2])} / ${f(P.share[1])}`],
+      ['seats reaching ●●○ · ●○○',`${f(P.seatsTo2/P.seats)} · ${f(P.seatsTo1/P.seats)}`],
+      ['privilege restored',`${P.restores} of ${P.drops} drops · ${f(P.recoveryRate)} back to ●●●`],
+      ['win rate by lowest privilege',`●●● ${f(P.winRateByMin[3])} · ●●○ ${f(P.winRateByMin[2])} · ●○○ ${f(P.winRateByMin[1])}`],
+      ['seizures / game',`${(P.perGame('seizeSnare')+P.perGame('seizeCard')).toFixed(2)} (snare ${P.stat.seizeSnare||0} · cards ${P.stat.seizeCard||0})`],
+      ['tolled turns / game',`${P.perGame('tollTurns').toFixed(2)} · $${P.stat.tollCash||0} skimmed`],
+      ['win: seized · tolled · unclaimed',`${f(P.victim.seized.winRate)} · ${f(P.victim.tolled.winRate)} · ${f(P.victim.clear.winRate)}`]];
+  })()).map(([k,val])=>`<div class="stat"><div class="k">${k}</div><div class="v">${val}</div></div>`).join('');
 
   // charts (use the primary edition's raw games via re-deriving from report — we kept stats; need games)
   drawLen(primary); drawExp(primary); drawFac(primary); drawPath(primary);
