@@ -1,67 +1,79 @@
+> **STATUS: WORKING BUILD, LIVE ON GITHUB PAGES. An early one: not a finished game.**
+> - The game (the only front door): <https://anderspartnersck.github.io/OIL/gateway.html>
+> - Workbenches: [oil-native.html](https://anderspartnersck.github.io/OIL/oil-native.html) ·
+>   [diciner.html](https://anderspartnersck.github.io/OIL/diciner.html) · [test-lab.html](https://anderspartnersck.github.io/OIL/test-lab.html)
+> - Archive: the bare URL <https://anderspartnersck.github.io/OIL/> is the old ER$N-skinned sketch (see the bottom of this page).
+
 # OiL! — THE HOME GAME
 
 Crude, capital, and everyone at the table willing to sell you out.
 
-## ▶ [PLAY IT IN YOUR BROWSER](https://anderspartnersck.github.io/OIL/gateway.html)
-
-A Castle Killscreen game by **Anders & Partners**.
-
-> ### ⚠︎ Working build — not a finished game
->
-> **The earliest build here.** OiL!'s core rules are deliberately unwritten, so this runs the ER$N rules engine as a substrate with OiL!'s identity on top. Treat it as a sketch of a game, not the game.
->
-> The finished Castle Killscreen titles are **[SUCK UP](https://anderspartnersck.github.io/suck-up/3d.html?arcade)**
-> and **[ONE-TIMER: THE HIGH TABLE](https://anderspartnersck.github.io/high-table/)**. This repo
-> exists so the work can happen in the open, not because the work is done.
+A Castle Killscreen game by **Anders & Partners**. The finished Castle Killscreen titles are
+**[SUCK UP](https://anderspartnersck.github.io/suck-up/3d.html?arcade)** and
+**[ONE-TIMER: THE HIGH TABLE](https://anderspartnersck.github.io/high-table/)**. This repo exists so the
+work can happen in the open, not because the work is done.
 
 ## About
 
-Predatory capitalism as a board game. Pump, ship and sell across a world of real
-passages and capes, cut deals you intend to honour until you don't, and watch a
-flashpoint turn into a blowout that burns the clock for everybody.
+Predatory capitalism as a board game. Pump, ship and sell across a world of real passages and capes, cut
+deals you intend to honour until you don't, and watch a flashpoint turn into a blowout that burns the clock
+for everybody.
 
-The architecture is **substrate + skin**: the hard part (a balance-tested rules
-engine) is borrowed from ER$N, because inventing OiL!'s canon — dice resolution,
-faction powers, the E.D.D. table, the collapse numbers — is explicitly off-limits
-until it's designed properly.
+**gateway.html** runs OiL!'s own native engine: three dice (Supply, Weather, World) make one price, oil
+is a clock that only runs down, and you play on the shipping map with deals, crisis and **THE PATH**
+(face-up contracts you sail cargo to).
 
-## How to play
+## Which rules
 
-Click-driven: you take one company and bots play the rest. Four more builds ship alongside the front door:
+- The **📖 RULEBOOK** in the game is written from the engine as it plays. It is the rules of this build.
+- The designer's printed core rules are **not final**. Most of the open core-rule questions are still open,
+  and every card is a concept draft.
+- **CORE GAME** (4–6 companies) is the default. **+ Green Anders** (the expansion: the fourth die, the
+  privilege, momentum, pirates, the seat clock; 2–8 companies, and 2 = HEGEMONY) is a choice on setup.
+- **LEVELS** is a prototype, off by default.
 
-- **[gateway.html](gateway.html)** — **the current game.** The native engine with the shipping
-  map, deals, crisis and **THE PATH**: three face-up contracts on the board. You sail cargo to a
-  buyer and land it for a premium, and the prompt itemises every delivery before you commit.
-  Hold a buyer and rivals landing there pay you a toll. Megastructures become destinations you
-  own. Each company starts in its own yard. Setup has one open scoring question (does a landed
-  contract also earn control?), so both answers are selectable
-- **[oil-native.html](oil-native.html)** — the native engine instead of the ER$N substrate
-- **[diciner.html](diciner.html)** — the dice bench
-- **[test-lab.html](test-lab.html)** — the rules bench
+## How to play (gateway.html)
+
+1. **FUEL UP** on the title (or **Enter**).
+2. On setup, choose THE BOX (CORE GAME or + Green Anders) and tap each company: **— → BOT → PLAYER → —**.
+   The ★ seat is you; extra PLAYER seats are **pass-and-play** at one screen. Then **OPEN THE MARKET**.
+3. **▶ RUN** lets the table play; **STEP** plays one step. When it's a human's decision, the game stops and asks.
+
+| Key | Does |
+|---|---|
+| **Enter** | The screen's big button: FUEL UP · OPEN THE MARKET · PLAY AGAIN |
+| **Space** | Run / pause the table |
+| **Esc** or **P** | Pause menu: resume, how to play, settings (table speed, map or price-tape view), new game, quit to title |
+| **?** | The rulebook |
+| **Esc** | On setup or the final screen, back to the title |
+
+No sound in this build yet. URL option: `?levels=two` or `?levels=voyage` starts with a LEVELS preset.
+
+## The other pages
+
+- **[oil-native.html](oil-native.html)**: the native engine as a bare market tape, without the map.
+- **[diciner.html](diciner.html)**: the dice designer. Every face and weight is a dial.
+- **[test-lab.html](test-lab.html)**: the balance lab. Runs batches of bot games on the real engine.
 
 ## What still needs work
 
-- **Card art is missing.** `src/data.js` is inherited from ER$N and names ~117 card scans under `assets/cards-print/`, a directory OiL! doesn't have. Those 404 here exactly as they do locally — nothing is being hidden.
-- The front door is the ER$N skin; `gateway.html` is actually the further-along build.
-- THE PATH is a concept measured in simulation (1,000-game A/Bs), not a finished rule. A few
-  known soft spots: the bots never work onshore ground, even though a human can; starting at home
-  widens the gap between the strongest and weakest company (about 27% vs 15% win rate); and
-  straits mostly shut late, so detours are rare.
-- Core rules remain unwritten by design.
+- THE PATH and the expansion modules are measured in simulation (bot games), not finished rules.
+- No card art in the gateway yet; the board and boxes are further along.
+- One screen only: no online play.
 
 ## Rebuilding this bundle
 
-This repo is **generated** — never edit it directly. Everything here is built from the
-private Castle Killscreen tree:
+This repo is **generated**. Never edit it directly. Everything here is built from the private Castle
+Killscreen tree, and this README's source is `tools/PAGES_README.md` there:
 
 ```
 cd "ANDERS CASTLE KILLSCREEN/oil_home_game/VIDEO GAME BUILD"
 python3 tools/build_pages.py
 ```
 
-The bundler shrinks art by **resolution, not by pruning**: these engines build most asset
-paths by string concatenation, so a static scan can't see what's used, and a wrongly-cut
-sprite doesn't error — it just silently fails to draw.
+The bundler shrinks art by **resolution, not by pruning**: these engines build most asset paths by
+string concatenation, so a static scan can't see what's used, and a wrongly-cut sprite doesn't error.
+It just silently fails to draw.
 
 ## Credits
 
@@ -70,8 +82,8 @@ Anders & Partners.
 
 <sub>Generated from the private Castle Killscreen tree. Edit there, not here.</sub>
 
-## ⚠︎ OLDER ER$N-SKINNED BUILD — NOT THE MAIN GAME
+## RETIRED / ARCHIVE: the ER$N-skinned sketch (index.html)
 
-Archived for reference only. The bare URL ([anderspartnersck.github.io/OIL](https://anderspartnersck.github.io/OIL/))
-still boots the first sketch, which ran OiL! on the ER$N rules engine. It is no longer updated.
-The game at the top of this page is the real one.
+The bare URL ([anderspartnersck.github.io/OIL](https://anderspartnersck.github.io/OIL/)) still boots the
+first sketch, which ran OiL!'s look on the ER$N rules engine. It is no longer updated and is not the game;
+it links to gateway.html. Its card scans were never made for OiL!, so the card images there are missing.
