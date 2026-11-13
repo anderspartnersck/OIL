@@ -1,0 +1,57 @@
+/* OiL! — UI KIT SKIN. Built in 3D PIPELINE (lib/ui/uikit.py, games/oil/ui/); generated from games/oil/ui/skin.css
+   by make_branch_css.py. ART ONLY: every border-image paints over the element's existing padding
+   (border-image-width), so no box moves; all text stays live. Frames: ../assets/ui/<sprite>@1x|@2x.webp. */
+
+/* ---------- buttons: worn gold pills, every state (button / .alt / .sm) ---------- */
+button{border:0 solid transparent;background:none;box-shadow:0 3px 7px rgba(0,0,0,.5);
+  border-image:image-set(url(../assets/ui/btn@1x.webp) 1x, url(../assets/ui/btn@2x.webp) 2x) 0 10% fill / 0 19px stretch}
+button:hover{border-image-source:image-set(url(../assets/ui/btn.hover@1x.webp) 1x, url(../assets/ui/btn.hover@2x.webp) 2x)}
+button:active{border-image-source:image-set(url(../assets/ui/btn.pressed@1x.webp) 1x, url(../assets/ui/btn.pressed@2x.webp) 2x);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+button:disabled{border-image-source:image-set(url(../assets/ui/btn.disabled@1x.webp) 1x, url(../assets/ui/btn.disabled@2x.webp) 2x);color:#5a4e3a}
+button.sm{border-image:image-set(url(../assets/ui/btn_sm@1x.webp) 1x, url(../assets/ui/btn_sm@2x.webp) 2x) 0 13.6% fill / 0 15px stretch}
+button.sm:hover{border-image-source:image-set(url(../assets/ui/btn_sm.hover@1x.webp) 1x, url(../assets/ui/btn_sm.hover@2x.webp) 2x)}
+button.sm:active{border-image-source:image-set(url(../assets/ui/btn_sm.pressed@1x.webp) 1x, url(../assets/ui/btn_sm.pressed@2x.webp) 2x)}
+button.alt,#nprompt .po button.no{background:none;box-shadow:0 3px 7px rgba(0,0,0,.5);border-image:image-set(url(../assets/ui/btn_alt@1x.webp) 1x, url(../assets/ui/btn_alt@2x.webp) 2x) 0 10% fill / 0 19px stretch}
+button.alt:hover{border-image-source:image-set(url(../assets/ui/btn_alt.hover@1x.webp) 1x, url(../assets/ui/btn_alt.hover@2x.webp) 2x)}
+button.alt:active{border-image-source:image-set(url(../assets/ui/btn_alt.pressed@1x.webp) 1x, url(../assets/ui/btn_alt.pressed@2x.webp) 2x)}
+button.alt.sm,body #rulebook .rb-top button.alt{border-image:image-set(url(../assets/ui/btn_alt_sm@1x.webp) 1x, url(../assets/ui/btn_alt_sm@2x.webp) 2x) 0 13.6% fill / 0 15px stretch}
+button.alt.sm:hover{border-image-source:image-set(url(../assets/ui/btn_alt_sm.hover@1x.webp) 1x, url(../assets/ui/btn_alt_sm.hover@2x.webp) 2x)}
+button.alt.sm:active{border-image-source:image-set(url(../assets/ui/btn_alt_sm.pressed@1x.webp) 1x, url(../assets/ui/btn_alt_sm.pressed@2x.webp) 2x)}
+
+/* ---------- THE BOX setup chips + plain chips + the rulebook tabs ---------- */
+.chip{background:none;border-color:transparent;border-image:image-set(url(../assets/ui/chip.off@1x.webp) 1x, url(../assets/ui/chip.off@2x.webp) 2x) 0 13.3% fill / 0 16px stretch}
+.chip:hover{border-image-source:image-set(url(../assets/ui/chip.hover@1x.webp) 1x, url(../assets/ui/chip.hover@2x.webp) 2x)}
+.chip.on{background:none;border-color:transparent;border-image-source:image-set(url(../assets/ui/chip.on@1x.webp) 1x, url(../assets/ui/chip.on@2x.webp) 2x)}
+.chip.box{border-image:image-set(url(../assets/ui/chip_box.off@1x.webp) 1x, url(../assets/ui/chip_box.off@2x.webp) 2x) 20.9% 4.1% fill / 14px stretch}
+.chip.box.on{border-image-source:image-set(url(../assets/ui/chip_box.on@1x.webp) 1x, url(../assets/ui/chip_box.on@2x.webp) 2x)}
+body #rulebook .rb-tab{background:none;border-color:transparent;border-image:image-set(url(../assets/ui/chip.off@1x.webp) 1x, url(../assets/ui/chip.off@2x.webp) 2x) 0 13.3% fill / 0 15px stretch}
+body #rulebook .rb-tab.on{background:none;border-image-source:image-set(url(../assets/ui/chip.on@1x.webp) 1x, url(../assets/ui/chip.on@2x.webp) 2x)}
+
+/* ---------- frames ---------- */
+.card,#nprompt .box{border-color:transparent;box-shadow:0 18px 44px rgba(0,0,0,.6);
+  background:image-set(url(../assets/ui/field_oil@1x.webp) 1x, url(../assets/ui/field_oil@2x.webp) 2x) repeat;
+  border-image:image-set(url(../assets/ui/card@1x.webp) 1x, url(../assets/ui/card@2x.webp) 2x) 18.3% / 22px stretch}
+.fac{background:image-set(url(../assets/ui/field_oil@1x.webp) 1x, url(../assets/ui/field_oil@2x.webp) 2x) repeat;border-color:transparent;box-shadow:inset 0 14px 0 -1px var(--fc,#e0a32a);
+  border-image:image-set(url(../assets/ui/fac@1x.webp) 1x, url(../assets/ui/fac@2x.webp) 2x) 15% 12.5% / 12px stretch}
+.fac.on{border-image-source:image-set(url(../assets/ui/fac.on@1x.webp) 1x, url(../assets/ui/fac.on@2x.webp) 2x);box-shadow:inset 0 14px 0 -1px var(--fc,#e0a32a),0 0 0 2px var(--fc,#e0a32a)}
+.pl{background:image-set(url(../assets/ui/field_oil@1x.webp) 1x, url(../assets/ui/field_oil@2x.webp) 2x) repeat;border-left-color:transparent;padding-left:20px;box-shadow:inset 14px 0 0 -1px var(--c,#e0a32a);
+  border-image:image-set(url(../assets/ui/pl@1x.webp) 1x, url(../assets/ui/pl@2x.webp) 2x) 16.2% 11.5% / 11px stretch}
+.pl.you,.pl.act{background:image-set(url(../assets/ui/field_oil@1x.webp) 1x, url(../assets/ui/field_oil@2x.webp) 2x) repeat;border-image-source:image-set(url(../assets/ui/pl_you@1x.webp) 1x, url(../assets/ui/pl_you@2x.webp) 2x)}
+.pl.you{box-shadow:inset 14px 0 0 -1px var(--c,#e0a32a),0 0 0 2px var(--gold-lite)}
+#desk .b{background:none;border-color:transparent;border-image:image-set(url(../assets/ui/desk@1x.webp) 1x, url(../assets/ui/desk@2x.webp) 2x) 25% 10% 25% 11.7% fill / 12px 12px 12px 14px stretch}
+#pathbar{background:image-set(url(../assets/ui/field_oil@1x.webp) 1x, url(../assets/ui/field_oil@2x.webp) 2x) repeat;border-color:transparent;border-image:image-set(url(../assets/ui/pl@1x.webp) 1x, url(../assets/ui/pl@2x.webp) 2x) 16.2% 11.5% / 11px stretch}
+body #rulebook .rb-box{background:none;border-color:transparent;border-image:image-set(url(../assets/ui/rbbox@1x.webp) 1x, url(../assets/ui/rbbox@2x.webp) 2x) 18.3% 9.2% 18.3% 11.7% fill / 11px 11px 11px 14px stretch}
+body #rulebook .rb-box.red{border-image-source:image-set(url(../assets/ui/rbbox_red@1x.webp) 1x, url(../assets/ui/rbbox_red@2x.webp) 2x)}
+body #rulebook .rb-box.grn{border-image-source:image-set(url(../assets/ui/rbbox_grn@1x.webp) 1x, url(../assets/ui/rbbox_grn@2x.webp) 2x)}
+body #rulebook .rb-top,#ctrl,.rh{background:image-set(url(../assets/ui/bar_steel@1x.webp) 1x, url(../assets/ui/bar_steel@2x.webp) 2x) repeat-x center/auto 100%}
+
+/* ---------- the E.D.D. panel: a riveted red enamel warning sign ---------- */
+#edd{background:none;box-shadow:0 6px 24px rgba(0,0,0,.6);border:0 solid transparent;
+  border-image:image-set(url(../assets/ui/edd@1x.webp) 1x, url(../assets/ui/edd@2x.webp) 2x) 0 6.7% fill / 0 17.5px stretch;text-shadow:0 1px 0 rgba(0,0,0,.5)}
+
+/* ---------- meters: the aside VAL / EXP / PIPS bars become glass tubes ---------- */
+.pl .bar{border-radius:3px;background:image-set(url(../assets/ui/bar.track@1x.webp) 1x, url(../assets/ui/bar.track@2x.webp) 2x) 0 0/100% 100%;overflow:hidden;position:relative}
+.pl .bar i{border-radius:4px;background-size:82px 5px!important;background-repeat:no-repeat!important}
+.pl .bar i[style*="--gold"]{background:image-set(url(../assets/ui/bar.fill_gold@1x.webp) 1x, url(../assets/ui/bar.fill_gold@2x.webp) 2x) 0 0/82px 5px no-repeat!important}
+.pl .bar i[style*="--red"]{background:image-set(url(../assets/ui/bar.fill_red@1x.webp) 1x, url(../assets/ui/bar.fill_red@2x.webp) 2x) 0 0/82px 5px no-repeat!important}
+.pl .bar i[style*="--green"]{background:image-set(url(../assets/ui/bar.fill_green@1x.webp) 1x, url(../assets/ui/bar.fill_green@2x.webp) 2x) 0 0/82px 5px no-repeat!important}

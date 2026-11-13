@@ -129,6 +129,7 @@
   /* carry-over #5 (⊛ the firm holds a die — "tiny"): #firm=big previews it enlarged, with a green ring. Joe's yes/no. */
   body.firmbig .firm{font-size:1.6em;line-height:1;vertical-align:-.15em;display:inline-block;border-radius:50%;box-shadow:0 0 0 2px #2f9e5b,0 0 8px #2f9e5b;padding:0 .08em}
 </style>
+<link rel="stylesheet" href="src/oil-uikit.css"><!-- UI KIT skin (3D PIPELINE lib/ui): art only, layout untouched -->
 </head>
 <body>
 
@@ -178,6 +179,7 @@
   </div>
   <div id="ctrl">
     <button class="alt sm" id="viewBtn">◍ MAP</button>
+    <button class="alt sm" id="boardBtn" title="B: the 3D board ⇄ original art">▦ 3D BOARD</button>
     <button class="alt sm" id="stepBtn">STEP</button>
     <button class="sm" id="runBtn">▶ RUN</button>
     <span class="lede">Supply (red) · Weather (yellow) · World (blue) → three-body price · oil is the monotonic clock · scarcity spikes price · E.D.D. = Eat/Divide/Destroy.</span>
@@ -210,6 +212,7 @@
 <script src="src/oil-cardtext.js"></script>
 <script src="src/oil-rulebook.js"></script>
 <script src="src/oil-rulebook-text.js"></script>
+<script src="src/oil-uikit.js"></script><!-- UI KIT canvas sprites (render-only) -->
 <script>
 (function(){
 "use strict";
@@ -327,14 +330,26 @@ function buildSetup(){
 /* ---------- the board art ---------- */
 const BOARD=new Image(); BOARD.src='assets/board/oil_board.png'; let boardReady=false;
 BOARD.onload=()=>{boardReady=true; if(game)draw();};
+// THE 3D BOARD (3D PIPELINE games/oil, BOARD.md "drop-in plate"): the world rebuilt in Blender — same 1.48 aspect,
+// same projection (registration 0.0002 px), so every mark the canvas draws lands where it did. World only: lanes,
+// heat, fire, gates, ships and labels stay the canvas's own. Joe 1113 ("merge all 3d builds as mains"): the 3D board is
+// the DEFAULT; the original art is one toggle away (B, or the BOARD button) and #board=orig opens on it.
+const BOARD3D=new Image(); let board3dReady=false; BOARD3D.onload=()=>{board3dReady=true; if(game)draw();}; BOARD3D.src='assets/board/oil_board_3d.webp';
+let use3D=!/board=orig/.test(location.hash+location.search);
+function boardLabel(){ const b=document.getElementById('boardBtn'); if(b) b.textContent=use3D?'▦ 3D BOARD':'▦ ART BOARD'; }
+function toggleBoard(){ use3D=!use3D; boardLabel(); if(game)draw(); }
+document.addEventListener('keydown',e=>{ if((e.key==='b'||e.key==='B')&&!e.metaKey&&!e.ctrlKey&&!/INPUT|SELECT|TEXTAREA/.test((e.target||{}).tagName||'')) toggleBoard(); });
+const UIK=window.OIL_UIKIT||{spr:()=>false,nine:()=>false,onReady:()=>{}};   // UI KIT (render-only)
 
 /* ---------- game ---------- */
 let game=null,hist=[],running=false,timer=0;
+UIK.onReady(()=>{ if(game)draw(); });   // after `let game`: a ready-already atlas calls back synchronously (was a TDZ error above the declaration)
 const cv=$('#cv'),ctx=cv.getContext('2d');
 const AXES=['Supply','Weather','World'];
 const diceStr=()=>game.lastDice.join('-');
 // die colours (designer 2026-10-23): Supply red · Weather yellow · World blue — the log shows each body in its colour
 const DIE_COL=['#e0533f','#e8c23a','#5b93d6'];
+const DIE_KEY=['supply','weather','world','anders'];   // UI KIT die sprites, same order (+ Green Anders)
 const diceHtml=()=>game.lastDice.map((v,i)=>`<b style="color:${DIE_COL[i]}" title="${AXES[i]}">${v}</b>`).join('-');
 
 // THE DESK — running commentary (presentation only; own line index)
@@ -874,8 +889,9 @@ function drawToken(kind,x,y,fill,dpr,big){
 function drawKey(bx,by,bw,bh,dpr){
   const x0=bx+bw*0.135,y0=by+bh*0.852,x1=bx+bw*0.685,y1=by+bh*0.958, W=x1-x0,H=y1-y0;
   if(H<30*dpr)return;
+  if(!UIK.nine(ctx,'keyplate',x0,y0,W,H,dpr)){   // UI KIT: the riveted black-oil plate; else the old flat plate
   ctx.fillStyle='rgba(12,9,5,.82)'; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x0,y0,W,H,6*dpr):ctx.rect(x0,y0,W,H); ctx.fill();
-  ctx.strokeStyle='rgba(242,193,78,.45)'; ctx.lineWidth=1.2*dpr; ctx.stroke();
+  ctx.strokeStyle='rgba(242,193,78,.45)'; ctx.lineWidth=1.2*dpr; ctx.stroke(); }
   const fs=Math.max(7,Math.min(11,H/dpr/8.5))*dpr;
   ctx.textBaseline='middle'; ctx.textAlign='left';
   ctx.fillStyle='#f2c14e'; ctx.font='bold '+(fs*1.1)+'px Trebuchet MS';
@@ -950,7 +966,8 @@ function drawMap(){
   if(boardReady){
     const ar=BOARD.width/BOARD.height, sr=W/H;
     if(ar>sr){bh=W/ar;by=(H-bh)/2;} else {bw=H*ar;bx=(W-bw)/2;}
-    ctx.globalAlpha=.85; ctx.drawImage(BOARD,bx,by,bw,bh); ctx.globalAlpha=1;
+    if(use3D&&board3dReady) ctx.drawImage(BOARD3D,bx,by,bw,bh);   // the 3D plate at full strength (BOARD.md); same rect
+    else { ctx.globalAlpha=.85; ctx.drawImage(BOARD,bx,by,bw,bh); ctx.globalAlpha=1; }
   } else { ctx.fillStyle='#0a0705'; ctx.fillRect(0,0,W,H); }
   const st=game.mapState, X=p=>bx+bw*p[0], Y=p=>by+bh*p[1];
   const dpr=devicePixelRatio;
@@ -1094,8 +1111,11 @@ function drawMap(){
   // the tape, small, so you never lose the market while looking at the world
   const D=game.dials;
   ctx.textAlign='left'; ctx.font=('bold '+12*dpr+'px Trebuchet MS');
+  const hud=`$${game.price}  ·  OIL ${game.oil}/${D.OIL_START}  ·  ${game.era}${game.hegemony?`  ·  ${game.heg2?'HEGEMONY ':''}◇${game.pawns.filter(z=>!z.by).length} ducks`:''}`;
+  { const hw=ctx.measureText(hud).width;   // UI KIT (render-only): a plate behind the readout + the era lamp
+    if(UIK.nine(ctx,'hudplate',3*dpr,5*dpr,hw+34*dpr,22*dpr,dpr)) UIK.spr(ctx,game.era==='CHAOTIC'?'era.chaotic':'era.stable',10*dpr+hw+8*dpr,8*dpr,16*dpr,16*dpr); }
   ctx.fillStyle=game.era==='CHAOTIC'?'#e2632a':'#f6c95a';
-  ctx.fillText(`$${game.price}  ·  OIL ${game.oil}/${D.OIL_START}  ·  ${game.era}${game.hegemony?`  ·  ${game.heg2?'HEGEMONY ':''}◇${game.pawns.filter(z=>!z.by).length} ducks`:''}`,10*dpr,16*dpr);
+  ctx.fillText(hud,10*dpr,16*dpr);
   const shutList=Object.keys(st.closed||{});
   if(shutList.length){ ctx.fillStyle='#e2632a'; ctx.font=(10.5*dpr)+'px Trebuchet MS';
     ctx.fillText('SHUT: '+shutList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),10*dpr,31*dpr); }
@@ -1116,6 +1136,7 @@ function drawMap(){
 function drawDiceRow(xr,y,dpr){
   const d=(game&&game.lastDice)||[], s=13*dpr, gap=4*dpr, w=d.length*s+(d.length-1)*gap;
   d.forEach((v,i)=>{ const x=xr-w+i*(s+gap);
+    if(v>=1&&v<=6&&UIK.spr(ctx,'die_'+DIE_KEY[Math.min(i,3)]+'.'+v,x+s/2-s/1.48,y-s/1.48,s/0.74,s/0.74)) return;   // UI KIT: a real die
     ctx.fillStyle=DIE_COL[i]; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y-s/2,s,s,3*dpr):ctx.rect(x,y-s/2,s,s); ctx.fill();
     ctx.fillStyle='#140c04'; ctx.font='bold '+(9*dpr)+'px Trebuchet MS'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v,x+s/2,y+0.5*dpr); });
   return w;
@@ -1124,15 +1145,16 @@ function drawDiceRow(xr,y,dpr){
 function drawKey2(bx,by,bw,bh,dpr){
   const x0=bx+bw*0.700,y0=by+bh*0.852,x1=bx+bw*0.865,y1=by+bh*0.958, W=x1-x0,H=y1-y0;
   if(H<30*dpr||W<90*dpr)return;
+  if(!UIK.nine(ctx,'keyplate',x0,y0,W,H,dpr)){   // UI KIT plate (render-only)
   ctx.fillStyle='rgba(12,9,5,.82)'; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x0,y0,W,H,6*dpr):ctx.rect(x0,y0,W,H); ctx.fill();
-  ctx.strokeStyle='rgba(242,193,78,.45)'; ctx.lineWidth=1.2*dpr; ctx.stroke();
+  ctx.strokeStyle='rgba(242,193,78,.45)'; ctx.lineWidth=1.2*dpr; ctx.stroke(); }
   const fs=Math.max(7,Math.min(10.5,H/dpr/8.5))*dpr, s=fs*1.05;
   ctx.textBaseline='middle'; ctx.textAlign='left';
   ctx.fillStyle='#f2c14e'; ctx.font='bold '+(fs*1.05)+'px Trebuchet MS'; ctx.fillText('THE DICE',x0+8*dpr,y0+fs*1.1);
   const dice=[['Supply',DIE_COL[0]],['Weather',DIE_COL[1]],['World',DIE_COL[2]]].concat(game&&game.expansion?[['Anders','#2f9e5b']]:[]);
   let dx=x0+8*dpr, dy=y0+fs*2.5;
   ctx.font=(fs*.85)+'px Trebuchet MS';
-  dice.forEach(([n,c])=>{ ctx.fillStyle=c; ctx.beginPath(); ctx.roundRect?ctx.roundRect(dx,dy-s/2,s,s,2*dpr):ctx.rect(dx,dy-s/2,s,s); ctx.fill();
+  dice.forEach(([n,c],di)=>{ if(!UIK.spr(ctx,'die_'+DIE_KEY[di]+'.5',dx+s/2-s/1.48,dy-s/1.48,s/0.74,s/0.74)){ ctx.fillStyle=c; ctx.beginPath(); ctx.roundRect?ctx.roundRect(dx,dy-s/2,s,s,2*dpr):ctx.rect(dx,dy-s/2,s,s); ctx.fill(); }
     ctx.fillStyle='rgba(220,200,160,.85)'; ctx.textAlign='left'; ctx.fillText(n,dx+s+3*dpr,dy); dx+=s+3*dpr+ctx.measureText(n).width+7*dpr; });
   const marks=[['▰','control'],['●','your die']].concat(game&&game.privilege?[['☠','held'],['⊛','the firm']]:[]).concat(game&&game.hegemony?[['◇','duck']]:[]).concat([['▼','E.D.D.']]);
   let mx=x0+8*dpr, my=y0+fs*4.1;
@@ -1162,8 +1184,11 @@ function draw0(){
     ctx.fillText('$'+h.price,Math.min(W-pr,x-8*devicePixelRatio),Math.max(pt+10*devicePixelRatio,y-14*devicePixelRatio));}
   // oil bar
   const oy=H-pb+22*devicePixelRatio,oh=18*devicePixelRatio,ow=cw,frac=game?game.oil/D.OIL_START:1;
+  if(UIK.nine(ctx,'oiltube.track',pl-2,oy-2,ow+4,oh+4,devicePixelRatio)){   // UI KIT (render-only): oil in a glass tube
+    UIK.spr(ctx,'oiltube.fill',pl-2,oy-2,(ow+4)*frac,oh+4,frac); UIK.nine(ctx,'oiltube.cap',pl-2,oy-2,ow+4,oh+4,devicePixelRatio);
+  } else {
   ctx.fillStyle='#1c140c';ctx.fillRect(pl,oy,ow,oh);
-  const og=ctx.createLinearGradient(pl,0,pl+ow,0);og.addColorStop(0,'#3a2410');og.addColorStop(1,'#0a0604');ctx.fillStyle=og;ctx.fillRect(pl,oy,ow*frac,oh);
+  const og=ctx.createLinearGradient(pl,0,pl+ow,0);og.addColorStop(0,'#3a2410');og.addColorStop(1,'#0a0604');ctx.fillStyle=og;ctx.fillRect(pl,oy,ow*frac,oh); }
   const sx=pl+ow*(D.SCARCITY_BAND/D.OIL_START);ctx.strokeStyle='rgba(226,99,42,.5)';ctx.setLineDash([4*devicePixelRatio,4*devicePixelRatio]);ctx.beginPath();ctx.moveTo(sx,oy);ctx.lineTo(sx,oy+oh);ctx.stroke();ctx.setLineDash([]);
   ctx.fillStyle='#caa15e';ctx.textAlign='left';ctx.font=(11*devicePixelRatio)+'px Trebuchet MS';ctx.fillText('OIL REMAINING  '+(game?game.oil:0)+' / '+D.OIL_START,pl,oy+oh+15*devicePixelRatio);
   if(game){ctx.textAlign='right';ctx.fillStyle=game.era==='CHAOTIC'?'#e2632a':'#9a8f7c';ctx.fillText('turn '+game.turn+' · '+diceStr()+' · '+game.era,W-pr,oy+oh+15*devicePixelRatio);}
@@ -1182,6 +1207,7 @@ $('#startGo').onclick=()=>{ if(!$('#startGo').disabled) startGame(); };
 // THE RULEBOOK (src/oil-rulebook.js): the board game, in the game — from the box, the setup and the table
 ['#rbBoot','#rbSetup','#rbPlay'].forEach(id=>{ const b=$(id); if(b) b.onclick=()=>window.OIL_RULEBOOK&&OIL_RULEBOOK.open(); });
 $('#viewBtn').onclick=()=>{S.view=S.view==='map'?'chart':'map';$('#viewBtn').textContent=S.view==='map'?'◍ MAP':'▤ TAPE';draw();};
+$('#boardBtn').onclick=toggleBoard; boardLabel();
 $('#stepBtn').onclick=async()=>{stop();await stepOnce();};
 $('#runBtn').onclick=()=>{running?stop():run();};
 $('#quitBtn').onclick=()=>{stop();buildSetup();show('setup');};

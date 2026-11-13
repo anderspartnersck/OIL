@@ -1,6 +1,6 @@
 # OiL! — THE HOME GAME
 
-**Play it in your browser: <https://anderspartnersck.github.io/OIL/gateway.html>**
+**Play it in your browser: <https://anderspartnersck.github.io/OIL/>**
 
 Crude, capital, and everyone at the table willing to sell you out.
 
@@ -36,10 +36,10 @@ shipping map with deals, crisis and **THE PATH**: face-up contracts you sail car
 | **Space** | Run / pause the table |
 | **Esc** or **P** | Pause menu: resume, how to play, settings (table speed, map or price-tape view), new game, quit to title |
 | **?** | The rulebook |
+| **B** | Flip the board: the 3D board ⇄ the original art (also the ▦ BOARD button) |
 | **Esc** | On setup or the final screen, back to the title |
 
-The bare link (<https://anderspartnersck.github.io/OIL/>) opens an old first sketch that is no longer updated;
-the game is the gateway link above.
+The first sketch (the card bible) is kept at `card-bible.html`; it is no longer updated.
 
 ## Credits
 
