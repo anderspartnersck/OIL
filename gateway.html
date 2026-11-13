@@ -147,6 +147,8 @@
     <div class="row"><div class="lbl">THE BOX</div><div class="seg" id="segExp"></div><button class="alt sm" id="rbSetup" style="margin-left:auto">📖 RULEBOOK</button></div>
     <div class="row" id="rowLevels" title="OIL LEVELS (prototype, O2): works with the CORE box and with the expansion"><div class="lbl">LEVELS</div><div class="seg" id="segLevels"></div>
       <span class="ss" id="levelsHint" style="margin:0 0 0 118px;text-align:left;flex-basis:100%"></span></div>
+    <div class="row" id="rowHouse" title="OPEN CALLS (docs/DECISIONS-1110.md): each is off unless you tap it — the designer has not ruled yet"><div class="lbl">HOUSE RULES</div><div class="seg" id="segHouse"></div>
+      <span class="ss" id="houseHint" style="margin:0 0 0 118px;text-align:left;flex-basis:100%"></span></div>
     <details id="labRules"><summary>LAB — single modules, for testing (the box above sets them)</summary>
     <div id="expRules" style="display:none;border-left:2px solid #2f9e5b;padding-left:12px;margin-left:4px">
     <div class="row"><div class="lbl">RULES</div><div class="seg" id="segOpt"></div></div>
@@ -237,6 +239,12 @@ const LEVEL_PRESETS=[['off','OFF (today)','No levels: every company may sail any
   ['two','TWO LEVELS (a licence)','WILDCAT → THE LANES. Land a cargo and pay $40 for the licence to the gates, capes and ice; a seizure or a dirty record takes it back and tows you home.'],
   ['voyage','VOYAGE LEVELS (cargo climbs)','Every cargo starts at WILDCAT; sail it through a gate, cape or the ice and it is paid +35% (THE LANES). An incident on the way knocks it back.']];
 S.levels=((/levels=(two|voyage)/.exec(location.hash+location.search))||[])[1]||'off';
+// HOUSE RULES (1112): the open calls that were A/B'd ×1000 (docs/DECISIONS-1110.md) as opt-in chips, all OFF by default
+// (off = today's rules, the golden fingerprint). The old preview hashes still preselect: #supply=backhaul #retainer=rider #west=rim
+const HOUSE_RULES=[['backhaul','BACKHAUL (CORE-022)','A landed contract loads the backhaul: one barrel for the trip home (it burns 1 oil). Halves the empty holds; ~0.5 rounds shorter.','map'],
+  ['rider','THE RIDER (retainer rework)','IWS cover rides any sale once your HQ has heat: $22 off the top, +4 shield on your HQ for 3 of your turns. Replaces the near-dead retainer.','crisis'],
+  ['rim','WEST: THE RIM','LA, Valdez and Vladivostok join the map as unowned buyers with flashpoints (~24% of sales go west).','map']];
+S.house={backhaul:/supply=backhaul/.test(location.hash),rider:/retainer=rider/.test(location.hash),rim:/west=(rim|both)/.test(location.hash)};
 if(/firm=big/.test(location.hash+location.search)) document.body.classList.add('firmbig');   // carry-over #5 preview
 const CORE_MODS={cards:1,deals:1,map:1,path:1,crisis:1};
 const on=k=>CORE_MODS[k]?S[k]:(S.expansion&&S[k]);
@@ -284,6 +292,11 @@ function buildSetup(){
     LEVEL_PRESETS.forEach(([k,l])=>{ const c=document.createElement('div'); c.className='chip'+(S.levels===k?' on':''); c.textContent=l;
       c.onclick=()=>{ if(!S.map)return; S.levels=k; buildSetup(); }; segL.appendChild(c); });
     $('#levelsHint').textContent=S.map?(LEVEL_PRESETS.find(x=>x[0]===S.levels)||LEVEL_PRESETS[0])[2]:'needs THE MAP.'; }
+  { const segH=$('#segHouse'); segH.innerHTML='';
+    HOUSE_RULES.forEach(([k,l,hint,needs])=>{ const ok=on(needs), c=document.createElement('div'); c.className='chip'+(S.house[k]&&ok?' on':''); c.textContent=l; c.title=hint;
+      if(!ok) c.style.opacity='.35'; c.onclick=()=>{ if(!on(needs))return; S.house[k]=!S.house[k]; buildSetup(); }; segH.appendChild(c); });
+    const lit=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n));
+    $('#houseHint').textContent=lit.length?lit.map(x=>x[2]).join(' · '):'none — today\'s rules. Tap one to try an open call.'; }
   $('#pathHint').textContent=pathOn?(PATH_PRESETS.find(x=>x[0]===S.pathPreset)||PATH_PRESETS[0])[2]:(S.map?'off — sell anywhere there is an HQ; no contracts.':'needs THE MAP.');
   // THE COMPANIES — each player takes a placard. Tap: — → BOT → PLAYER (pass-and-play) → —. ★ = you (tap ★ to move it).
   const fg=$('#facs'); fg.innerHTML=''; const active=activeCodes(), [lo,hi]=SEATS(), n=active.length;
@@ -342,9 +355,9 @@ function startGame(){
     disputes:on('privilege')&&on('disputes'),   // round 8: cut — no chip sets it
     clock:on('clock'),
     hegemony:on('map')&&(on('hegemony')||on('ducks')),   // round 12: the ducks ride ★ THE FULL EXPANSION at every table under 8   // HEGEMONY (round 11; docs/THE-HEGEMONY.md): 2 seats, 6 sitting-duck pawns   // THE SEAT CLOCK (round 8): oil 15 a seat, E.D.D. arms with ~a round left   // THE DISPUTE DECK (docs/THE-EXPANSION.md)   // MOMENTUM (docs/THE-MOMENTUM.md): typed spaces, you MUST move, camping = demurrage   // THE PRIVILEGE (docs/THE-PRIVILEGE.md): penalties -> how many of the three bodies you roll
-    path:(on('map')&&S.path)?S.pathPreset:undefined,
-    crisisDials:(/retainer=(policy|rider|cut)/.exec(location.hash)||[])[1]?{RETAINER_MODE:/retainer=(policy|rider|cut)/.exec(location.hash)[1]}:undefined,   // RETAINER REWORK preview (docs/DECISIONS-1110.md): #retainer=policy|rider|cut
-    west:(/west=(rim|demand|both)/.exec(location.hash)||[])[1],   // WEST COAST preview (docs/DECISIONS-1110.md): #west=rim|demand|both
+    path:(on('map')&&S.path)?(S.house.backhaul?Object.assign(OilGame.pathRules(S.pathPreset),{supply:'cargo'}):S.pathPreset):undefined,   // HOUSE RULES: backhaul (CORE-022)
+    crisisDials:(/retainer=(policy|cut)/.exec(location.hash)||[])[1]?{RETAINER_MODE:/retainer=(policy|cut)/.exec(location.hash)[1]}:(S.house.rider&&on('crisis')?{RETAINER_MODE:'rider'}:undefined),   // HOUSE RULES: THE RIDER chip (#retainer=rider preselects it)   // RETAINER REWORK preview (docs/DECISIONS-1110.md): #retainer=policy|rider|cut
+    west:(/west=(demand|both)/.exec(location.hash)||[])[1]||(S.house.rim&&on('map')?'rim':undefined),   // HOUSE RULES: WEST RIM chip (#west=demand|both = the other previews)   // WEST COAST preview (docs/DECISIONS-1110.md): #west=rim|demand|both
     levels:(on('map')&&S.levels!=='off')?S.levels:undefined,   // OIL LEVELS prototype (O2, docs/RESUME-2026-11-10.md): THE BOX chip, or #levels=two | #levels=voyage   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
     // THE PATH seats the real roster, so each company starts in its own yard (and its power is live —
     // the configuration path-model.js and LAB 12 measure). Off the path the table stays as it was.
@@ -358,7 +371,7 @@ function startGame(){
   $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#desk').classList.remove('on'); $('#log').innerHTML='';
   deskScar=false; deskSpike=false;
   buildPanels(); show('play'); draw();
-  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}`);
+  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
 }
 function buildPanels(){
@@ -876,6 +889,9 @@ function drawKey(bx,by,bw,bh,dpr){
     ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.3*dpr; ctx.setLineDash([2.5*dpr,2*dpr]); ctx.beginPath(); ctx.arc(mx+5*dpr,y0+fs*1.1,5*dpr,0,7); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillText('◆ stop line',mx+13*dpr,y0+fs*1.1);
   } else ctx.fillText('each space on a route = 1 move',kx,y0+fs*1.1);
+  // too narrow for the 3+1 column grid (a phone): the labels collided, so point at the full key instead (1112 legibility)
+  if(W<480*dpr){ ctx.fillStyle='rgba(220,200,160,.85)'; ctx.font=(fs*1.05)+'px Trebuchet MS'; ctx.textAlign='left';
+    ctx.fillText('the full key: 📖 RULES · THE BOARD',x0+10*dpr,y0+H*0.62); return; }
   const cols=3, rows=2, top=y0+fs*2.4, cw=(W-20*dpr)/(cols+1), rh=(y1-top-4*dpr)/rows;
   ROUTE_KEY.forEach(([k,name,what],i)=>{
     const cx=x0+10*dpr+(i%cols)*cw, cy=top+Math.floor(i/cols)*rh+rh/2;
