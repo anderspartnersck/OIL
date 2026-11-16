@@ -167,6 +167,9 @@
     ],
     green: ["Anders just put a thumb on the scale.", "Somebody double-checked their career."],
     verdict: ["controls what's left — the rest control nothing.", "wins the ruins. No prize but the rubble.", "is last one standing on a dry field."],
+    // the verdict line follows the ending (the "dry field" line only fits the oil running out)
+    verdictFire: ["controls what's left — the rest is smoke.", "wins the ruins. The insurers will call it an act of God.", "is last one standing in the smoke."],
+    verdictPrice: ["controls what's left — the market broke first.", "wins the ruins. The ticker stopped somewhere past sanity.", "is last one standing when the screens went dark."],
   };
   // deterministic pick (seed = turn) so a replay narrates identically
   function pick(key, seed) { const a = LINES[key]; return a ? a[(seed >>> 0) % a.length] : ''; }

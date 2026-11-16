@@ -20,9 +20,10 @@
   button.sm{padding:7px 14px;font-size:13px}
 
   /* ---------- BOOT ---------- */
-  #boot{align-items:center;justify-content:center;text-align:center;
+  #boot{align-items:center;justify-content:flex-start;text-align:center;overflow-y:auto;padding:12px;
     background:linear-gradient(rgba(12,9,6,.55),rgba(12,9,6,.85)),url("assets/box/ocean_alt.png") center/cover}
-  #boot .logo{width:min(60vw,400px);filter:drop-shadow(0 10px 28px rgba(0,0,0,.6));animation:fl 1.1s ease both}
+  #boot .logo{width:min(60vw,400px,calc(52vh * 1.5));mix-blend-mode:screen;animation:fl 1.1s ease both;margin-top:auto}   /* the PNG has a black matte: screen drops it */
+  #boot>:last-child{margin-bottom:auto}
   @keyframes fl{0%{opacity:0}60%{opacity:.5}100%{opacity:1}}
   #boot .tag{margin-top:10px;font-weight:800;letter-spacing:.16em;color:#cdbf9e;font-size:clamp(12px,2vw,18px)}
   #boot .tag b{color:var(--orange)}
@@ -31,8 +32,9 @@
   @keyframes pulse{0%,100%{opacity:.65}50%{opacity:1}}
 
   /* ---------- SETUP ---------- */
-  #setup{align-items:center;justify-content:center;gap:8px;padding:22px;overflow-y:auto;
+  #setup{align-items:center;justify-content:flex-start;gap:8px;padding:22px;overflow-y:auto;
     background:linear-gradient(rgba(12,9,6,.8),rgba(8,6,4,.92)),url("assets/board/oil_board.png") center/cover fixed}
+  #setup>:first-child{margin-top:auto} #setup>:last-child{margin-bottom:auto}   /* centred when it fits, top-anchored scroll when it doesn't */
   #setup h2{font-family:Georgia,serif;color:var(--gold-lite);margin:.1em 0;font-size:26px}
   #setup .ss{color:#9a8f7c;font-size:12px;font-weight:800;letter-spacing:.12em;margin-bottom:8px}
   .card{background:var(--panel);border:1px solid #3a2c18;border-radius:16px;padding:18px 22px;max-width:780px;width:100%;box-shadow:0 16px 40px rgba(0,0,0,.5)}
@@ -69,7 +71,7 @@
   .rh{padding:9px 14px;border-bottom:1px solid #3a2c18;display:flex;align-items:center;justify-content:space-between}
   .rh .er{font-family:Georgia,serif;color:var(--gold-lite);font-size:19px;font-weight:700}
   .rh .tg{font-size:9px;color:#8a7c63;letter-spacing:.1em;text-align:right}
-  #players{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+  #players{flex:0 1 auto;min-height:0;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:7px}
   .pl{background:#241a0f;border-radius:10px;padding:8px 10px;border-left:3px solid var(--c,#e0a32a)}
   .pl.you{box-shadow:0 0 0 2px var(--gold-lite)} .pl.act{background:#2e2110}
   .pl .nm{font-weight:800;font-size:12.5px;display:flex;justify-content:space-between}
@@ -79,10 +81,10 @@
   .pl .tie{margin-top:4px;font-size:9px;font-weight:700;letter-spacing:.04em;color:#7d6b4a;min-height:11px}
   .pl .tie .pact{color:#caa15e} .pl .tie .trib{color:#2f9e5b} .pl .tie .grud{color:#e2632a}
   .pl .bars{display:flex;gap:5px;margin-top:5px;font-size:9px;color:#9a8f7c;font-weight:700}
-  .pl .bars span{flex:1}
+  .pl .bars span{flex:1} .pl .bars b{color:#cdbf9e;font-weight:800;margin-left:3px}
   .bar{height:5px;border-radius:3px;background:#3a2c18;margin-top:2px;overflow:hidden}
   .bar i{display:block;height:100%}
-  #log{height:104px;overflow-y:auto;border-top:1px solid #3a2c18;padding:6px 12px;font-size:11px;line-height:1.5;color:#b6a98a}
+  #log{flex:1 1 104px;min-height:104px;overflow-y:auto;border-top:1px solid #3a2c18;padding:6px 12px;font-size:11px;line-height:1.5;color:#b6a98a}
   #log .t{color:var(--gold-lite);font-weight:800} #log .spike{color:var(--orange)} #log .out{color:var(--red)} #log .grn{color:var(--green)}
   #ctrl{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid #3a2c18;background:rgba(10,8,6,.6)}
   #ctrl .lede{flex:1;font-size:10.5px;color:#7d6b4a}
@@ -98,6 +100,7 @@
   #nprompt .grp .gl{font-size:9.5px;letter-spacing:.14em;color:#8a7550;text-transform:uppercase;
     min-width:86px;text-align:right;flex:none;padding-top:6px}
   #nprompt .grp .gb{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+  #nprompt .grp .gd{flex-basis:100%;font-size:10.5px;line-height:1.35;color:#9a8f7c;margin:1px 2px 0}  #nprompt .grp .gd b{color:#cdbf9e}
   #nprompt .po.grouped button{min-width:0;padding:6px 11px;font-size:12.5px}
   #nprompt .po button{min-width:96px}
   #nprompt .po button.no{background:linear-gradient(180deg,#caa15e,#7d5b22);color:#1a1206;box-shadow:0 3px 0 #4a3413}
@@ -110,8 +113,8 @@
   #desk .l{color:var(--cream);font-style:italic}
 
   /* ---------- VERDICT ---------- */
-  #verdict{align-items:center;justify-content:center;background:rgba(10,7,5,.94)}
-  #verdict .card{text-align:center;max-width:640px} #verdict td{white-space:nowrap}
+  #verdict{align-items:center;justify-content:flex-start;overflow-y:auto;padding:16px;background:rgba(10,7,5,.94)} #verdict>.card{margin:auto 0}
+  #verdict .card{text-align:center;max-width:800px} #verdict td{white-space:nowrap}
   #verdict .crown{font-size:48px}
   #verdict h2{font-size:30px;margin:.2em 0;color:var(--gold-lite);font-family:Georgia,serif}
   #verdict .rsn{color:#9a8f7c;font-size:13px}
@@ -130,6 +133,7 @@
   body.firmbig .firm{font-size:1.6em;line-height:1;vertical-align:-.15em;display:inline-block;border-radius:50%;box-shadow:0 0 0 2px #2f9e5b,0 0 8px #2f9e5b;padding:0 .08em}
 </style>
 <link rel="stylesheet" href="src/oil-uikit.css"><!-- UI KIT skin (3D PIPELINE lib/ui): art only, layout untouched -->
+<style>/* gateway-owned fit fixes over the generated kit: the kit paints a 13px colour band inside the top of each company card — keep the name below it */ .fac{padding-top:17px}</style>
 </head>
 <body>
 
@@ -379,13 +383,13 @@ function startGame(){
     factions:(on('map')&&S.path)?codes:undefined});
   game._colors=codes.map(c=>colorFor(c));
   const youIdx=codes.indexOf(S.youCode);
-  if(youIdx>=0){ game.players[youIdx].isHuman=true; game.players[youIdx].agent={decide:presentPrompt}; }
+  if(youIdx>=0){ game.players[youIdx].isHuman=true; game.players[youIdx]._you=true; game.players[youIdx].agent={decide:presentPrompt}; }
   // pass-and-play: every seated PLAYER is a human at this screen (the prompt says whose turn it is)
   codes.forEach((c,i)=>{ if(i!==youIdx&&S.seat[c]==='human'){ game.players[i].isHuman=true; game.players[i].agent={decide:presentPrompt}; } });
   hist=[{price:game.price,oil:game.oil,era:'STABLE',edd:false}];
   $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#desk').classList.remove('on'); $('#log').innerHTML='';
   deskScar=false; deskSpike=false;
-  buildPanels(); show('play'); draw();
+  buildPanels(); updatePanels(); show('play'); draw();
   logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
 }
@@ -393,11 +397,11 @@ function buildPanels(){
   const w=$('#players'); w.innerHTML='';
   game.players.forEach((p,i)=>{
     const d=document.createElement('div'); d.className='pl'+(p.isHuman?' you':''); d.id='pl'+i; d.style.setProperty('--c',game._colors[i]);
-    d.innerHTML=`<div class="nm"><span>${p.name}${p.isHuman?' <span style="color:#f6c95a">· YOU</span>':''}</span><span><span class="pv" title="THE PRIVILEGE — how many of Supply · Weather · World this company rolls itself"></span><span class="ctl">▰0</span></span></div>
+    d.innerHTML=`<div class="nm"><span>${p.name}${p._you?' <span style="color:#f6c95a">· YOU</span>':p.isHuman?' <span style="color:#9fd8a8">· PLAYER</span>':''}</span><span><span class="pv" title="THE PRIVILEGE — how many of Supply · Weather · World this company rolls itself"></span><span class="ctl">▰0</span></span></div>
       <div class="tie"></div>
-      <div class="bars"><span>VAL<div class="bar"><i style="background:var(--gold)"></i></div></span>
-      <span>EXP<div class="bar"><i style="background:var(--red)"></i></div></span>
-      <span>PIPS<div class="bar"><i style="background:var(--green)"></i></div></span></div>`;
+      <div class="bars"><span title="holdings: cash + barrels at today's price">VAL<b class="nv"></b><div class="bar"><i style="background:var(--gold)"></i></div></span>
+      <span title="exposure: the record. At the verdict, ▰ first, then the CLEANER record wins">EXP<b class="ne"></b><div class="bar"><i style="background:var(--red)"></i></div></span>
+      <span title="pips: spend one to FLIP a CHAOTIC market">PIPS<b class="np"></b><div class="bar"><i style="background:var(--green)"></i></div></span></div>`;
     w.appendChild(d);
   });
 }
@@ -458,6 +462,7 @@ function updatePanels(){
     const b=d.querySelectorAll('.bar i');
     b[0].style.width=(100*p.holdings(game.price)/mV)+'%'; b[1].style.width=(100*p.exposure/mE)+'%';
     b[2].style.width=(100*p.pips/(window.OIL_DIALS?OIL_DIALS.PIPS_START:3))+'%';
+    { const nv=d.querySelector('.nv'); if(nv){ nv.textContent='$'+(p.holdings(game.price)|0); d.querySelector('.ne').textContent=p.exposure; d.querySelector('.np').textContent=p.pips; } }
   });
   updatePathBar();
 }
@@ -608,7 +613,8 @@ async function stepOnce(){
 function verdict(){
   const r=game.ranking||game.players;
   $('#vTitle').textContent=game.winner.name+' CONTROLS THE RUIN';
-  const sign=window.OIL_DESK?` · THE DESK: “${game.winner.name} ${OIL_DESK.pick('verdict',game.turn)}”`:'';
+  const vk=/fire/i.test(game.end_reason||'')?'verdictFire':/oil ran out/i.test(game.end_reason||'')?'verdict':/price|instab/i.test(game.end_reason||'')?'verdictPrice':'verdict';
+  const sign=window.OIL_DESK?` · THE DESK: “${game.winner.name} ${OIL_DESK.pick(OIL_DESK.LINES[vk]?vk:'verdict',game.turn)}”`:'';
   $('#vReason').textContent=game.end_reason+sign;
   const t=$('#vTable'); t.innerHTML='';
   r.forEach(p=>{const tr=document.createElement('tr');
@@ -616,12 +622,12 @@ function verdict(){
     const L=game.path?game.events.filter(e=>e.type==='landed'&&e.player===p.name):[];
     const tolls=game.path?game.events.filter(e=>e.type==='toll'&&e.to===p.name).reduce((a,e)=>a+e.paid,0):0;
     const pathCell=game.path?`<td class="r" style="font-weight:600;color:#9a8f7c">★${L.filter(e=>e.consigned).length} landed · ${L.filter(e=>!e.consigned&&!e.domestic).length} dumped${L.some(e=>e.domestic)?` · ⛏${L.filter(e=>e.domestic).length} onshore`:''}${tolls?` · toll $${tolls}`:''}</td>`:'';
-    tr.innerHTML=`<td>${p===game.winner?'🛢️ ':''}${p.name}${p.isHuman?' · YOU':''}</td><td class="r">▰${p.control}</td>${pathCell}<td class="r">exp ${p.exposure}${game.privilege?` <span style="color:${game.privilegeOf(p)<3?'#e2632a':'#e8c46a'};font-size:9px" title="THE PRIVILEGE at the end">${game.privilegeDots(p)}</span>`:''}</td><td class="r">$${p.holdings(game.price)|0}</td>`;
+    tr.innerHTML=`<td>${p===game.winner?'🛢️ ':''}${p.name}${p._you?' · YOU':p.isHuman?' · PLAYER':''}</td><td class="r">▰${p.control}${game.heg2&&game._hegStake?` <span style="color:#9fd8a8" title="stake in the partner matrix (HEGEMONY)">◇${game._hegStake(p)}</span>`:''}</td>${pathCell}<td class="r">exp ${p.exposure}${game.privilege?` <span style="color:${game.privilegeOf(p)<3?'#e2632a':'#e8c46a'};font-size:9px" title="THE PRIVILEGE at the end">${game.privilegeDots(p)}</span>`:''}</td><td class="r">$${p.holdings(game.price)|0}</td>`;
     t.appendChild(tr);});
   // THE PRIVILEGE: who held whose dice (seizures + tolls over the game) — the verdict's footnote
   if(game.privilege){ const rows=Object.values(game.privLedger||{}).map(r=>({...r,n:r.seize+r.toll})).sort((a,b)=>b.n-a.n).slice(0,3);
     const req=game.events.filter(e=>e.type==='requisition').length;
-    const tr=document.createElement('tr'); tr.id='vLedger'; tr.innerHTML=`<td colspan="6" style="font-size:10px;color:#9a8f7c;padding-top:8px">WHO HELD WHOSE DICE — ${rows.length?rows.map(r=>`${r.by} held ${r.on}'s ${r.seize?'◉'+r.seize:''}${r.seize&&r.toll?' ':''}${r.toll?'◐'+r.toll:''}`).join(' · '):'nobody took anybody\'s dice'}${req?` · the state requisitioned ${req}×`:''}</td>`; t.appendChild(tr); }
+    const tr=document.createElement('tr'); tr.id='vLedger'; tr.innerHTML=`<td colspan="6" style="font-size:10px;color:#9a8f7c;padding-top:8px;white-space:normal">WHO HELD WHOSE DICE — ${rows.length?rows.map(r=>`${r.by} held ${r.on}'s ${r.seize?'◉'+r.seize:''}${r.seize&&r.toll?' ':''}${r.toll?'◐'+r.toll:''}`).join(' · '):'nobody took anybody\'s dice'}${req?` · the state requisitioned ${req}×`:''}</td>`; t.appendChild(tr); }
   show('verdict');
 }
 
@@ -652,7 +658,8 @@ function presentPrompt(g,p,ctx){
       const cards=(ctx.cards||[]), moves=(ctx.moves||[]);
       opts=[];
       cards.forEach(n=>{const c=cardByName[n];
-        opts.push({group:'Play',label:n,value:n,tip:(c&&c.effects&&c.effects[0])||''});});
+        const tx=(window.OIL_CARDTEXT||{})[n]||(c&&c.effects&&c.effects[0])||'';
+        opts.push({group:'Play',label:n,value:n,tip:tx,desc:tx?`<b>${n}</b> — ${tx}`:''});});
       const breaks=moves.filter(m=>String(m).indexOf('BREAK:')===0);
       ['PACT','TRIBUTE','SCAPEGOAT'].forEach(t=>{
         moves.filter(m=>String(m).indexOf(t+':')===0).forEach(m=>{
@@ -795,8 +802,11 @@ function presentPrompt(g,p,ctx){
           const l=document.createElement('div'); l.className='gl'; l.textContent=gname;
           if(o.gtip)l.title=o.gtip;
           row=document.createElement('div'); row.className='gb';
-          g.appendChild(l); g.appendChild(row); box.appendChild(g);}
-        row.appendChild(mk(o));});
+          g.appendChild(l); g.appendChild(row); box.appendChild(g);
+          if(o.gtip){ const gd=document.createElement('div'); gd.className='gd'; gd.textContent=o.gtip; row._gd=gd; }}
+        row.appendChild(mk(o));
+        if(o.desc){ if(!row._gd){ row._gd=document.createElement('div'); row._gd.className='gd'; } row._gd.innerHTML+=(row._gd.innerHTML?'<br>':'')+o.desc; }});
+      box.querySelectorAll('.gb').forEach(r=>{ if(r._gd) r.appendChild(r._gd); });   // the words go under the buttons (tips were hover-only)
     } else { box.className='po'; opts.forEach(o=>box.appendChild(mk(o))); }
     updatePanels(); draw(); $('#nprompt').classList.add('on');
   });
