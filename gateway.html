@@ -229,7 +229,8 @@ const cardByName={}; (window.OIL&&OIL.CARDS||[]).forEach(c=>cardByName[c.name]=c
 /* ---------- setup state ---------- */
 // THE BOX (Joe 2026-10-23: "build this as the game for now … think of it as a board game first").
 // Two boxes, like the shelf: CORE (the one sheet: three dice, the map, the decks, deals, fire, the companies'
-// powers) and CORE + EXPANSION (+ Green Anders and ★ THE FULL EXPANSION: the privilege, momentum, pirates and
+// powers) and CORE + EXPANSION — the expansion box is "OIL! THE HOME GAME — NOW WITH SuprexCore PREMIUM" (Joe 1117; the
+// Green Anders die is ONE component of it, not its name) — (the Green Anders die and ★ THE FULL EXPANSION: the privilege, momentum, pirates and
 // the firm, the seat clock, the ducks / RICO; at 2 players, HEGEMONY). The module chips stay under LAB for testing.
 const S={expansion:false,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,privilege:false,momentum:false,disputes:false,clock:false,hegemony:false,ducks:false,view:'map',
   youCode:FAC[0]&&FAC[0].code, seat:{}};
@@ -250,8 +251,9 @@ S.levels=((/levels=(two|voyage)/.exec(location.hash+location.search))||[])[1]||'
 // (off = today's rules, the golden fingerprint). The old preview hashes still preselect: #supply=backhaul #retainer=rider #west=rim
 const HOUSE_RULES=[['backhaul','BACKHAUL (CORE-022)','A landed contract loads the backhaul: one barrel for the trip home (it burns 1 oil). Halves the empty holds; ~0.5 rounds shorter.','map'],
   ['rider','THE RIDER (retainer rework)','IWS cover rides any sale once your HQ has heat: $22 off the top, +4 shield on your HQ for 3 of your turns. Replaces the near-dead retainer.','crisis'],
-  ['rim','WEST: THE RIM','LA, Valdez and Vladivostok join the map as unowned buyers with flashpoints (~24% of sales go west).','map']];
-S.house={backhaul:/supply=backhaul/.test(location.hash),rider:/retainer=rider/.test(location.hash),rim:/west=(rim|both)/.test(location.hash)};
+  ['rim','WEST: THE RIM','LA, Valdez and Vladivostok join the map as unowned buyers with flashpoints (~24% of sales go west).','map'],
+  ['rig','THE SUPER-RIG (contested)','One offshore rig on the Brazilian pre-salt, in nobody\'s yard. Sell there to hold it (the station meter); its holder lifts a barrel each turn it starts there (+1 exposure, heats the rig). docs/THE-SUPER-RIG.md','map']];
+S.house={backhaul:/supply=backhaul/.test(location.hash),rider:/retainer=rider/.test(location.hash),rim:/west=(rim|both)/.test(location.hash),rig:/rig=on|[#&]rig\b/.test(location.hash)};
 if(/firm=big/.test(location.hash+location.search)) document.body.classList.add('firmbig');   // carry-over #5 preview
 const CORE_MODS={cards:1,deals:1,map:1,path:1,crisis:1};
 const on=k=>CORE_MODS[k]?S[k]:(S.expansion&&S[k]);
@@ -268,7 +270,7 @@ function activeCodes(){ // the companies at the table, YOU first
 function setFull(v){ S.privilege=v; S.momentum=v; S.clock=v; S.ducks=v; if(v){S.map=true;S.path=true;} }
 function buildSetup(){
   const segExp=$('#segExp'); segExp.innerHTML='';
-  [['core','CORE GAME','three dice · the map · three decks · deals · fire · eight… six companies'],['exp','+ Green Anders — CORE + EXPANSION','the fourth die · the privilege · momentum · pirates & the firm · the seat clock · the ducks · 2-player HEGEMONY']].forEach(([k,l,sub])=>{
+  [['core','CORE GAME','three dice · the map · three decks · deals · fire · eight… six companies'],['exp','NOW WITH SuprexCore PREMIUM — CORE + EXPANSION','the fourth die (the Green Anders die) · the privilege · momentum · pirates & the firm · the seat clock · the ducks · 2-player HEGEMONY']].forEach(([k,l,sub])=>{
     const c=document.createElement('div'); const isOn=(k==='exp')===S.expansion; c.className='chip box'+(isOn?' on':''); c.innerHTML=`${l}<small>${sub.replace('eight… ','')}</small>`;
     c.onclick=()=>{ const v=k==='exp'; if(S.expansion===v)return; S.expansion=v; setFull(v);
       if(!v){ FAC.forEach(f=>{ if(f.edition==='EXPANSION') delete S.seat[f.code]; }); if(!S.seat[S.youCode]){ S.youCode=seated()[0]||FAC[0].code; S.seat[S.youCode]='you'; } }
@@ -368,7 +370,8 @@ function startGame(){
   stop();
   const codes=activeCodes();
   const names=codes.map(c=>(FAC.find(f=>f.code===c)||{}).brand);
-  game=new OilGame({seed:(Math.random()*1e9)|0,n_players:codes.length,expansion:S.expansion,cards:on('cards'),deals:on('deals'),map:on('map'),crisis:on('crisis'),names,
+  game=new OilGame({seed:(/[#&]seed=(\d+)/.exec(location.hash)||[])[1]?+(/[#&]seed=(\d+)/.exec(location.hash)[1]):(Math.random()*1e9)|0,   // #seed=N: test seam (tools/map_shots.mjs)
+    n_players:codes.length,expansion:S.expansion,cards:on('cards'),deals:on('deals'),map:on('map'),crisis:on('crisis'),names,
     privilege:on('privilege'),
     momentum:on('map')&&on('momentum'),
     disputes:on('privilege')&&on('disputes'),   // round 8: cut — no chip sets it
@@ -377,6 +380,7 @@ function startGame(){
     path:(on('map')&&S.path)?(S.house.backhaul?Object.assign(OilGame.pathRules(S.pathPreset),{supply:'cargo'}):S.pathPreset):undefined,   // HOUSE RULES: backhaul (CORE-022)
     crisisDials:(/retainer=(policy|cut)/.exec(location.hash)||[])[1]?{RETAINER_MODE:/retainer=(policy|cut)/.exec(location.hash)[1]}:(S.house.rider&&on('crisis')?{RETAINER_MODE:'rider'}:undefined),   // HOUSE RULES: THE RIDER chip (#retainer=rider preselects it)   // RETAINER REWORK preview (docs/DECISIONS-1110.md): #retainer=policy|rider|cut
     west:(/west=(demand|both)/.exec(location.hash)||[])[1]||(S.house.rim&&on('map')?'rim':undefined),   // HOUSE RULES: WEST RIM chip (#west=demand|both = the other previews)   // WEST COAST preview (docs/DECISIONS-1110.md): #west=rim|demand|both
+    rig:(on('map')&&S.path&&S.house.rig)?true:undefined,   // THE SUPER-RIG (1117, HOUSE RULES chip, off by default; #rig preselects)
     levels:(on('map')&&S.levels!=='off')?S.levels:undefined,   // OIL LEVELS prototype (O2, docs/RESUME-2026-11-10.md): THE BOX chip, or #levels=two | #levels=voyage   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
     // THE PATH seats the real roster, so each company starts in its own yard (and its power is live —
     // the configuration path-model.js and LAB 12 measure). Off the path the table stays as it was.
@@ -390,7 +394,7 @@ function startGame(){
   $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#desk').classList.remove('on'); $('#log').innerHTML='';
   deskScar=false; deskSpike=false;
   buildPanels(); updatePanels(); show('play'); draw();
-  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'+ Green Anders':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
+  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'NOW WITH SuprexCore PREMIUM (core + expansion)':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
 }
 function buildPanels(){
@@ -467,7 +471,7 @@ function updatePanels(){
   updatePathBar();
 }
 /* ---------- THE PATH — presentation over the engine (the engine stays the authority) ---------- */
-const placeName=c=>((window.OIL_MAP&&OIL_MAP.BY[c])||{}).name||c;
+const placeName=c=>{ const q=((window.OIL_MAP&&OIL_MAP.BY[c])||{}); return q.full||q.name||c; };   // 1117: the full location wherever there is one ("GENESEE COUNTY, MICHIGAN, USA"); straits/seas keep their names
 // the seat's voyage right now: nearest face-up buyer by the CURRENT map, and the same with nothing shut
 function pathInfo(g,p){
   if(!g||!g.path||!g.map||!p)return null;
@@ -520,6 +524,7 @@ async function stepOnce(){
   for(let k=before;k<game.events.length;k++){const ev=game.events[k];
     if(ev.type==='edd_begin'){ $('#edd').style.display='block'; logLine(`<span class="out">▼ ${ev.reason} — oil ${ev.oil}, price ${ev.price}</span>`); deskSay('edd',game.turn); }
     else if(ev.type==='edd'){ logLine(`&nbsp;&nbsp;<span class="out">${ev.outcome}</span> by ${ev.player}${ev.on?' on '+ev.on:''}`); deskSay(ev.outcome,game.turn); }
+    else if(ev.type==='drill'){ logLine(`&nbsp;&nbsp;<span class="t">⛽ ${ev.player} drills the pre-salt</span> — +${ev.n} barrel at ${placeName('RIG')} (+${ev.exposure} exposure)`); }
     else if(ev.type==='green'){ logLine(`&nbsp;&nbsp;<span class="grn">⊛ Green Anders intervenes</span> (${ev.inject>0?'+':''}${ev.inject} → $${ev.price})`); deskSay('green',game.turn); }
     else if(ev.type==='card'){ logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> plays <b style="color:#f6c95a">${ev.card}</b> <span style="color:#7d6b4a">[${ev.deck[0]}]</span>`); }
     else if(ev.type==='blowout'){ logLine(`&nbsp;&nbsp;<span class="out">🔥 BLOWOUT — ${ev.name.toUpperCase()} IS ALIGHT</span>${ev.player?' ('+ev.player+')':''}`); deskSay('blowout',game.turn); }
@@ -679,7 +684,7 @@ function presentPrompt(g,p,ctx){
     } else if(ctx.kind==='move'&&ctx.momentum){
       // MOMENTUM: the sea decides how far; you decide the fork — or you camp and pay demurrage
       const MP=window.OIL_MAP,MM=window.OIL_MOMENTUM,here=MP.BY[p.at];
-      const where=p.under?`at sea on ${MM.spacesOf(p.under.rid,g.momDials).label}, heading for ${placeName(p.at)}`:`at ${here?here.name:p.at}`;
+      const where=p.under?`at sea on ${MM.spacesOf(p.under.rid,g.momDials).label}, heading for ${placeName(p.at)}`:`at ${placeName(p.at)}`;
       title='The sea carries you — choose the fork.';
       sub=`${diceStr()} — momentum ${ctx.points} spaces, and you MUST use them. You are ${where}. You may only stop early at a ◆ STOP line (it halts you), a ⚖ inspection (if you are dirty), or by putting in to a port you pass.`+
         (p.under?'':` Or CAMP here: demurrage ${'$'+(g.momDials.DEMURRAGE[Math.min((p.campTurns||0)+1,g.momDials.CAMP_CAP)]||0)}${(g.momDials.DEMURRAGE_EXP[Math.min((p.campTurns||0)+1,g.momDials.CAMP_CAP)]||0)?' + '+g.momDials.DEMURRAGE_EXP[Math.min((p.campTurns||0)+1,g.momDials.CAMP_CAP)]+' exposure':''}, rising each turn you stay.`);
@@ -702,7 +707,7 @@ function presentPrompt(g,p,ctx){
       if(g.privilege) steps=Math.max(g.mapDials.MOVE_MIN,g.privSteps(p,steps));   // THE PRIVILEGE: a penalized seat's reach is capped
       const r=MP.reach(p.at,steps,g.levels?g._lvState(p):st);   // OIL LEVELS: the distances this seat may actually sail
       title='Where do you sail?';
-      sub=`${diceStr()} — spread carries you ${steps}. You are at ${here?here.name:p.at}.` +
+      sub=`${diceStr()} — spread carries you ${steps}. You are at ${placeName(p.at)}.` +
         (g.era==='CHAOTIC'?' <CHAOTIC SEASON: the sea will take cargo.>':' Seas are steady.');
       // THE PATH: say where the cargo is going, and what the shut world is costing the voyage
       const pi=pathInfo(g,p);
@@ -717,7 +722,7 @@ function presentPrompt(g,p,ctx){
         const pl=MP.BY[c]||{},d=r.dist[c]||0;
         const t=MP.trafficAt(c,st);
         const tag=c===p.at?'stay':(pl.kind==='hq'||pl.kind==='port'?(g.hqOf&&g.hqOf(p)===c?'⌂':'▰'):pl.kind==='gate'?'⌗':pl.kind==='cape'?'≈':pl.kind==='arctic'?'❄':pl.kind==='built'?'▲':pl.kind==='onshore'?'⛏':'·');
-        let lab=`${tag} ${pl.name||c}${d?' ('+d+')':''}${t.blocked?' ⛔':''}`, tip='';
+        let lab=`${tag} ${placeName(c)}${d?' ('+d+')':''}${t.blocked?' ⛔':''}`, tip='';
         if(pi&&p.barrels>0){
           if(pi.buyers.indexOf(c)>=0){ const own=g.ownerOf(c); lab='★ '+lab+(own&&own!==p.name?' ⌂'+own:'');
             tip=own&&own!==p.name?`${own} holds this buyer — ${g.pathDial('TOLL_PCT')}% toll`:'a face-up buyer — land it here'; }
@@ -895,6 +900,32 @@ function drawToken(kind,x,y,fill,dpr,big){
   if(big){ ctx.beginPath(); ctx.arc(x,y,r-2.4*dpr,0,7); ctx.strokeStyle='rgba(255,240,210,.55)'; ctx.lineWidth=1.1*dpr; ctx.stroke(); }
   return r;
 }
+// 1117: a place's full location as label lines — "GENESEE COUNTY, MICHIGAN, USA" wraps after its first comma
+// when it is long (two lines at most), so the type can stay small without the label running across the board
+function fullLines(pl){ const f=pl&&pl.full; if(!f)return []; if(f.length<=18)return [f];
+  const i=f.indexOf(', '); return i>0?[f.slice(0,i+1),f.slice(i+2)]:[f]; }
+// 1117: THE WORLD'S PIPELINES (OIL_MAP.WORLD_PIPELINES) — drawn CONTEXT, under the network: a thin copper line per real
+// system, dashed for refined products. The ones an existing PIPE route already models get a brighter core. Names on hover.
+let pipeHits=[];
+function drawPipelines(MP,X,Y,dI){ pipeHits=[]; if(!MP.WORLD_PIPELINES||/pipes=off/.test(location.hash))return;
+  ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+  MP.WORLD_PIPELINES.forEach(P=>{ [P.pts].concat(P.branch?[P.branch]:[]).forEach(pts=>{
+    const xy=pts.map(q=>[X(q),Y(q)]);
+    const path=()=>{ ctx.beginPath(); xy.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); };
+    path(); ctx.setLineDash([]); ctx.strokeStyle='rgba(12,7,3,.85)'; ctx.lineWidth=4.4*dI; ctx.stroke();
+    path(); ctx.setLineDash(P.kind==='products'?[3*dI,2.4*dI]:[]); ctx.strokeStyle=P.plays?'#ffb067':'#e0763a'; ctx.lineWidth=2.4*dI; ctx.stroke();
+    ctx.setLineDash([]); xy.forEach(([x,y],i)=>{ if(i===0||i===xy.length-1){ ctx.beginPath(); ctx.arc(x,y,1.7*dI,0,7); ctx.fillStyle='#f6c95a'; ctx.fill(); } });
+    for(let i=1;i<xy.length;i++) pipeHits.push({a:xy[i-1],b:xy[i],P}); }); });
+  ctx.restore(); }
+function pipeAt(px,py,tol){ let best=null,bd=tol;
+  pipeHits.forEach(h=>{ const [ax,ay]=h.a,[bx2,by2]=h.b, dx=bx2-ax,dy=by2-ay, L2=dx*dx+dy*dy||1, t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L2));
+    const d=Math.hypot(px-(ax+t*dx),py-(ay+t*dy)); if(d<bd){bd=d;best=h.P;} }); return best; }
+// THE SUPER-RIG token: a little derrick on a platform
+function drawRig(x,y,col,dI){ ctx.save(); ctx.translate(x,y);
+  ctx.beginPath(); ctx.rect(-6*dI,2*dI,12*dI,3*dI); ctx.fillStyle='rgba(10,6,3,.95)'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-4.5*dI,3*dI); ctx.lineTo(0,-8*dI); ctx.lineTo(4.5*dI,3*dI); ctx.moveTo(-2.6*dI,-2*dI); ctx.lineTo(2.6*dI,-2*dI);
+  ctx.strokeStyle='rgba(10,6,3,.95)'; ctx.lineWidth=3.2*dI; ctx.stroke(); ctx.strokeStyle=col; ctx.lineWidth=1.5*dI; ctx.stroke();
+  ctx.fillStyle=col; ctx.fillRect(-5.4*dI,2.6*dI,10.8*dI,1.8*dI); ctx.restore(); }
 // the printed KEY, set into the empty panel of the board's control deck
 function drawKey(bx,by,bw,bh,dpr){
   const x0=bx+bw*0.135,y0=by+bh*0.852,x1=bx+bw*0.685,y1=by+bh*0.958, W=x1-x0,H=y1-y0;
@@ -914,7 +945,9 @@ function drawKey(bx,by,bw,bh,dpr){
       ctx.fillStyle='rgba(220,200,160,.85)'; ctx.font=(fs*.85)+'px Trebuchet MS'; ctx.textAlign='left'; ctx.fillText(l,mx+12*dpr,y0+fs*1.1); mx+=ctx.measureText(l).width+22*dpr; });
     ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.3*dpr; ctx.setLineDash([2.5*dpr,2*dpr]); ctx.beginPath(); ctx.arc(mx+5*dpr,y0+fs*1.1,5*dpr,0,7); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillText('◆ stop line',mx+13*dpr,y0+fs*1.1);
-  } else ctx.fillText('each space on a route = 1 move',kx,y0+fs*1.1);
+  } else { ctx.fillText('each space on a route = 1 move ·',kx,y0+fs*1.1);   // 1117: the real-pipeline overlay, in the key
+    const px0=kx+ctx.measureText('each space on a route = 1 move ·').width+6*dpr; ctx.strokeStyle='#f09a4a'; ctx.lineWidth=1.8*dpr;
+    ctx.beginPath(); ctx.moveTo(px0,y0+fs*1.1); ctx.lineTo(px0+18*dpr,y0+fs*1.1); ctx.stroke(); ctx.fillText('real pipelines (hover)',px0+23*dpr,y0+fs*1.1); }
   // too narrow for the 3+1 column grid (a phone): the labels collided, so point at the full key instead (1112 legibility)
   if(W<480*dpr){ ctx.fillStyle='rgba(220,200,160,.85)'; ctx.font=(fs*1.05)+'px Trebuchet MS'; ctx.textAlign='left';
     ctx.fillText('the full key: 📖 RULES · THE BOARD',x0+10*dpr,y0+H*0.62); return; }
@@ -938,24 +971,26 @@ function drawKey(bx,by,bw,bh,dpr){
 // Greedy label placement: most important first (HQs, then gates, then the rest), each label tries
 // eight spots around its dot, then the same eight further out on a leader line, and takes the one
 // that overlaps least with dots and already-placed labels. Presentation only.
-function layoutLabels(labels,dots,box,dpr){
-  const pad=2*dpr, placed=[];
+function layoutLabels(labels,dots,box,dpr,keepOut){
+  const pad=1.5*dpr, placed=(keepOut||[]).slice();   // 1117: keepOut = the HUD plates, so no name hides under them
   labels.forEach(L=>{ L.w=0; L.h=0; L.lines.forEach(l=>{ ctx.font=l.font; l.w=ctx.measureText(l.t).width;
-    l.h=parseFloat(l.font.match(/([\d.]+)px/)[1])*1.15; L.w=Math.max(L.w,l.w); L.h+=l.h; }); });
+    l.h=parseFloat(l.font.match(/([\d.]+)px/)[1])*1.08; L.w=Math.max(L.w,l.w); L.h+=l.h; }); });
   const hit=(a,b)=>Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0));
-  const dirs=[[0,-1],[0,1],[1,0],[-1,0],[1,-1],[1,1],[-1,-1],[-1,1]];
+  const dirs=[[0,-1],[0,1],[1,0],[-1,0],[1,-1],[1,1],[-1,-1],[-1,1],[0.5,-1],[-0.5,-1],[0.5,1],[-0.5,1],[1,-0.5],[1,0.5],[-1,-0.5],[-1,0.5]];
   labels.slice().sort((a,b)=>a.prio-b.prio).forEach(L=>{
     let best=null;
-    [1,2.4].forEach((far,ring)=>dirs.forEach(([dx,dy],di)=>{
+    [1,2.4,4,6,8].forEach((far,ring)=>dirs.forEach(([dx,dy],di)=>{
       const g=L.gap*far, cx=L.x+dx*(g+(dx?L.w/2:0)), cy=L.y+dy*(g+(dy?L.h/2:0));
       const R={x0:cx-L.w/2-pad,x1:cx+L.w/2+pad,y0:cy-L.h/2-pad,y1:cy+L.h/2+pad};
       let cost=ring*200*dpr*dpr+di*dpr*dpr;                       // prefer close, then the usual spot
-      placed.forEach(P=>cost+=hit(R,P)*3);
-      dots.forEach(D=>cost+=hit(R,{x0:D.x-D.r,x1:D.x+D.r,y0:D.y-D.r,y1:D.y+D.r})*(D.w||2));
+      placed.forEach(P=>cost+=hit(R,P)*400);   // 1117: names never stack (was ×3 — a nick of overlap beat a longer leader)
+      dots.forEach(D=>cost+=hit(R,{x0:D.x-D.r,x1:D.x+D.r,y0:D.y-D.r,y1:D.y+D.r})*(D.w||40));   // 1117: a token weighs 40 (was 2) — a name never sits on a place
       if(R.x0<box.x0||R.x1>box.x1||R.y0<box.y0||R.y1>box.y1) cost+=1e6;
       if(!best||cost<best.cost) best={cost,R,cx,cy,ring};
     }));
     placed.push(best.R);
+    if(window.__mapAudit) window.__mapAudit.labels.push({t:L.lines.map(l=>l.t).join(' / '),x0:best.R.x0/dpr,y0:best.R.y0/dpr,x1:best.R.x1/dpr,y1:best.R.y1/dpr,
+      px:Math.min(...L.lines.map(l=>parseFloat(l.font.match(/([\d.]+)px/)[1])/dpr)),ring:best.ring});   // OVERLAP AUDIT (tools/map_shots.mjs) — render-only
     if(best.ring){ ctx.strokeStyle='rgba(200,180,140,.35)'; ctx.lineWidth=dpr; ctx.beginPath();
       ctx.moveTo(L.x,L.y); ctx.lineTo(Math.max(best.R.x0,Math.min(L.x,best.R.x1)),Math.max(best.R.y0,Math.min(L.y,best.R.y1))); ctx.stroke(); }
     const Rp=best.R; ctx.beginPath(); ctx.roundRect?ctx.roundRect(Rp.x0-2*dpr,Rp.y0,Rp.x1-Rp.x0+4*dpr,Rp.y1-Rp.y0,3*dpr):ctx.rect(Rp.x0,Rp.y0,Rp.x1-Rp.x0,Rp.y1-Rp.y0);
@@ -981,11 +1016,17 @@ function drawMap(){
   } else { ctx.fillStyle='#0a0705'; ctx.fillRect(0,0,W,H); }
   const st=game.mapState, X=p=>bx+bw*p[0], Y=p=>by+bh*p[1];
   const dpr=devicePixelRatio;
+  // 1117 (Joe: "make the text/icons smaller overall"): every token, track and space mark on the board is drawn at
+  // dI = dpr × MAPK, which scales with the board and runs 25% under the old size; the KEY panels keep dpr.
+  // Label type scales with the board too but never under FS_MIN (10px on a desktop board, 7px on a phone's).
+  const bwc=bw/dpr, MAPK=Math.max(0.5,Math.min(0.78,0.78*bwc/1100)), dI=dpr*MAPK;
+  const FS=Math.max(7,Math.min(10,10*bwc/1050)), FS2=FS>=10?10:Math.max(7,FS-0.5), fnt=(b,px)=>(b?'bold ':'')+(px*dpr)+'px Trebuchet MS';
 
   drawKey(bx,by,bw,bh,dpr); drawKey2(bx,by,bw,bh,dpr);
+  drawPipelines(MP,X,Y,dI);   // 1117: the world's real pipelines — drawn context under the network (hover names them)
 
   // routes — tracks of spaces, coloured by what the route is FOR
-  const clr=pl=>(pl.kind==='hq'?11:pl.kind==='ocean'?7:9)*dpr;
+  const clr=pl=>(pl.kind==='hq'?11:pl.kind==='ocean'?7:9)*dI;
   const tracks=[];
   // WEST COAST (model): the optional ports and their lanes, drawn only in a game that opened them
   const westRoutes=Object.entries(MP.OPT_BY_ID||{}).filter(([id,R])=>R.sub&&st.opts&&st.opts[R.set]).map(([id,R])=>[R,id]);
@@ -1005,15 +1046,15 @@ function drawMap(){
     const ti=tracks[i],tj=tracks[j], c=[ti.R[0],ti.R[1]].find(k=>k===tj.R[0]||k===tj.R[1]); if(!c)continue;
     const ui=from(ti,c),uj=from(tj,c); if(ui[0]*uj[0]+ui[1]*uj[1]<Math.cos(0.3))continue;
     [[ti,ui,uj],[tj,uj,ui]].forEach(([t,u,v])=>{ let n=[-u[1],u[0]]; if(n[0]*(u[0]-v[0])+n[1]*(u[1]-v[1])<0)n=[-n[0],-n[1]];
-      t.sx+=n[0]*4.5*dpr; t.sy+=n[1]*4.5*dpr; });
+      t.sx+=n[0]*4.5*dI; t.sy+=n[1]*4.5*dI; });
   }
   const trackPts=[];
   tracks.forEach(t=>{ const ax=t.ax+t.sx,ay=t.ay+t.sy,bx2=t.bx+t.sx,by2=t.by+t.sy;
     const MSP=game.momentum&&window.OIL_MOMENTUM?OIL_MOMENTUM.spacesOf(t.rid,game.momDials):null;
-    drawTrack(ax,ay,bx2,by2,MSP?MSP.N:(t.R[2]||1),t.kind,t.mode,dpr,clr(t.A),clr(t.B),MSP?MSP.types:null);
+    drawTrack(ax,ay,bx2,by2,MSP?MSP.N:(t.R[2]||1),t.kind,t.mode,dI,clr(t.A),clr(t.B),MSP?MSP.types:null);
     t.gx=[ax,ay,bx2,by2];
     const L=Math.hypot(bx2-ax,by2-ay), k=Math.max(1,Math.floor(L/(12*dpr)));
-    for(let i=1;i<k;i++) trackPts.push({x:ax+(bx2-ax)*i/k,y:ay+(by2-ay)*i/k,r:4*dpr,w:0.5}); });
+    for(let i=1;i<k;i++) trackPts.push({x:ax+(bx2-ax)*i/k,y:ay+(by2-ay)*i/k,r:4*dI,w:0.5}); });
 
   // THE PATH — your voyage: the route to the nearest buyer as the world stands (gold), and —
   // if a closure is lengthening it — the way it would have gone with nothing shut (red dash).
@@ -1040,48 +1081,55 @@ function drawMap(){
       const h=game.crisis?(game.heat[pl.code]||0):0, burning=game.crisis&&game.burningAt(pl.code);
       if(h>0){const t=Math.min(1,h/(game.crisisDials.BLOWOUT_AT||8));
         ctx.strokeStyle='rgba(226,99,42,'+(0.2+0.55*t).toFixed(2)+')'; ctx.lineWidth=(1.2+2.4*t)*dpr;
-        ctx.beginPath(); ctx.arc(x,y,(10+9*t)*dpr,0,7); ctx.stroke();}
+        ctx.beginPath(); ctx.arc(x,y,(10+9*t)*dI,0,7); ctx.stroke();}
       if(burning){ // the field is alight
         const g2=ctx.createRadialGradient(x,y,0,x,y,20*dpr);
         g2.addColorStop(0,'rgba(255,170,60,.85)'); g2.addColorStop(.5,'rgba(226,99,42,.45)'); g2.addColorStop(1,'rgba(226,99,42,0)');
         ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(x,y,20*dpr,0,7); ctx.fill();
       }
       const col=seat?(game._colors[game.players.indexOf(seat)]||'#e0a32a'):'#8a7550';
-      drawToken('hq',x,y,col,dpr,true);
-      dots.push({x,y,r:(game.path?14:9)*dpr});
-      const L=[{t:(contracts.has(pl.code)?'★ ':'')+pl.code,font:'bold '+9.5*dpr+'px Trebuchet MS',col:contracts.has(pl.code)?'#f6c95a':col}];
-      if(contracts.has(pl.code)) L.push({t:'CONTRACT',font:'bold '+7.5*dpr+'px Trebuchet MS',col:'#f6c95a'});
+      drawToken('hq',x,y,col,dI,true);
+      dots.push({x,y,r:(game.path?14:9)*dI});
+      // 1117: an HQ reads COMPANY on top and its full location under it (Joe: "city/state/country")
+      const tight=FS<9;   // a phone's board: the disc's colour names the company, the label gives only where it is
+      const L=tight?[]:[{t:(contracts.has(pl.code)?'★ ':'')+pl.code+(contracts.has(pl.code)?' · CONTRACT':''),font:fnt(1,FS),col:contracts.has(pl.code)?'#f6c95a':col}];
+      fullLines(pl).forEach((t,i)=>L.push({t:(tight&&!i&&contracts.has(pl.code)?'★ ':'')+t,font:fnt(tight,tight?FS:FS2),col:tight?(contracts.has(pl.code)?'#f6c95a':col):'rgba(235,222,190,.92)'}));
       if(game.hegemony){ // HEGEMONY: the sitting-duck pawn in this yard, and the matrix — each player's stake in it
         const dk=game.pawns.find(z=>z.hq===pl.code);
         if(dk&&!dk.by){ ctx.strokeStyle='#e8dcc0'; ctx.lineWidth=1.6*dpr; ctx.beginPath(); ctx.moveTo(x,y-12*dpr); ctx.lineTo(x+12*dpr,y); ctx.lineTo(x,y+12*dpr); ctx.lineTo(x-12*dpr,y); ctx.closePath(); ctx.stroke();
           const court=game.players.find(q=>q.heg&&q.heg.progress&&q.heg.at===pl.code);
           L[0].t='◇ '+dk.code+(court?' · courted':'');
-          game.players.forEach((q,k)=>{ if(dk.w[q.id]>0) L.push({t:`◇${dk.w[q.id]} ${q.name.split(/[ /(]/)[0]}`,font:'bold '+7.5*dpr+'px Trebuchet MS',col:game._colors[k]||'#e0a32a'}); }); }
-        else if(dk&&dk.by==='RICO') L.push({t:'✕ gone down — RICO',font:'bold '+7.5*dpr+'px Trebuchet MS',col:'#ff9a6a'});   // knocked off the pond: nobody took it
-        else if(dk&&dk.by){ const k=game.players.indexOf(dk.by); L.push({t:'✕ taken by '+dk.by.name.split(/[ /(]/)[0],font:'bold '+7.5*dpr+'px Trebuchet MS',col:game._colors[k]||'#e0a32a'}); }
+          game.players.forEach((q,k)=>{ if(dk.w[q.id]>0) L.push({t:`◇${dk.w[q.id]} ${q.name.split(/[ /(]/)[0]}`,font:fnt(1,FS2),col:game._colors[k]||'#e0a32a'}); }); }
+        else if(dk&&dk.by==='RICO') L.push({t:'✕ gone down — RICO',font:fnt(1,FS2),col:'#ff9a6a'});   // knocked off the pond: nobody took it
+        else if(dk&&dk.by){ const k=game.players.indexOf(dk.by); L.push({t:'✕ taken by '+dk.by.name.split(/[ /(]/)[0],font:fnt(1,FS2),col:game._colors[k]||'#e0a32a'}); }
       }
-      labels.push({x,y,lines:L,prio:0,gap:(game.path?15:10)*dpr});
+      labels.push({x,y,lines:L,prio:0,gap:(game.path?11:8)*dI+2*dpr});
     } else {
       const shut=((pl.kind==='gate'||pl.kind==='port')&&!open), iced=(pl.kind==='arctic'&&!open);
       const h=game.crisis?(game.heat[pl.code]||0):0;
       if(h>0){ // stress ring — the world leaning on this place
         const t=Math.min(1,h/(game.crisisDials.BLOWOUT_AT||8));
         ctx.strokeStyle='rgba(226,99,42,'+(0.18+0.5*t).toFixed(2)+')'; ctx.lineWidth=(1+2*t)*dpr;
-        ctx.beginPath(); ctx.arc(x,y,(7+7*t)*dpr,0,7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x,y,(7+7*t)*dI,0,7); ctx.stroke();
       }
-      drawToken(pl.kind,x,y,shut?'#e2632a':iced?'rgba(191,227,255,.35)':ROUTE_STYLE[pl.kind]||'#9a8f7c',dpr,false);
+      if(pl.rig) drawRig(x,y,shut?'#e2632a':'#f2c14e',dI);   // THE SUPER-RIG: a derrick, not a dot
+      else drawToken(pl.kind,x,y,shut?'#e2632a':iced?'rgba(191,227,255,.35)':ROUTE_STYLE[pl.kind]||'#9a8f7c',dI,false);
       if(shut){ // struck through: the gate is shut
-        ctx.strokeStyle='#e2632a'; ctx.lineWidth=2*dpr;
-        ctx.beginPath(); ctx.moveTo(x-6*dpr,y-6*dpr); ctx.lineTo(x+6*dpr,y+6*dpr);
-        ctx.moveTo(x+6*dpr,y-6*dpr); ctx.lineTo(x-6*dpr,y+6*dpr); ctx.stroke();
+        ctx.strokeStyle='#e2632a'; ctx.lineWidth=2*dI;
+        ctx.beginPath(); ctx.moveTo(x-6*dI,y-6*dI); ctx.lineTo(x+6*dI,y+6*dI);
+        ctx.moveTo(x+6*dI,y-6*dI); ctx.lineTo(x-6*dI,y+6*dI); ctx.stroke();
       }
-      dots.push({x,y,r:(shut?8:7)*dpr});
+      dots.push({x,y,r:(shut?8:7)*dI});
       const name=pl.name.replace(/^(The |Strait of |Cape )/,'');
-      const L=[{t:(contracts.has(pl.code)?'★ ':'')+name,font:(pl.kind==='gate'?'bold ':'')+(8.5*dpr)+'px Trebuchet MS',col:shut?'#ff9a6a':contracts.has(pl.code)?'#f6c95a':'rgba(225,208,170,.9)'}];
-      if(contracts.has(pl.code)) L.push({t:'CONTRACT',font:'bold '+7.5*dpr+'px Trebuchet MS',col:'#f6c95a'});
+      // 1117: places with a real location (onshore ground, ports, the rig) say where they are; straits, capes and seas keep their names
+      const full=fullLines(pl), head=(contracts.has(pl.code)?'★ ':'')+(full.length&&!pl.rig?'':name)+(contracts.has(pl.code)?(full.length&&!pl.rig?'CONTRACT':' · CONTRACT'):'');
+      const L=[]; if(head.trim()) L.push({t:head.trim(),font:fnt(pl.kind==='gate'||pl.rig,FS),col:shut?'#ff9a6a':contracts.has(pl.code)?'#f6c95a':pl.rig?'#f2c14e':'rgba(225,208,170,.9)'});
+      full.forEach(t=>L.push({t,font:fnt(0,L.length?FS2:FS),col:shut?'#ff9a6a':'rgba(235,222,190,.92)'}));
       if(raisedBy[pl.code]){ const k2=game.players.findIndex(z=>z.name===raisedBy[pl.code]);
-        L.push({t:'▲ '+raisedBy[pl.code],font:'bold '+8*dpr+'px Trebuchet MS',col:game._colors[k2]||'#2f9e5b'}); }
-      labels.push({x,y,lines:L,prio:{gate:1,onshore:2,built:2}[pl.kind]||3,gap:7*dpr});
+        L.push({t:'▲ '+raisedBy[pl.code],font:fnt(1,FS2),col:game._colors[k2]||'#2f9e5b'}); }
+      if(pl.rig&&game.rig){ const o=game.ownerOf('RIG'), k3=game.players.findIndex(z=>z.name===o);
+        L.push({t:o?'⛽ held by '+o.split(/[ /(]/)[0]:'⛽ unheld — sell here to take it',font:fnt(1,FS2),col:o?(game._colors[k3]||'#2f9e5b'):'#cdbf9e'}); }
+      labels.push({x,y,lines:L,prio:pl.rig?0.5:({gate:1,onshore:2,built:2,port:2}[pl.kind]||3),gap:6*dI+2*dpr});
     }
   });
 
@@ -1089,16 +1137,18 @@ function drawMap(){
   if(game.path){
     Object.entries(game.controlTable()).forEach(([code,name])=>{ const pl=MP.BY[code]; if(!pl)return;
       const k=game.players.findIndex(z=>z.name===name); ctx.strokeStyle=game._colors[k]||'#2f9e5b'; ctx.lineWidth=2.4*dpr;
-      ctx.setLineDash([3*dpr,2*dpr]); ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),13*dpr,0,7); ctx.stroke(); ctx.setLineDash([]); });
+      ctx.setLineDash([3*dpr,2*dpr]); ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),13*dI,0,7); ctx.stroke(); ctx.setLineDash([]); });
   }
 
   // the labels — placed after every dot is known, so a name never sits on another place
-  layoutLabels(labels,dots.concat(trackPts),{x0:bx,y0:by,x1:bx+bw,y1:by+bh*0.84},dpr);
+  const hudOut=[{x0:0,y0:0,x1:Math.min(W*0.45,330*dpr),y1:28*dpr},{x0:W-150*dpr,y0:0,x1:W,y1:28*dpr}];
+  window.__mapAudit={W:W/dpr,H:H/dpr,board:{x0:bx/dpr,y0:by/dpr,x1:(bx+bw)/dpr,y1:(by+bh)/dpr},labels:[],dots:dots.map(D=>({x:D.x/dpr,y:D.y/dpr,r:D.r/dpr,c:D.c}))};
+  layoutLabels(labels,dots.concat(trackPts),{x0:bx,y0:by,x1:bx+bw,y1:by+bh*0.84},dpr,hudOut);
 
   // MOMENTUM: the ◆ STOP lines get a white collar (you must halt there)
   if(game.momentum&&window.OIL_MOMENTUM) MP.PLACES.forEach(pl=>{ if(!OIL_MOMENTUM.isStop(pl.code,game.momDials))return;
     ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.6*dpr; ctx.setLineDash([2.5*dpr,2*dpr]);
-    ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),10*dpr,0,7); ctx.stroke(); ctx.setLineDash([]); });
+    ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),10*dI,0,7); ctx.stroke(); ctx.setLineDash([]); });
   // the seats
   game.players.forEach((q,i)=>{
     if(game.momentum&&q.under){ // under way: drawn ON the route, at its space
@@ -1109,13 +1159,13 @@ function drawMap(){
       ctx.strokeStyle=q.isHuman?'#fff':'rgba(0,0,0,.85)'; ctx.lineWidth=(q.isHuman?2:1.2)*dpr; ctx.stroke(); return; }
     const pl=MP.BY[q.at]; if(!pl)return;
     const here=game.players.filter(z=>z.at===q.at&&!(game.momentum&&z.under)), n=here.length, k=here.indexOf(q);
-    const a=(k/Math.max(1,n))*Math.PI*2, r=(n>1?11:0)*dpr;
+    const a=(k/Math.max(1,n))*Math.PI*2, r=(n>1?11:0)*dI;
     const x=X(pl.at)+Math.cos(a)*r, y=Y(pl.at)+Math.sin(a)*r;
     ctx.fillStyle=game._colors[i]||'#f6c95a';
-    ctx.beginPath(); ctx.arc(x,y,q.isHuman?5.5*dpr:4*dpr,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,q.isHuman?5.5*dI:4*dI,0,7); ctx.fill();
     ctx.strokeStyle=q.isHuman?'#fff':'rgba(0,0,0,.8)'; ctx.lineWidth=(q.isHuman?2:1.2)*dpr; ctx.stroke();
     if(game.players[game.idx]===q&&!game.done){ ctx.strokeStyle='#f6c95a'; ctx.lineWidth=1.4*dpr;
-      ctx.beginPath(); ctx.arc(x,y,9*dpr,0,7); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(x,y,9*dI,0,7); ctx.stroke(); }
   });
 
   // the tape, small, so you never lose the market while looking at the world
@@ -1218,6 +1268,14 @@ $('#startGo').onclick=()=>{ if(!$('#startGo').disabled) startGame(); };
 ['#rbBoot','#rbSetup','#rbPlay'].forEach(id=>{ const b=$(id); if(b) b.onclick=()=>window.OIL_RULEBOOK&&OIL_RULEBOOK.open(); });
 $('#viewBtn').onclick=()=>{S.view=S.view==='map'?'chart':'map';$('#viewBtn').textContent=S.view==='map'?'◍ MAP':'▤ TAPE';draw();};
 $('#boardBtn').onclick=toggleBoard; boardLabel();
+// 1117: hover the board — a real pipeline names itself (and says which game route it is), a place gives its full location
+cv.addEventListener('mousemove',e=>{ if(!game||!game.map||S.view!=='map'){cv.title='';return;}
+  const r=cv.getBoundingClientRect(), d=devicePixelRatio, px=(e.clientX-r.left)*d, py=(e.clientY-r.top)*d;
+  const A=window.__mapAudit, MP=window.OIL_MAP;
+  if(A&&MP){ const near=A.dots.find(D=>Math.hypot(D.x*d-px,D.y*d-py)<Math.max(6,D.r)*d); if(near){
+    const pl=MP.PLACES.concat(MP.OPTIONAL_PLACES||[]).find(q=>{ const b=A.board; return Math.abs(b.x0+(b.x1-b.x0)*q.at[0]-near.x)<1&&Math.abs(b.y0+(b.y1-b.y0)*q.at[1]-near.y)<1; });
+    if(pl){ cv.title=pl.name+(pl.full?' — '+pl.full:'')+(pl.region?' ('+pl.region+')':'')+(pl.note?'\n'+pl.note:''); return; } } }
+  const P=pipeAt(px,py,6*d); cv.title=P?`${P.name} — ${P.what}${P.plays?`\nIn the game: the route "${P.plays}"`:'\nDrawn for context (not a game route)'}`:''; });
 $('#stepBtn').onclick=async()=>{stop();await stepOnce();};
 $('#runBtn').onclick=()=>{running?stop():run();};
 $('#quitBtn').onclick=()=>{stop();buildSetup();show('setup');};

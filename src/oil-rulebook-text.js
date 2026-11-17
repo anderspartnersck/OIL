@@ -94,7 +94,7 @@
     const PW = ((global.OIL_MOMENTUM || {}).PIRATE_WATERS || []);
     const dem = O.DEMURRAGE || [], dex = O.DEMURRAGE_EXP || [];
     const allyLine = Object.keys(H.AFFINITIES || {}).map(a => `${esc(brandOf(a))} with ${(H.AFFINITIES[a] || []).map(b => esc(brandOf(b))).join(' and ')}`).join('; ');
-    return `<h2>THE EXPANSION</h2>
+    return `<h2>THE EXPANSION — NOW WITH SuprexCore PREMIUM</h2>
     <p class="rb-lede">The fourth die, the two franchises, and the sea's law. Play THE RULES first; this changes them. With the expansion, <b>2–8</b> play (two players: see TWO PLAYERS).</p>
 
     <h3>① THE GREEN ANDERS DIE ${die('Green Anders')}</h3>

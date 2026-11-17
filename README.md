@@ -20,13 +20,13 @@ shipping map with deals, crisis and **THE PATH**: face-up contracts you sail car
 
 - The **📖 RULEBOOK** in the game is written from the engine as it plays. It is the rules of this build.
 - **CORE GAME** (4–6 companies) is the default.
-- **+ Green Anders** is the expansion, a choice on setup: the fourth die, the privilege, momentum, pirates and
+- **NOW WITH SuprexCore PREMIUM** is the expansion (the box: *OIL! THE HOME GAME — NOW WITH SuprexCore PREMIUM*), a choice on setup: the fourth die (the Green Anders die), the privilege, momentum, pirates and
   the seat clock, for 2–8 companies (2 = HEGEMONY).
 
 ## How to play
 
 1. **FUEL UP** on the title (or **Enter**).
-2. On setup, choose THE BOX (CORE GAME or + Green Anders) and tap each company: **— → BOT → PLAYER → —**.
+2. On setup, choose THE BOX (CORE GAME or NOW WITH SuprexCore PREMIUM) and tap each company: **— → BOT → PLAYER → —**.
    The ★ seat is you; extra PLAYER seats are **pass-and-play** at one screen. Then **OPEN THE MARKET**.
 3. **▶ RUN** lets the table play; **STEP** plays one step. When it's a human's decision, the game stops and asks.
 

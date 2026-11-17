@@ -121,12 +121,13 @@
     <p class="rb-lede">The board is the world's oil trade: ${(M.PLACES || []).length} places joined by ${(M.ROUTES || []).length} routes. Every route is a track of spaces; each space is one move.</p>
     <h3>PLACES</h3>
     <table class="rb-key">
-      ${row(SHAPE.hq, 'HQ (port)', `A company's home and a buyer — you can SELL here. ${(byKind.hq || []).length} on the board: ${(byKind.hq || []).map(p => esc(p.name)).join(', ')}.`, 'hq')}
+      ${row(SHAPE.hq, 'HQ (port)', `A company's home and a buyer — you can SELL here. ${(byKind.hq || []).length} on the board: ${(byKind.hq || []).map(p => esc(p.name) + (p.full ? ` <span class="rb-dim">(${esc(p.full)})</span>` : '')).join(', ')}.`, 'hq')}
       ${row(SHAPE.gate, 'Strait / canal', `A chokepoint. It can be <b>SHUT</b> (✕) by cards and heat; a shut gate blocks you — go round. ${(byKind.gate || []).map(p => esc(p.name)).join(', ')}.`, 'gate')}
       ${row(SHAPE.cape, 'Cape', `The long way round — never shuts. ${(byKind.cape || []).map(p => esc(p.name)).join(', ')}.`, 'cape')}
       ${row(SHAPE.ocean, 'Open water', `Crossroads at sea. ${(byKind.ocean || []).map(p => esc(p.name)).join(', ')}.`, 'ocean')}
       ${row(SHAPE.arctic, 'Arctic passage', `Iced — closed until Arctic Development is built. ${(byKind.arctic || []).map(p => esc(p.name)).join(', ')}.`, 'arctic')}
-      ${row(SHAPE.onshore, 'Onshore ground', `Land you can work. ${(byKind.onshore || []).map(p => esc(p.name)).join(', ')}.`, 'onshore')}
+      ${row(SHAPE.onshore, 'Onshore ground', `Land you can work. ${(byKind.onshore || []).map(p => esc(p.name) + (p.full ? ` <span class="rb-dim">(${esc(p.full)})</span>` : '')).join(', ')}.`, 'onshore')}
+      ${row('⛽', 'THE SUPER-RIG <span class="rb-dim">(house rule, off by default)</span>', `${esc((M.BY.RIG || {}).name || 'The Super-Rig')} — ${esc((M.BY.RIG || {}).full || '')}. In nobody's yard. Sell there to hold it (the station meter; its lease never decays); its holder lifts a barrel each turn it starts there below ${(M.RIG_DIALS || {}).LIFT_CAP} barrels (+${(M.RIG_DIALS || {}).EXPOSURE} exposure, burns 1 oil from the well).`)}
       ${row(SHAPE.built, 'Megastructure', `Appears only when built (expansion). ${Object.values(S).map(s => `<b>${esc(s.name)}</b> — ${esc(s.effect)}`).join('; ')}.`, 'built')}
     </table>
     <h3>ROUTES</h3>
@@ -138,6 +139,9 @@
       ${row('<i class="rb-ln arctic"></i>', 'Arctic', 'Dashed while iced.')}
       ${row('✕', 'Shut', 'Marked on a shut gate. Nothing passes until it reopens.', 'shut')}
     </table>
+    <h3>THE WORLD'S PIPELINES <span class="rb-dim">(drawn on the board as thin copper lines — hover one to name it)</span></h3>
+    <p>Real systems, drawn for context. The ones marked ▸ are what a game route already plays; the rest are not routes (you cannot ship on them).</p>
+    <table class="rb-key">${(M.WORLD_PIPELINES || []).map(P => row(P.plays ? '▸' : '—', esc(P.name) + (P.kind === 'products' ? ' <span class="rb-dim">(products)</span>' : ''), esc(P.what) + (P.plays ? ` <span class="rb-dim">— in the game: “${esc(P.plays)}”</span>` : ''))).join('')}</table>
     <h3>SPACES <span class="rb-dim">(expansion — MOMENTUM)</span></h3>
     <table class="rb-key">
       ${row('<span class="rb-mk" style="--m:#ff8a5a">⚖</span>', 'Inspection', 'Next to every HQ. If you are on the record (dirty) you are halted and fined — in a rival\'s home water, arrested.')}
@@ -181,7 +185,7 @@
       <li><b>Heat</b> and <b>fire</b> markers (CRISIS), and <b>✕ shut</b> markers for the gates.</li>
       <li><b>Deal</b>, <b>grudge</b> and <b>snare</b> tokens (THE TABLE).</li>
     </ul>
-    <h3>EXPANSION</h3>
+    <h3>EXPANSION — OIL! THE HOME GAME, NOW WITH SuprexCore PREMIUM <span class="rb-dim">(the blue box; needs the core)</span></h3>
     <ul class="rb-list">
       <li><b>The Green Anders die</b> ${die('Green Anders')}.</li>
       <li><b>2 franchise placards</b> + pawns — ${esc(brandOf('PETRO_SUR'))}, ${esc(brandOf('HADDAD'))} (eight companies in all).</li>

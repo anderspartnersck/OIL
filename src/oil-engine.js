@@ -541,6 +541,13 @@
         if (c === home) v += 30;
         else { const dh = MP.reach(c, 99, g.mapState).dist[home]; if (dh !== undefined) v += Math.max(0, 14 - dh * 2); }
       }
+      // THE SUPER-RIG (bot policy): a holder with a light hold heads back to drill; anyone else with cargo
+      // and the rig unheld or rival-held is pulled a little toward contesting it (selling there moves the meter)
+      if (g.rig && c === 'RIG' && g.sellableAt('RIG')) {
+        const own = g.ownerOf('RIG');
+        if (own === p.name && p.barrels < g.rig.LIFT_CAP) v += g.rig.BOT_PULL;
+        else if (own !== p.name && p.barrels > 0) v += 6;
+      }
       if (P && P.botOnshore && P.onshore && pl.kind === 'onshore' && p.barrels > 0) {
         const nb = g.nearestBuyer(p, p.at).dist;
         if (nb === undefined || nb > (g.mapDials.LAND_WITHIN || 4)) v += 22;
@@ -718,6 +725,15 @@
         if (w === 'rim' || w === 'both') this.mapState.opts.W_RIM = true;
         if (w === 'demand' || w === 'both') this.mapState.opts.W_DEMAND = true;
         this._westCodes = (MP.OPTIONAL_PLACES || []).filter(q => this.mapState.opts[q.set]).map(q => q.code);
+      }
+      // THE SUPER-RIG (1117, OFF by default; docs/THE-SUPER-RIG.md): one offshore rig any company can contest.
+      // Needs THE PATH (it is a buyer/holdable place). Off -> no branch, no RNG, the golden fingerprint holds.
+      this.rig = null;
+      if (this.path && opts.rig && MP.RIG_DIALS) {
+        this.rig = Object.assign({}, MP.RIG_DIALS, typeof opts.rig === 'object' ? opts.rig : {});
+        this.mapState.opts = Object.assign({}, this.mapState.opts || {}, { RIG: true });
+        this._westCodes = (MP.OPTIONAL_PLACES || []).filter(q => this.mapState.opts[q.set]).map(q => q.code);
+        this.rigStats = { lifts: 0, exposure: 0, holderTurns: 0, holders: {} };
       }
       this.mapStats = { moves: 0, steps: 0, stayed: 0, perils: 0, barrelsLost: 0, longWay: 0,
         premiums: 0, incursions: 0, squeezed: 0, closures: 0, atSea: 0, structures: 0 };
@@ -1471,6 +1487,7 @@
       p.longWay = false; p.stayed = false; p.moved = false;
       if (this.privilege) p._transit = null;     // THE PRIVILEGE: a new voyage — last one's canal is behind you
       if (this.path && this.path.supply === 'lift') this._liftAtYard(p);   // DECISIONS-0928 CORE-022
+      if (this.rig) this._drillAtRig(p);         // THE SUPER-RIG (opts.rig)
       if (this.path) this._voyageProbe(p);       // THE PATH: measured, never asked
       // THE EXPANSION's fix (round 5): under MOMENTUM your momentum is YOUR bodies' spread — a seat
       // short of bodies drifts (and the house's bodies carry nobody)
@@ -1694,6 +1711,7 @@
       const D = this.dials;
       Object.keys(this.throughput).forEach(pl => {
         const t = this.throughput[pl];
+        if (pl === 'RIG' && this.rig && this.rig.STICKY) return;   // THE SUPER-RIG: a drilling lease does not rot — you hold it until out-sold
         Object.keys(t).forEach(n => {
           t[n] *= D.THROUGHPUT_DECAY;
           if (t[n] < 0.05) delete t[n];
@@ -1948,6 +1966,21 @@
       this.pathStats.supplied = (this.pathStats.supplied || 0) + n;
       this.emit('supply', { player: p.name, n, why, at: p.at });
       return n;
+    }
+    // THE SUPER-RIG: whoever HOLDS the rig (the ordinary station-meter control rule) and starts a turn on
+    // it lifts a barrel — pulled out of the same finite well (SUPPLY_BURN), on the record (+exposure), and
+    // heating the rig (CRISIS) until a chaotic season shuts it like a strait.
+    _drillAtRig(p) {
+      if (!this.rig || (this.rig.DRILL_AT !== 'anywhere' && p.at !== 'RIG')) return;
+      const MP = OilGame._mapFX();
+      if (!MP.placeOpen('RIG', this.mapState) || this.ownerOf('RIG') !== p.name) return;
+      this.rigStats.holderTurns++; this.rigStats.holders[p.name] = (this.rigStats.holders[p.name] || 0) + 1;
+      if (p.barrels >= this.rig.LIFT_CAP) return;
+      const n = this._supply(p, Math.min(this.rig.LIFT, this.rig.LIFT_CAP - p.barrels), 'drill');
+      if (!n) return;
+      p.exposure += this.rig.EXPOSURE; this.rigStats.lifts += n; this.rigStats.exposure += this.rig.EXPOSURE;
+      if (this.crisis && this.rig.HEAT) this.addHeat('RIG', this.rig.HEAT, 'drilling the pre-salt');
+      this.emit('drill', { player: p.name, at: 'RIG', n, exposure: this.rig.EXPOSURE });
     }
     // 'lift': start your turn in your own yard with a light hold, and you top it up
     _liftAtYard(p) {

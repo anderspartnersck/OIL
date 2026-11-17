@@ -155,14 +155,14 @@
   // ============================================================================
   const PLACES = [
     // -- the 8 HQs (LOCKED node set) --
-    { code: 'MILECASTLE', kind: 'hq', name: 'The North Sea',   region: 'UK / Europe',                          at: [0.125, 0.215] },
-    { code: 'MINA',       kind: 'hq', name: 'The Volga',       region: 'Post-Soviet — Russian state sphere',   at: [0.205, 0.185] },
-    { code: 'NIKOYL',     kind: 'hq', name: 'The Caspian',     region: 'Post-Soviet — private/oligarch sphere', at: [0.240, 0.268] },
-    { code: 'HADDAD',     kind: 'hq', name: 'The Gulf',        region: 'Middle East — Gulf',                   at: [0.205, 0.360] },
-    { code: 'BRIGHT',     kind: 'hq', name: 'The Mainland',    region: 'China',                                at: [0.330, 0.325] },
-    { code: 'HARTSTARR',  kind: 'hq', name: 'The Gulf Coast',  region: 'USA — South / heartland',              at: [0.699, 0.325] },
-    { code: 'STOCK',      kind: 'hq', name: 'The Northeast',   region: 'USA — Northeast / Wall Street',        at: [0.745, 0.305] },
-    { code: 'PETRO_SUR',  kind: 'hq', name: 'The Orinoco',     region: 'South America — Venezuela',            at: [0.792, 0.452] },
+    { code: 'MILECASTLE', kind: 'hq', name: 'The North Sea',   region: 'UK / Europe',                          at: [0.125, 0.215], ll: [57.15, -2.09], full: 'ABERDEEN, SCOTLAND, UK' },
+    { code: 'MINA',       kind: 'hq', name: 'The Volga',       region: 'Post-Soviet — Russian state sphere',   at: [0.205, 0.185], ll: [55.76, 37.62], full: 'MOSCOW, RUSSIA' },
+    { code: 'NIKOYL',     kind: 'hq', name: 'The Caspian',     region: 'Post-Soviet — private/oligarch sphere', at: [0.240, 0.268], ll: [47.10, 51.90], full: 'ATYRAU, KAZAKHSTAN' },
+    { code: 'HADDAD',     kind: 'hq', name: 'The Gulf',        region: 'Middle East — Gulf',                   at: [0.205, 0.360], ll: [26.29, 50.11], full: 'DHAHRAN, SAUDI ARABIA' },
+    { code: 'BRIGHT',     kind: 'hq', name: 'The Mainland',    region: 'China',                                at: [0.330, 0.325], ll: [39.90, 116.40], full: 'BEIJING, CHINA' },
+    { code: 'HARTSTARR',  kind: 'hq', name: 'The Gulf Coast',  region: 'USA — South / heartland',              at: [0.699, 0.325], ll: [29.76, -95.37], full: 'HOUSTON, TEXAS, USA' },
+    { code: 'STOCK',      kind: 'hq', name: 'The Northeast',   region: 'USA — Northeast / Wall Street',        at: [0.745, 0.305], ll: [40.71, -74.00], full: 'NEW YORK, NEW YORK, USA' },
+    { code: 'PETRO_SUR',  kind: 'hq', name: 'The Orinoco',     region: 'South America — Venezuela',            at: [0.792, 0.452], ll: [10.48, -66.90], full: 'CARACAS, VENEZUELA' },
 
     // -- GATES: the canals and straits. Every one of these can be shut. --
     { code: 'HORMUZ',   kind: 'gate', name: 'Strait of Hormuz',  at: [0.228, 0.378] },
@@ -217,7 +217,13 @@
     // producing is the thing that poisons it — and you cannot route around the place you
     // produce in. See docs/THE-CONTROL-LAYER.md §4.
     //
-    // NAMING IS A DESIGNER CALL, NOT MINE (§4 of that doc). These are real places and
+    // NAMING — DECIDED 2026-11-17 (Joe): "write out Genesee County, Michigan USA for that location. be
+    // specific" + "HQ spots … a city/state/country or at least a city and country". So every HQ, port and
+    // onshore place now carries a `full` LOCATION ("GENESEE COUNTY, MICHIGAN, USA") that the gateway shows
+    // on the map, in the log and in tooltips. `name` is untouched on purpose: the engine writes it into
+    // the event stream, so renaming it would move the golden fingerprint for a display change. The HQ
+    // cities other than Genesee are a first read from each faction's region (Q1190 in QUESTIONS-MASTER).
+    // (Superseded:) NAMING IS A DESIGNER CALL, NOT MINE (§4 of that doc). These are real places and
     // real people. Genesee County is carried verbatim because Joe named it; the others
     // use the REGIONAL naming the rest of this map already uses ("The Gulf", "The
     // Orinoco" — not company towns). Do not expand this into a roster of named towns
@@ -227,11 +233,11 @@
     // gate. Wiring production->heat is step 3 of the build order, gated on the
     // annihilation rate staying in band.
     // ---------------------------------------------------------------------------
-    { code: 'GENESEE',  kind: 'onshore', name: 'Genesee County', at: [0.723, 0.288],
+    { code: 'GENESEE',  kind: 'onshore', name: 'Genesee County', at: [0.723, 0.288], ll: [43.02, -83.69], full: 'GENESEE COUNTY, MICHIGAN, USA',
       note: "a company county, and what austerity did to its water — the designer's example" },
-    { code: 'REFINERY_ROW', kind: 'onshore', name: 'The Refinery Coast', at: [0.729, 0.349],
+    { code: 'REFINERY_ROW', kind: 'onshore', name: 'The Refinery Coast', at: [0.729, 0.349], ll: [29.90, -93.93], full: 'PORT ARTHUR, TEXAS, USA',
       note: 'the petrochemical corridor along the Gulf — fence-line country' },
-    { code: 'THE_DELTA', kind: 'onshore', name: 'The Delta', at: [0.146, 0.470],
+    { code: 'THE_DELTA', kind: 'onshore', name: 'The Delta', at: [0.146, 0.470], ll: [4.85, 6.20], full: 'NIGER DELTA, NIGERIA',
       note: 'spills, flaring, and what was done to the people who objected' },
 
     // -- BUILT: the megastructures that redraw shipping (expansion). --
@@ -458,12 +464,33 @@
   //              get dealt out there, so a cargo has a reason to cross the Pacific.
   // kind 'port' (a kind no baseline place has): placeOpen says no unless the set is on, or while it is shut.
   const OPTIONAL_PLACES = [
-    { code: 'LA',        kind: 'port', set: 'W_RIM', flash: true, name: 'The Port of Los Angeles', at: [0.625, 0.335] },
-    { code: 'ALASKA',    kind: 'port', set: 'W_RIM', flash: true, name: 'Valdez (Alaska)',         at: [0.585, 0.170] },
-    { code: 'SIBERIA',   kind: 'port', set: 'W_RIM', flash: true, name: 'Vladivostok (Siberia)',   at: [0.395, 0.205] },
-    { code: 'JAPAN',     kind: 'port', set: 'W_DEMAND', name: 'Tokyo Bay (Japan)',                 at: [0.405, 0.290] },
-    { code: 'AUSTRALIA', kind: 'port', set: 'W_DEMAND', name: 'Port Hedland (Australia)',          at: [0.400, 0.640] },
+    { code: 'LA',        kind: 'port', set: 'W_RIM', flash: true, name: 'The Port of Los Angeles', at: [0.625, 0.335], ll: [33.74, -118.27], full: 'LOS ANGELES, CALIFORNIA, USA' },
+    { code: 'ALASKA',    kind: 'port', set: 'W_RIM', flash: true, name: 'Valdez (Alaska)',         at: [0.585, 0.170], ll: [61.13, -146.35], full: 'VALDEZ, ALASKA, USA' },
+    { code: 'SIBERIA',   kind: 'port', set: 'W_RIM', flash: true, name: 'Vladivostok (Siberia)',   at: [0.395, 0.205], ll: [43.12, 131.89], full: 'VLADIVOSTOK, RUSSIA' },
+    { code: 'JAPAN',     kind: 'port', set: 'W_DEMAND', name: 'Tokyo Bay (Japan)',                 at: [0.405, 0.290], ll: [35.68, 139.77], full: 'TOKYO, JAPAN' },
+    { code: 'AUSTRALIA', kind: 'port', set: 'W_DEMAND', name: 'Port Hedland (Australia)',          at: [0.400, 0.640], ll: [-20.31, 118.58], full: 'PORT HEDLAND, WESTERN AUSTRALIA, AUSTRALIA' },
+    // THE SUPER-RIG (1117; Joe: "a major oil rig drilling spot that any company can try to control"). OFF by default:
+    // it exists only in a game with opts.rig (gateway HOUSE RULES chip 'THE SUPER-RIG'). It is a 'port' so it rides
+    // the machinery the WEST COAST ports already proved: a buyer you can sell at, HOLD on the station meter (the
+    // ordinary control rule — nobody owns it at the start) and take the PATH toll on. It is NOT a season
+    // flashpoint (flash:false): the first batch had chaotic seasons heating it like a strait, and the shut rig
+    // bled heat into the Orinoco — fire endings +6..+15 pts at every table. Its heat comes from DRILLING only.
+    // What only the rig does is DRILL (engine _drillAtRig, RIG_DIALS below). docs/THE-SUPER-RIG.md.
+    // Placed on the Brazilian pre-salt (Santos Basin) — the world's biggest offshore drilling play, and in
+    // nobody's yard: no company in the game is Brazilian, so every seat has to sail to it.
+    { code: 'RIG', kind: 'port', set: 'RIG', flash: false, rig: true, name: 'The Pre-Salt Super-Rig', at: [0.826, 0.590],
+      ll: [-25.40, -42.80], full: 'SANTOS BASIN, OFF RIO DE JANEIRO, BRAZIL', note: 'the deepwater pre-salt — the biggest offshore play on earth, and nobody\'s yard' },
   ];
+  // what drilling at the rig does (all CONCEPT dials; read only when opts.rig is on)
+  const RIG_DIALS = {
+    STICKY: true,       // the rig's station meter does not decay: a lease is held until somebody out-sells you there
+    DRILL_AT: 'rig',    // 'rig' = the holder lifts only when it starts a turn ON the rig · 'anywhere' = the rig ships to its holder
+    LIFT: 1,            // barrels the HOLDER of the rig lifts when it starts a turn there (each burns SUPPLY_BURN oil: L2 holds)
+    LIFT_CAP: 3,        // ...only while its hold is below this
+    EXPOSURE: 1,        // the cost: offshore spills are on the record — +exposure per lift
+    HEAT: 1,            // and the rig heats (with CRISIS on) — a hot rig shuts like a strait, so holding it is a fight
+    BOT_PULL: 24,       // bot policy: an empty holder heads back to its rig (just under a buyer's 30)
+  };
   const OPTIONAL_WEST_ROUTES = [
     ['W_RIM', 'HARTSTARR', 'LA', 2, 'the Southwest line (overland)'],
     ['W_RIM', 'LA', 'PACIFIC', 1, 'out of Long Beach'],
@@ -479,6 +506,63 @@
     ['W_DEMAND', 'AUSTRALIA', 'MALACCA', 2, 'the Timor run'],
     ['W_DEMAND', 'AUSTRALIA', 'PACIFIC', 3, 'the Coral Sea'],
     ['W_DEMAND', 'AUSTRALIA', 'SOUTHERN', 2, 'the Great Australian Bight'],
+    ['RIG', 'RIG', 'PETRO_SUR', 2, 'the Brazil coast'],
+    ['RIG', 'RIG', 'GOODHOPE', 3, 'the South Atlantic (to the rig)'],
+    ['RIG', 'RIG', 'HORN', 2, 'the Santos run'],
+  ];
+
+  // ============================================================================
+  // THE WORLD'S PIPELINES (1117; Joe: "make sure to include all major world pipelines mapped").
+  // DRAWN CONTEXT. These are polylines on the board art, NOT routes: nothing here touches ADJ, the
+  // engine or the fingerprint. Where a real line is what an existing PIPE route already models, `plays`
+  // names that route (so the gateway can say which ones you actually ship on); the rest are context.
+  // Coordinates are a first read off the art (the board is an illustrated, Pacific-centred world, not a
+  // geodetic projection) — they land on the right coasts and countries, not the right kilometre.
+  //   kind: 'crude' | 'products'. `ll` = the REAL [lat, lon] of each waypoint in `pts` (`bll` for `branch`), so a
+  //   re-projection (the Equal Earth board, 1117) can place them; `pts` stays the hand read on today's art.
+  //   Places carry `ll` too (HQs, onshore, ports, the rig) for the same reason.
+  // ============================================================================
+  const WORLD_PIPELINES = [
+    // ---- Russia & the Caspian -> Europe ----
+    { id: 'DRUZHBA', name: 'Druzhba', what: 'Russia → Belarus → Poland/Germany (north) and Ukraine → Hungary/Slovakia (south)',
+      plays: 'Druzhba (overland)', ll: [[54.90, 52.30], [52.85, 32.68], [52.05, 29.25], [52.55, 19.70], [53.06, 14.28]], bll: [[52.05, 29.25], [50.08, 25.15], [47.32, 18.91]], pts: [[0.205, 0.188], [0.184, 0.198], [0.170, 0.207], [0.156, 0.214], [0.142, 0.222]],
+      branch: [[0.170, 0.207], [0.165, 0.226], [0.152, 0.244]] },
+    { id: 'BPS', name: 'Baltic Pipeline System', what: 'Volga–Urals → Primorsk & Ust-Luga on the Gulf of Finland',
+      ll: [[54.90, 52.30], [57.60, 39.90], [60.35, 28.60]], pts: [[0.205, 0.188], [0.188, 0.180], [0.172, 0.178]] },
+    { id: 'CPC', name: 'Caspian Pipeline Consortium (CPC)', what: 'Tengiz, Kazakhstan → Novorossiysk, Black Sea',
+      ll: [[46.15, 53.40], [47.10, 51.90], [45.85, 40.10], [44.72, 37.77]], pts: [[0.222, 0.254], [0.205, 0.252], [0.192, 0.262], [0.182, 0.272]] },
+    { id: 'BTC', name: 'Baku–Tbilisi–Ceyhan (BTC)', what: 'Baku, Azerbaijan → Tbilisi, Georgia → Ceyhan, Turkey (Mediterranean)',
+      plays: 'the BTC line (Baku–Ceyhan) — only with THE PATH geo rule', ll: [[40.40, 49.87], [41.70, 44.80], [39.90, 41.30], [36.88, 35.93]], pts: [[0.203, 0.288], [0.191, 0.281], [0.180, 0.290], [0.168, 0.304]] },
+    { id: 'KAZ_CHINA', name: 'Kazakhstan–China', what: 'Atyrau → Kenkiyak → Alashankou → Dushanzi, Xinjiang',
+      plays: 'the Central Asia line', ll: [[47.10, 51.90], [48.60, 57.10], [46.40, 65.30], [45.17, 82.57], [44.32, 84.85]], pts: [[0.222, 0.254], [0.240, 0.250], [0.262, 0.250], [0.282, 0.256], [0.292, 0.262]] },
+    { id: 'ESPO', name: 'ESPO (East Siberia–Pacific Ocean)', what: 'Taishet → Skovorodino → Kozmino (Pacific), spur to Daqing, China',
+      plays: 'the Siberian line', ll: [[55.94, 98.00], [56.79, 105.76], [53.98, 123.90], [48.48, 135.08], [42.73, 133.00]], bll: [[53.98, 123.90], [52.97, 122.54], [46.59, 125.10]], pts: [[0.292, 0.205], [0.322, 0.205], [0.352, 0.214], [0.372, 0.228], [0.386, 0.246]],
+      branch: [[0.352, 0.214], [0.358, 0.236], [0.360, 0.252]] },
+    // ---- the Gulf: the ways around Hormuz and Suez ----
+    { id: 'KIRKUK_CEYHAN', name: 'Kirkuk–Ceyhan', what: 'Kirkuk, Iraq → Ceyhan, Turkey', ll: [[35.47, 44.39], [37.10, 42.40], [36.88, 35.93]], pts: [[0.193, 0.322], [0.182, 0.312], [0.168, 0.304]] },
+    { id: 'PETROLINE', name: 'East–West Pipeline (Petroline)', what: 'Abqaiq → Yanbu, Saudi Arabia — the Red Sea way round Hormuz',
+      ll: [[25.94, 49.67], [24.70, 46.70], [24.09, 38.06]], pts: [[0.213, 0.370], [0.198, 0.372], [0.184, 0.372]] },
+    { id: 'HABSHAN', name: 'Habshan–Fujairah (ADCOP)', what: 'Abu Dhabi → Fujairah, UAE — past Hormuz to the Gulf of Oman',
+      ll: [[23.83, 53.62], [24.50, 55.50], [25.12, 56.33]], pts: [[0.222, 0.392], [0.230, 0.393], [0.237, 0.388]] },
+    { id: 'SUMED', name: 'SUMED', what: 'Ain Sukhna (Red Sea) → Sidi Kerir (Mediterranean), Egypt — the pipe beside Suez',
+      ll: [[29.60, 32.35], [30.05, 31.25], [31.10, 29.65]], pts: [[0.177, 0.350], [0.169, 0.340], [0.161, 0.330]] },
+    // ---- Asia ----
+    { id: 'CHINA_MYANMAR', name: 'China–Myanmar', what: 'Kyaukphyu, Myanmar → Kunming, China — the way round Malacca',
+      ll: [[19.43, 93.55], [21.97, 96.08], [25.04, 102.70]], pts: [[0.296, 0.378], [0.306, 0.362], [0.316, 0.350]] },
+    // ---- Africa ----
+    { id: 'CHAD_CAMEROON', name: 'Chad–Cameroon', what: 'Doba, Chad → Kribi, Cameroon (Gulf of Guinea)', ll: [[8.65, 16.85], [7.30, 13.60], [2.94, 9.91]], pts: [[0.172, 0.430], [0.160, 0.452], [0.150, 0.468]] },
+    // ---- North America ----
+    { id: 'TAPS', name: 'Trans-Alaska (TAPS)', what: 'Prudhoe Bay → Valdez, Alaska, USA', ll: [[70.25, -148.34], [64.84, -147.70], [61.13, -146.35]], pts: [[0.574, 0.156], [0.580, 0.178], [0.586, 0.198]] },
+    { id: 'TRANS_MOUNTAIN', name: 'Trans Mountain', what: 'Edmonton, Alberta → Burnaby, British Columbia, Canada', ll: [[53.55, -113.49], [50.67, -120.33], [49.25, -122.98]], pts: [[0.643, 0.230], [0.633, 0.238], [0.624, 0.246]] },
+    { id: 'KEYSTONE', name: 'Keystone', what: 'Hardisty, Alberta → Steele City, Nebraska → Cushing, Oklahoma → Houston & Port Arthur, Texas',
+      ll: [[52.67, -111.30], [49.00, -98.00], [40.00, -96.98], [35.98, -96.77], [29.76, -95.37], [29.90, -93.93]], pts: [[0.645, 0.234], [0.664, 0.262], [0.680, 0.288], [0.690, 0.308], [0.702, 0.330], [0.722, 0.344]] },
+    { id: 'ENBRIDGE', name: 'Enbridge Mainline', what: 'Edmonton, Alberta → Superior, Wisconsin → Sarnia, Ontario',
+      ll: [[53.55, -113.49], [50.45, -104.60], [46.72, -92.10], [41.80, -87.70], [42.97, -82.40]], pts: [[0.643, 0.230], [0.672, 0.246], [0.703, 0.262], [0.716, 0.270], [0.727, 0.280]] },
+    { id: 'LINE5', name: 'Enbridge Line 5', what: 'Superior, Wisconsin → under the Straits of Mackinac → Michigan → Sarnia, Ontario — past Genesee County, Michigan',
+      plays: 'the Great Lakes line', ll: [[46.72, -92.10], [46.00, -87.50], [45.81, -84.73], [43.05, -83.32], [42.97, -82.40]], pts: [[0.703, 0.262], [0.714, 0.266], [0.720, 0.276], [0.723, 0.286], [0.728, 0.282]] },
+    { id: 'DAPL', name: 'Dakota Access (DAPL)', what: 'the Bakken, North Dakota → Patoka, Illinois', ll: [[48.32, -102.39], [43.50, -96.70], [38.75, -89.10]], pts: [[0.670, 0.250], [0.688, 0.268], [0.704, 0.284]] },
+    { id: 'COLONIAL', name: 'Colonial Pipeline (products)', what: 'Houston, Texas → Linden, New Jersey — the East Coast\'s fuel', kind: 'products',
+      plays: 'the domestic system', ll: [[29.76, -95.37], [33.75, -84.39], [36.07, -79.79], [40.62, -74.24]], pts: [[0.702, 0.330], [0.716, 0.322], [0.730, 0.312], [0.745, 0.302]] },
   ];
   const OPT_BY_ID = {};      // optional route id -> [a, b, cost, label] (+ sub: MOMENTUM may subdivide it)
   Object.keys(OPTIONAL_ROUTES).forEach(k => { OPT_BY_ID['OPT_' + k] = OPTIONAL_ROUTES[k]; });
@@ -576,7 +660,7 @@
     return D.PERIL[p.kind] || 0;
   }
 
-  const REG = { MAP_DIALS, PLACES, ROUTES, OPTIONAL_ROUTES, OPTIONAL_PLACES, OPT_BY_ID, STRUCTURES, BY, CODES, HQS, GATES, ADJ, FACTION_HQ,
+  const REG = { MAP_DIALS, RIG_DIALS, WORLD_PIPELINES, PLACES, ROUTES, OPTIONAL_ROUTES, OPTIONAL_PLACES, OPT_BY_ID, STRUCTURES, BY, CODES, HQS, GATES, ADJ, FACTION_HQ,
     placeOpen, routeOpen, trafficAt, reach, pathOf, connected, hqsConnected, stepsFor, perilOf };
   global.OIL_MAP = REG;
   if (typeof module !== 'undefined' && module.exports) module.exports = REG;
