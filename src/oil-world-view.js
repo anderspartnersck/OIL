@@ -96,23 +96,46 @@
     c.drawImage(src, sx, sy, w, h, x - ax * k, y - ay * k, w * k, h * k); c.globalAlpha = 1; return true;
   }
 
-  // ---- the sheen ----------------------------------------------------------------------------
+  // ---- the sheen (ROUND 2: it must read as OIL at 1x) ------------------------------------------------
+  // three layers on a quarter-res buffer, clipped to the sea: (1) the SLICK — long rainbow bands (thin-film order:
+  // gold → magenta → blue → green) that drift and turn slowly; (2) soft film pools; (3) the GLINT — a broad specular
+  // swell that rolls across the crude. Screened over the plate, so black stays black and the colour sits on the gloss.
   const FILM = [[255, 70, 190], [40, 210, 200], [250, 200, 60], [120, 90, 255], [60, 230, 120], [255, 120, 60]];
+  const BANDS = ['rgba(240,190,70,0)', 'rgba(240,190,70,.9)', 'rgba(220,60,170,.9)', 'rgba(70,90,240,.9)', 'rgba(40,200,170,.9)', 'rgba(40,200,170,0)'];
   function drawSheen(c, r, t) {
     if (!IMG.sea) return;
     const w = Math.max(64, Math.round(r.bw / 4)), h = Math.max(44, Math.round(r.bh / 4));
     if (!sheen || sheen.width !== w || sheen.height !== h) { sheen = document.createElement('canvas'); sheen.width = w; sheen.height = h; }
     const x = sheen.getContext('2d'); x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, w, h);
-    for (let i = 0; i < 9; i++) {
+    x.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 12; i++) {                    // (1) the slick: banded rainbow streaks
+      const ph = i * 2.1, cx = w * (0.5 + 0.46 * Math.sin(t * 0.000035 * (1 + i * 0.17) + ph)), cy = h * (0.45 + 0.38 * Math.cos(t * 0.00003 * (1 + i * 0.13) + ph * 1.4));
+      const len = w * (0.085 + 0.025 * Math.sin(t * 0.00011 + i)), wid = len * (0.38 + 0.1 * Math.sin(t * 0.00017 + i * 3)), ang = Math.sin(i * 1.3 + t * 0.00002) * 1.2;
+      x.save(); x.translate(cx, cy); x.rotate(ang);
+      const gr = x.createLinearGradient(0, -wid, 0, wid); BANDS.forEach((b, j) => gr.addColorStop(j / (BANDS.length - 1), b));
+      x.filter = 'blur(1px)'; x.globalAlpha = 0.48; x.fillStyle = gr; x.beginPath(); x.ellipse(0, 0, len, wid, 0, 0, 7); x.fill(); x.filter = 'none'; x.restore();
+    }
+    x.globalAlpha = 1;
+    for (let i = 0; i < 8; i++) {                     // (2) film pools
       const ph = i * 1.7, cx = w * (0.5 + 0.45 * Math.sin(t * 0.00005 * (1 + i * 0.13) + ph)), cy = h * (0.42 + 0.36 * Math.cos(t * 0.00004 * (1 + i * 0.11) + ph * 1.3));
-      const rad = w * (0.10 + 0.06 * Math.sin(t * 0.0002 + i)), [R, G, B] = FILM[i % FILM.length];
+      const rad = w * (0.09 + 0.05 * Math.sin(t * 0.0002 + i)), [R, G, B] = FILM[i % FILM.length];
       const gr = x.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      gr.addColorStop(0, `rgba(${R},${G},${B},.55)`); gr.addColorStop(0.55, `rgba(${FILM[(i + 2) % 6].join(',')},.22)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      gr.addColorStop(0, `rgba(${R},${G},${B},.45)`); gr.addColorStop(0.6, `rgba(${FILM[(i + 2) % 6].join(',')},.18)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
       x.fillStyle = gr; x.beginPath(); x.ellipse(cx, cy, rad * 1.7, rad * 0.8, Math.sin(i + t * 0.00003), 0, 7); x.fill();
     }
+    for (let i = 0; i < 2; i++) {                     // (3) the glint: a slow specular swell rolling across
+      const f = ((t * 0.000018 + i * 0.5) % 1), gx = w * (-0.2 + 1.4 * f), gy = h * (0.25 + 0.5 * Math.sin(f * Math.PI + i));
+      const gr = x.createRadialGradient(gx, gy, 0, gx, gy, w * 0.22);
+      gr.addColorStop(0, 'rgba(255,244,220,.13)'); gr.addColorStop(1, 'rgba(255,244,220,0)');
+      x.fillStyle = gr; x.beginPath(); x.ellipse(gx, gy, w * 0.3, w * 0.12, 0.35, 0, 7); x.fill();
+    }
     x.globalCompositeOperation = 'destination-in'; x.drawImage(IMG.sea, 0, 0, w, h);
-    c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.28; c.drawImage(sheen, r.bx, r.by, r.bw, r.bh); c.restore();
+    c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.6; c.drawImage(sheen, r.bx, r.by, r.bw, r.bh); c.restore();
   }
+  // a soft glow under a mark, so it reads on the dark (ROUND 2)
+  function glow(c, x, y, rad, rgb, a) { const gr = c.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`); c.fillStyle = gr; c.beginPath(); c.arc(x, y, rad, 0, 7); c.fill(); }
+  const rgbOf = hex => { const h = hex.replace('#', ''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)).join(','); };
 
   // ---- the frame ----------------------------------------------------------------------------
   function drawWorld(now) {
@@ -123,24 +146,36 @@
     if (IMG.plate) c.drawImage(IMG.plate, r.bx, r.by, r.bw, r.bh);
     drawSheen(c, r, now);
     const M = MP(), st = g.mapState;
+    // ROUND 2: the game's pipelines, readable — a copper line with a soft glow and oil pulsing along it (dashes flow)
+    M.ROUTES.forEach(R => { if (!isPipe(R[0], R[1])) return; const Ln = GEO().lane(R[0], R[1]); if (!Ln) return;
+      const kk = Math.max(0.75, k), trace = () => { c.beginPath(); Ln.pieces.forEach(pc => pc.forEach((q, j) => j ? c.lineTo(X(q), Y(q)) : c.moveTo(X(q), Y(q)))); };
+      c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+      c.shadowColor = 'rgba(255,150,70,.55)'; c.shadowBlur = 8 * dpr * kk; c.strokeStyle = 'rgba(30,14,6,.85)'; c.lineWidth = 4.2 * dpr * kk; trace(); c.stroke();
+      c.shadowBlur = 0; c.strokeStyle = '#d27a35'; c.lineWidth = 2.2 * dpr * kk; trace(); c.stroke();
+      c.setLineDash([3 * dpr * kk, 9 * dpr * kk]); c.lineDashOffset = -now * 0.012 * dpr; c.strokeStyle = 'rgba(255,224,170,.85)'; c.lineWidth = 1.3 * dpr * kk; trace(); c.stroke();
+      c.restore(); });
     // shut straits: a red boom across the water
     Object.keys(st.closed || {}).forEach(code => { const p = at(code), x = X(p), y = Y(p);
       c.strokeStyle = 'rgba(226,60,42,.9)'; c.lineWidth = 2.2 * dpr; c.beginPath(); c.moveTo(x - 9 * dpr, y - 3 * dpr); c.lineTo(x + 9 * dpr, y + 3 * dpr); c.stroke(); });
     // refineries: a pilot flame where the yard is not burning
     M.PLACES.filter(p => p.kind === 'hq').forEach(pl => { if (g.crisis && g.burningAt(pl.code)) return;
-      const p = at(pl.code), x = X(p), y = Y(p) - 7 * dpr * Math.max(0.7, k), f = 0.6 + 0.4 * Math.sin(now * 0.013 + x) * Math.sin(now * 0.007 + y);
-      const gr = c.createRadialGradient(x, y, 0, x, y, 6 * dpr * Math.max(0.7, k)); gr.addColorStop(0, `rgba(255,190,90,${0.75 * f})`); gr.addColorStop(1, 'rgba(255,120,40,0)');
-      c.fillStyle = gr; c.beginPath(); c.arc(x, y, 6 * dpr * Math.max(0.7, k), 0, 7); c.fill(); });
+      const kk = Math.max(0.75, k), p = at(pl.code), x = X(p), y = Y(p) - 9 * dpr * kk, f = 0.65 + 0.35 * Math.sin(now * 0.013 + x) * Math.sin(now * 0.007 + y);
+      glow(c, x, y + 4 * dpr * kk, 22 * dpr * kk, '255,150,60', 0.22 * f);            // the yard's light on the ground
+      glow(c, x, y, 11 * dpr * kk, '255,200,110', 0.85 * f);                           // the flare
+      c.fillStyle = `rgba(255,240,200,${0.9 * f})`; c.beginPath(); c.ellipse(x, y, 1.8 * dpr * kk, 3.6 * dpr * kk, 0, 0, 7); c.fill(); });
     // the fires — weight, not spectacle: the column grows with every turn burning; the caption is quiet
     const F = g.crisis ? Object.entries(g.fires) : [];
     const fireFrame = Math.floor(now / 110) % 12, smokeFrame = Math.floor(now / 160) % 12;
-    const fireAt = (p, turns, label) => { const x = X(p), y = Y(p), s = Math.max(0.55, k) * dpr * (0.8 + 0.12 * Math.min(6, turns));
-      spr(IMG.atlas, 'haze', x, y, s * 1.6, 0.55);
-      for (let j = 0; j < Math.min(5, 1 + turns); j++) { const drift = ((now * 0.00002 + j * 0.23) % 1);
-        spr(IMG.atlas, 'smoke_f' + String((smokeFrame + j * 3) % 12).padStart(2, '0'), x + drift * 26 * s, y - drift * 34 * s, s * (1 + drift * 0.9), 0.85 * (1 - drift * 0.7)); }
-      spr(IMG.atlas, 'fire_f' + String(fireFrame).padStart(2, '0'), x, y, s, 0.95);
+    // ROUND 2: the column is drawn, not stamped — a slow, heavy, bending pillar of soot (14 puffs rising, widening,
+    // leaning downwind), lit from below by the burn; the fire itself small at its root. Weight, not spectacle.
+    const fireAt = (p, turns, label) => { const x = X(p), y = Y(p), kk = Math.max(0.7, k), s = kk * dpr * (1.15 + 0.12 * Math.min(6, turns));
+            glow(c, x, y, 26 * s, '255,110,40', 0.28);                                      // the ground lit by it
+      spr(IMG.atlas, 'haze', x, y, s * 1.5, 0.5);
+      for (let j = 0; j < Math.min(6, 2 + turns); j++) { const drift = ((now * 0.00002 + j * 0.19) % 1);   // the rendered smoke sprites, a slow leaning column
+        spr(IMG.atlas, 'smoke_f' + String((smokeFrame + j * 3) % 12).padStart(2, '0'), x + drift * 22 * s, y - drift * 40 * s, s * (0.9 + drift * 0.9), 0.9 * (1 - drift * 0.65)); }
+      spr(IMG.atlas, 'fire_f' + String(fireFrame).padStart(2, '0'), x, y, s * 1.2, 0.95);
       c.font = `italic ${Math.max(9, 10.5 * Math.min(1, k)) * dpr}px Georgia, serif`; c.textAlign = 'center'; c.fillStyle = 'rgba(214,170,120,.82)';
-      c.fillText(label, x, y + 16 * dpr * Math.max(0.7, k)); };
+      c.fillText(label, x, y + 18 * dpr * Math.max(0.7, k)); };
     F.forEach(([code, turns]) => fireAt(at(code), turns, `${(M.BY[code] || {}).name || code} — burning, ${turns} turn${turns === 1 ? '' : 's'}`));
     // pump-station fires (PIPELINE MODE)
     if (g.pipeMode) Object.entries(g.pumpFires || {}).forEach(([rid, turns]) => { const R = routeOf(+rid) || routeOf(rid); if (!R) return;
@@ -149,30 +184,33 @@
     if (g.crew) { const C = g.crew; let p = at(C.at), going = null;
       if (C.job && C.job.to && C.job.dist) { const path = M.pathOf(M.reach(C.at, 999, st), C.job.to), pts = voyage(path);
         if (pts.length > 1) { const f = Math.max(0, Math.min(1, 1 - C.left / C.job.dist)), m = { pts, t0: 0, dur: 1 }; const q = pos(m, f); p = [q[0], q[1]]; going = C.job; } }
-      const x = X(p), y = Y(p), s = 6 * dpr * Math.max(0.75, k);
+      const x = X(p), y = Y(p), s = 10.5 * dpr * Math.max(0.75, k);
+      glow(c, x, y, s * 2.6, '255,90,70', 0.35 + 0.15 * Math.sin(now * 0.008));    // the beacon: they are coming
       c.fillStyle = '#f4f0e6'; c.strokeStyle = '#c62f22'; c.lineWidth = 1.6 * dpr;
       c.beginPath(); c.moveTo(x, y - s); c.lineTo(x + s, y); c.lineTo(x, y + s); c.lineTo(x - s, y); c.closePath(); c.fill(); c.stroke();
-      c.fillStyle = '#c62f22'; c.font = `bold ${7 * dpr * Math.max(0.8, k)}px Trebuchet MS`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('IWS', x, y + 0.5 * dpr);
-      c.font = `${9.5 * dpr}px Trebuchet MS`; c.fillStyle = 'rgba(244,240,230,.85)'; c.textBaseline = 'alphabetic';
+      c.fillStyle = '#c62f22'; c.font = `bold ${10.5 * dpr * Math.max(0.8, k)}px Trebuchet MS`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('IWS', x, y + 0.5 * dpr);
+      c.font = `${10.5 * dpr}px Trebuchet MS`; c.fillStyle = 'rgba(244,240,230,.92)'; c.textBaseline = 'alphabetic';
       c.fillText(going ? `Box & Scooter → ${(M.BY[going.to] || {}).name || going.to}${C.queue.length ? ` · ${C.queue.length} waiting` : ''}` : 'Box & Scooter — on standby', x, y - s - 4 * dpr); }
     // the ships, and the cargo in the lines
     g.players.forEach((q, i) => {
       track(q, now); const m = motion[q.id], p = pos(m, now), x = X(p), y = Y(p), col = (g._colors && g._colors[i]) || '#f6c95a';
-      const s = Math.max(0.6, k) * dpr * 1.15;
+      const s = Math.max(0.6, k) * dpr * 1.7;   // ROUND 2: 1.5x — a tanker reads at game size
+      glow(c, x, y, 16 * s, rgbOf(col), 0.3);
       if (p[2] === 'pipe' || q.inLine || q.trapped) {          // the trek: a copper capsule in the line
         const a = -p[3]; c.save(); c.translate(x, y); c.rotate(a);
-        c.fillStyle = '#b8642a'; c.strokeStyle = 'rgba(10,6,3,.95)'; c.lineWidth = 1.4 * dpr;
-        c.beginPath(); c.roundRect ? c.roundRect(-9 * s, -4 * s, 18 * s, 8 * s, 4 * s) : c.rect(-9 * s, -4 * s, 18 * s, 8 * s); c.fill(); c.stroke();
-        c.fillStyle = col; c.fillRect(-2.5 * s, -4 * s, 5 * s, 8 * s); c.restore();
+        c.fillStyle = '#d27a35'; c.strokeStyle = 'rgba(10,6,3,.95)'; c.lineWidth = 1.6 * dpr;
+        c.beginPath(); c.roundRect ? c.roundRect(-7 * s, -3.2 * s, 14 * s, 6.4 * s, 3.2 * s) : c.rect(-7 * s, -3.2 * s, 14 * s, 6.4 * s); c.fill(); c.stroke();
+        c.fillStyle = 'rgba(255,220,170,.55)'; c.fillRect(-6 * s, -2.6 * s, 12 * s, 1.1 * s);
+        c.fillStyle = col; c.fillRect(-2 * s, -3.2 * s, 4 * s, 6.4 * s); c.restore();
         if (q.trapped) { const pulse = 0.5 + 0.5 * Math.sin(now * 0.006);
-          c.strokeStyle = `rgba(226,60,42,${0.5 + 0.4 * pulse})`; c.lineWidth = 2 * dpr; c.beginPath(); c.arc(x, y, 13 * s, 0, 7); c.stroke();
+          c.strokeStyle = `rgba(226,60,42,${0.5 + 0.4 * pulse})`; c.lineWidth = 2.4 * dpr; c.beginPath(); c.arc(x, y, 10 * s, 0, 7); c.stroke();
           c.font = `bold ${9 * dpr}px Trebuchet MS`; c.textAlign = 'center'; c.fillStyle = '#ff8a6a';
-          c.fillText(`TRAPPED · ${q.trapped.why === 'fire' ? 'pump fire' : q.trapped.why === 'political' ? 'shut-off' : 'sabotage'} · ${q.trapped.left}`, x, y - 15 * s); }
+          c.fillText(`TRAPPED · ${q.trapped.why === 'fire' ? 'pump fire' : q.trapped.why === 'political' ? 'shut-off' : 'sabotage'} · ${q.trapped.left}`, x, y - 12 * s); }
         return;
       }
       const hd = ((Math.round(((p[3] * 180 / Math.PI) % 360 + 360) % 360 / 22.5)) % 16), atl = tintedAtlas(col);
       if (!spr(atl, 'tanker_h' + String(hd).padStart(2, '0'), x, y, s)) { c.fillStyle = col; c.beginPath(); c.arc(x, y, 4 * dpr, 0, 7); c.fill(); }
-      if (q.isHuman) { c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.4 * dpr; c.beginPath(); c.arc(x, y, 12 * s, 0, 7); c.stroke(); }
+      if (q.isHuman) { c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.6 * dpr; c.beginPath(); c.arc(x, y, 9 * s, 0, 7); c.stroke(); }
     });
     // the tape, small: the world never hides the market
     c.textAlign = 'left'; c.textBaseline = 'middle'; c.font = 'bold ' + 12 * dpr + 'px Trebuchet MS';
