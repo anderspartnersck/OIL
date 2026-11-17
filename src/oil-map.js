@@ -607,7 +607,7 @@
       if (d > (dist[cur] !== undefined ? dist[cur] : Infinity)) continue;
       for (const r of ADJ[cur]) {
         if (!routeOpen(r, cur, state)) continue;
-        const nd = d + r.cost;
+        const nd = d + (state && state.costOf ? state.costOf(r, cur) : r.cost);   // costOf: PIPELINE MODE's fast line (oil-world.js); absent = as printed
         if (nd <= steps && (dist[r.to] === undefined || nd < dist[r.to])) {
           dist[r.to] = nd; prev[r.to] = cur; q.push([nd, r.to]);
         }

@@ -212,6 +212,10 @@
 <script src="src/oil-map.js"></script>
 <script src="src/oil-crisis.js"></script>
 <script src="src/oil-momentum.js"></script>
+<script src="src/oil-geo.js"></script><!-- 1117: Equal Earth — one lat/lon source for the board (render-only) -->
+<script src="src/oil-world.js"></script><!-- 1117: PIPELINE MODE + THE CREW prototypes (HOUSE RULES, off by default) -->
+<script src="assets/world/pieces.js"></script>
+<script src="src/oil-world-view.js"></script><!-- 1117: ◉ WORLD, the living ocean (render-only) -->
 <script src="src/oil-desk.js"></script>
 <script src="src/oil-cardtext.js"></script>
 <script src="src/oil-rulebook.js"></script>
@@ -252,8 +256,10 @@ S.levels=((/levels=(two|voyage)/.exec(location.hash+location.search))||[])[1]||'
 const HOUSE_RULES=[['backhaul','BACKHAUL (CORE-022)','A landed contract loads the backhaul: one barrel for the trip home (it burns 1 oil). Halves the empty holds; ~0.5 rounds shorter.','map'],
   ['rider','THE RIDER (retainer rework)','IWS cover rides any sale once your HQ has heat: $22 off the top, +4 shield on your HQ for 3 of your turns. Replaces the near-dead retainer.','crisis'],
   ['rim','WEST: THE RIM','LA, Valdez and Vladivostok join the map as unowned buyers with flashpoints (~24% of sales go west).','map'],
+  ['pipe','PIPELINE MODE (1117 prototype)','Overland by the pipes is a gamble read off the roll. STABLE season: the line runs fast (a pipe leg costs 1 less) — a way to get ahead past a shut strait. But cargo in a line lands at the START of your next turn, and that roll can CUT it (CHAOTIC + a low World body = political shut-off · a low Supply body = sabotage · a hot yard = pump-station fire). Went in during a CHAOTIC season? The line stays hot. Trapped: no sale until you WAIT it out, REROUTE ($12), or call IWS on the pump fire. docs/WORLD3D-1117.md','map'],
+  ['crew','THE CREW (IWS in earnest, 1117 prototype)','Box & Scooter are ONE crew with a yard on the Refinery Coast. Hire them as now — but they have to sail/drive there (2 steps a turn), the fire burns until they arrive, and a second fire waits in the queue. docs/WORLD3D-1117.md','crisis'],
   ['rig','THE SUPER-RIG (contested)','One offshore rig on the Brazilian pre-salt, in nobody\'s yard. Sell there to hold it (the station meter); its holder lifts a barrel each turn it starts there (+1 exposure, heats the rig). docs/THE-SUPER-RIG.md','map']];
-S.house={backhaul:/supply=backhaul/.test(location.hash),rider:/retainer=rider/.test(location.hash),rim:/west=(rim|both)/.test(location.hash),rig:/rig=on|[#&]rig\b/.test(location.hash)};
+S.house={backhaul:/supply=backhaul/.test(location.hash),rider:/retainer=rider/.test(location.hash),rim:/west=(rim|both)/.test(location.hash),rig:/rig=on|[#&]rig\b/.test(location.hash),pipe:/pipe=on|[#&]pipemode\b/.test(location.hash),crew:/crew=on|[#&]iwscrew\b/.test(location.hash)};
 if(/firm=big/.test(location.hash+location.search)) document.body.classList.add('firmbig');   // carry-over #5 preview
 const CORE_MODS={cards:1,deals:1,map:1,path:1,crisis:1};
 const on=k=>CORE_MODS[k]?S[k]:(S.expansion&&S[k]);
@@ -341,9 +347,16 @@ BOARD.onload=()=>{boardReady=true; if(game)draw();};
 // heat, fire, gates, ships and labels stay the canvas's own. Joe 1113 ("merge all 3d builds as mains"): the 3D board is
 // the DEFAULT; the original art is one toggle away (B, or the BOARD button) and #board=orig opens on it.
 const BOARD3D=new Image(); let board3dReady=false; BOARD3D.onload=()=>{board3dReady=true; if(game)draw();}; BOARD3D.src='assets/board/oil_board_3d.webp';
-let use3D=!/board=orig/.test(location.hash+location.search);
-function boardLabel(){ const b=document.getElementById('boardBtn'); if(b) b.textContent=use3D?'▦ 3D BOARD':'▦ ART BOARD'; }
-function toggleBoard(){ use3D=!use3D; boardLabel(); if(game)draw(); }
+// 1117 (Joe: "make the map less mercator and more world perspective size"): THE EQUAL EARTH BOARD — the world at true
+// size (src/oil-geo.js), rebuilt in Blender (games/oil/blender/board_ee.py). Places sit at their real lat/lon, the lanes
+// follow the sea, the dotted lines are the canvas's. The default; the BOARD button cycles EE → the old 3D → the art,
+// and #board=old3d / #board=orig open on those (the old boards keep the old positions exactly).
+const BOARD_EE=new Image(); let boardEEReady=false; BOARD_EE.onload=()=>{boardEEReady=true; if(game)draw();}; BOARD_EE.src='assets/board/oil_board_ee.webp';
+let boardMode=/board=orig/.test(location.hash+location.search)?'orig':/board=old3d/.test(location.hash+location.search)?'old3d':'ee';
+let use3D=boardMode!=='orig';
+const EEon=()=>boardMode==='ee'&&!!window.OIL_GEO;
+function boardLabel(){ const b=document.getElementById('boardBtn'); if(b) b.textContent=boardMode==='ee'?'▦ WORLD BOARD':boardMode==='old3d'?'▦ 3D BOARD (old)':'▦ ART BOARD'; }
+function toggleBoard(){ boardMode=boardMode==='ee'?'old3d':boardMode==='old3d'?'orig':'ee'; use3D=boardMode!=='orig'; boardLabel(); if(game)draw(); }
 document.addEventListener('keydown',e=>{ if((e.key==='b'||e.key==='B')&&!e.metaKey&&!e.ctrlKey&&!/INPUT|SELECT|TEXTAREA/.test((e.target||{}).tagName||'')) toggleBoard(); });
 const UIK=window.OIL_UIKIT||{spr:()=>false,nine:()=>false,onReady:()=>{}};   // UI KIT (render-only)
 
@@ -351,6 +364,7 @@ const UIK=window.OIL_UIKIT||{spr:()=>false,nine:()=>false,onReady:()=>{}};   // 
 let game=null,hist=[],running=false,timer=0;
 UIK.onReady(()=>{ if(game)draw(); });   // after `let game`: a ready-already atlas calls back synchronously (was a TDZ error above the declaration)
 const cv=$('#cv'),ctx=cv.getContext('2d');
+if(window.OIL_WORLD_VIEW) OIL_WORLD_VIEW.attach({game:()=>game,cv,ctx,view:()=>S.view,dice:(x,y,d)=>drawDiceRow(x,y,d)});   // 1117: ◉ WORLD reads this closure's game
 const AXES=['Supply','Weather','World'];
 const diceStr=()=>game.lastDice.join('-');
 // die colours (designer 2026-10-23): Supply red · Weather yellow · World blue — the log shows each body in its colour
@@ -380,7 +394,9 @@ function startGame(){
     path:(on('map')&&S.path)?(S.house.backhaul?Object.assign(OilGame.pathRules(S.pathPreset),{supply:'cargo'}):S.pathPreset):undefined,   // HOUSE RULES: backhaul (CORE-022)
     crisisDials:(/retainer=(policy|cut)/.exec(location.hash)||[])[1]?{RETAINER_MODE:/retainer=(policy|cut)/.exec(location.hash)[1]}:(S.house.rider&&on('crisis')?{RETAINER_MODE:'rider'}:undefined),   // HOUSE RULES: THE RIDER chip (#retainer=rider preselects it)   // RETAINER REWORK preview (docs/DECISIONS-1110.md): #retainer=policy|rider|cut
     west:(/west=(demand|both)/.exec(location.hash)||[])[1]||(S.house.rim&&on('map')?'rim':undefined),   // HOUSE RULES: WEST RIM chip (#west=demand|both = the other previews)   // WEST COAST preview (docs/DECISIONS-1110.md): #west=rim|demand|both
-    rig:(on('map')&&S.path&&S.house.rig)?true:undefined,   // THE SUPER-RIG (1117, HOUSE RULES chip, off by default; #rig preselects)
+    rig:(on('map')&&S.path&&S.house.rig)?true:undefined,
+    pipeMode:(on('map')&&S.house.pipe)?true:undefined,   // PIPELINE MODE (1117 prototype, HOUSE RULES chip, off by default; #pipemode preselects)
+    iwsCrew:(on('crisis')&&S.house.crew)?true:undefined,   // THE CREW (1117 prototype; #iwscrew preselects)   // THE SUPER-RIG (1117, HOUSE RULES chip, off by default; #rig preselects)
     levels:(on('map')&&S.levels!=='off')?S.levels:undefined,   // OIL LEVELS prototype (O2, docs/RESUME-2026-11-10.md): THE BOX chip, or #levels=two | #levels=voyage   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
     // THE PATH seats the real roster, so each company starts in its own yard (and its power is live —
     // the configuration path-model.js and LAB 12 measure). Off the path the table stays as it was.
@@ -539,6 +555,11 @@ async function stepOnce(){
     else if(ev.type==='move'){ if(ev.lost||ev.longWay||ev.cost>=3) logLine(`&nbsp;&nbsp;<span class="t">${ev.player}</span> sails ${ev.path.map(c=>(OIL_MAP.BY[c]||{}).name||c).join(' → ')}${ev.longWay?' <span class="out">(the long way round)</span>':''}`); }
     else if(ev.type==='level_up'){ logLine(`&nbsp;&nbsp;<span class="grn">▲ <span class="t">${ev.player}</span> ${ev.voyage?'— this cargo climbs to':'is licensed for'} ${ev.name}</span>`); }
     else if(ev.type==='level_fall'){ logLine(`&nbsp;&nbsp;<span class="out">▼ <span class="t">${ev.player}</span> ${ev.from?'— the cargo is knocked back a level':'loses the licence — back to WILDCAT'}${ev.towed?' (towed home)':''}</span> <span style="color:#7d6b4a">(${ev.cause})</span>`); }
+    else if(ev.type==='pipe_cut'){ logLine(`&nbsp;&nbsp;<span class="out">✂ ${ev.why==='fire'?'PUMP STATION FIRE':ev.why==='political'?'SHUT-OFF':'SABOTAGE'} — <span class="t">${ev.player}</span>'s cargo is trapped in the line ${placeName(ev.from)} → ${placeName(ev.to)}</span>`); }
+    else if(ev.type==='pipe_in'&&ev.era==='CHAOTIC'){ logLine(`&nbsp;&nbsp;<span style="color:#cf7a33">⛽ <span class="t">${ev.player}</span> sends cargo up the line in a chaotic season — ${placeName(ev.from)} → ${placeName(ev.to)}</span>`); }
+    else if(ev.type==='pipe_reroute'){ logLine(`&nbsp;&nbsp;<span style="color:#7d6b4a"><span class="t">${ev.player}</span> pays $${ev.cost} to pull the cargo back at ${placeName(ev.at)}</span>`); }
+    else if(ev.type==='crew_hired'){ logLine(`&nbsp;&nbsp;<span class="grn">🚒 <span class="t">${ev.player}</span> hires Box &amp; Scooter</span>${ev.queue>1?` <span style="color:#7d6b4a">(${ev.queue-1} job${ev.queue>2?'s':''} ahead)</span>`:''}`); }
+    else if(ev.type==='crew_done'){ logLine(`&nbsp;&nbsp;<span class="grn">IWS — the Fire Cutters cap it at ${placeName(ev.at)}</span>`); }
     else if(ev.type==='peril'){ logLine(`&nbsp;&nbsp;<span class="out">⚠ ${ev.name}</span> takes ${ev.lost} barrel(s) off <span class="t">${ev.player}</span>`); }
     else if(ev.type==='gate_close'){ logLine(`&nbsp;&nbsp;<span class="out">⛔ ${ev.name} IS SHUT</span> — ${ev.turns} turns`); }
     else if(ev.type==='gate_open'){ logLine(`&nbsp;&nbsp;<span class="grn">${(OIL_MAP.BY[ev.gate]||{}).name||ev.gate} reopens</span>`); }
@@ -681,6 +702,12 @@ function presentPrompt(g,p,ctx){
         opts.push({group:'Walk out',label:'✖ '+other,value:m,
           tip:'Take the spoils, the exposure, and their grudge.'});});
       opts.push({group:'',label:'say nothing',value:'pass',cls:'no'});
+    } else if(ctx.kind==='move'&&ctx.trapped){   // PIPELINE MODE (1117): the cargo is cut off in a line — the way out
+      const T=ctx.trapped, P=g.pipeDials, why=T.why==='fire'?'a pump station is on fire':T.why==='political'?'the line is shut through somebody\'s ground (political)':'the line has been sabotaged';
+      title='TRAPPED IN THE LINE'; sub=`${diceStr()} — ${why}. Your cargo is in the pipe between ${placeName(T.from)} and ${placeName(T.at)}: no sale until it is out. ${T.left} of your turns at most — the world can be made longer, never broken.`;
+      opts=ctx.options.map(o=>o==='WAIT'?{label:`⏳ WAIT it out (${T.left} turn${T.left===1?'':'s'} at most)`,value:o,tip:'no cost but the turns'}
+        :o==='REROUTE'?{label:`↩ REROUTE — $${P.REROUTE_COST}: back to ${placeName(T.from)}, sail another way`,value:o,tip:'pay to pull the cargo back at the line\'s head; you move this turn'}
+        :{label:`🚒 IWS — $${P.PUMP_COST}: cap the pump station${g.iwsCrew?' (the crew has to get there)':''}`,value:o,tip:'the Fire Cutters put it out and the line reopens'});
     } else if(ctx.kind==='move'&&ctx.momentum){
       // MOMENTUM: the sea decides how far; you decide the fork — or you camp and pay demurrage
       const MP=window.OIL_MAP,MM=window.OIL_MOMENTUM,here=MP.BY[p.at];
@@ -705,10 +732,11 @@ function presentPrompt(g,p,ctx){
       const MP=window.OIL_MAP,st=g.mapState,here=MP.BY[p.at];
       let steps=MP.stepsFor(g.lastDice,g.mapDials);
       if(g.privilege) steps=Math.max(g.mapDials.MOVE_MIN,g.privSteps(p,steps));   // THE PRIVILEGE: a penalized seat's reach is capped
-      const r=MP.reach(p.at,steps,g.levels?g._lvState(p):st);   // OIL LEVELS: the distances this seat may actually sail
+      const r=MP.reach(p.at,steps,g.pipeMode?g._pipeState(g.levels?g._lvState(p):st):(g.levels?g._lvState(p):st));   // OIL LEVELS: the distances this seat may actually sail (PIPELINE MODE: a stable season's fast line)
       title='Where do you sail?';
       sub=`${diceStr()} — spread carries you ${steps}. You are at ${placeName(p.at)}.` +
-        (g.era==='CHAOTIC'?' <CHAOTIC SEASON: the sea will take cargo.>':' Seas are steady.');
+        (g.era==='CHAOTIC'?' <CHAOTIC SEASON: the sea will take cargo.>':' Seas are steady.')+
+        (ctx.pipe&&Object.keys(ctx.pipe.lines).length&&p.barrels>0?(ctx.pipe.era==='STABLE'?' ⛽ PIPELINE MODE: a stable season — the lines run fast, and a cargo that goes in now is only cut if next turn turns chaotic.':' ⛽ PIPELINE MODE: a CHAOTIC season — a cargo that goes in now goes in HOT: next turn\'s roll can cut it whatever the season.')+' A line lands as your next turn begins (no sale until then).':'');
       // THE PATH: say where the cargo is going, and what the shut world is costing the voyage
       const pi=pathInfo(g,p);
       if(pi&&p.barrels>0&&pi.to){
@@ -734,6 +762,8 @@ function presentPrompt(g,p,ctx){
           if(gate){ const w=g.privDials.PRIV_WATER==='dues'?g.gateWarden(gate,p):null; lab+=' ≈'; tip=(tip?tip+' · ':'')+`through ${placeName(gate)} — a body short next roll${w?', dues to '+w.name:''}`; }
           const port=g.seatAtHQ(c,p); if(port&&g.privilegeOf(p)<3&&g._seizeOn()&&g.privDials.PRIV_ARREST&&!(g.deals&&g.dealBetween(port,p))){ lab+=' ⚓'; tip=(tip?tip+' · ':'')+`${port.name}'s home port — you are short a body: they can ARREST you`; }
         }
+        const pl2=ctx.pipe&&ctx.pipe.lines[c];   // PIPELINE MODE: the read before you commit — the odds next turn's roll cuts this line
+        if(pl2&&p.barrels>0){ lab+=` ⛽${Math.round(pl2.cut*100)}%${pl2.fire?' 🔥':''}`; tip=(tip?tip+' · ':'')+`by the pipe from ${placeName(pl2.from)}${pl2.fast?' — fast line (stable)':''}: ${Math.round(pl2.cut*100)}% it is cut next turn${pl2.fire?' · a yard at its end is hot: a pump station may catch':''}`; }
         return {label:lab,value:c,cls:c===p.at?'no':'',tip};
       });
     } else if(ctx.kind==='action'){
@@ -909,7 +939,8 @@ function fullLines(pl){ const f=pl&&pl.full; if(!f)return []; if(f.length<=18)re
 let pipeHits=[];
 function drawPipelines(MP,X,Y,dI){ pipeHits=[]; if(!MP.WORLD_PIPELINES||/pipes=off/.test(location.hash))return;
   ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
-  MP.WORLD_PIPELINES.forEach(P=>{ [P.pts].concat(P.branch?[P.branch]:[]).forEach(pts=>{
+  const EE=EEon(), GP=EE?Object.fromEntries(OIL_GEO.pipelines().map(g=>[g.id,g.pieces])):null;
+  MP.WORLD_PIPELINES.forEach(P=>{ (EE?(GP[P.id]||[]):[P.pts].concat(P.branch?[P.branch]:[])).forEach(pts=>{
     const xy=pts.map(q=>[X(q),Y(q)]);
     const path=()=>{ ctx.beginPath(); xy.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); };
     path(); ctx.setLineDash([]); ctx.strokeStyle='rgba(12,7,3,.85)'; ctx.lineWidth=4.4*dI; ctx.stroke();
@@ -982,12 +1013,15 @@ function layoutLabels(labels,dots,box,dpr,keepOut){
     [1,2.4,4,6,8].forEach((far,ring)=>dirs.forEach(([dx,dy],di)=>{
       const g=L.gap*far, cx=L.x+dx*(g+(dx?L.w/2:0)), cy=L.y+dy*(g+(dy?L.h/2:0));
       const R={x0:cx-L.w/2-pad,x1:cx+L.w/2+pad,y0:cy-L.h/2-pad,y1:cy+L.h/2+pad};
-      let cost=ring*200*dpr*dpr+di*dpr*dpr;                       // prefer close, then the usual spot
+      let cost=ring*200*dpr*dpr+di*dpr*dpr; const base=cost;          // prefer close, then the usual spot
       placed.forEach(P=>cost+=hit(R,P)*400);   // 1117: names never stack (was ×3 — a nick of overlap beat a longer leader)
       dots.forEach(D=>cost+=hit(R,{x0:D.x-D.r,x1:D.x+D.r,y0:D.y-D.r,y1:D.y+D.r})*(D.w||40));   // 1117: a token weighs 40 (was 2) — a name never sits on a place
       if(R.x0<box.x0||R.x1>box.x1||R.y0<box.y0||R.y1>box.y1) cost+=1e6;
-      if(!best||cost<best.cost) best={cost,R,cx,cy,ring};
+      if(!best||cost<best.cost) best={cost,R,cx,cy,ring,over:cost-base};
     }));
+    // 1117 (Equal Earth on a phone): true-size Europe is small — an OPTIONAL name (a strait or a sea, never a company)
+    // that cannot sit near its mark without covering something is left off; the token's shape + the KEY still say what it is
+    if(L.optional&&(best.over>0||best.ring>=3))return;
     placed.push(best.R);
     if(window.__mapAudit) window.__mapAudit.labels.push({t:L.lines.map(l=>l.t).join(' / '),x0:best.R.x0/dpr,y0:best.R.y0/dpr,x1:best.R.x1/dpr,y1:best.R.y1/dpr,
       px:Math.min(...L.lines.map(l=>parseFloat(l.font.match(/([\d.]+)px/)[1])/dpr)),ring:best.ring});   // OVERLAP AUDIT (tools/map_shots.mjs) — render-only
@@ -1011,11 +1045,12 @@ function drawMap(){
   if(boardReady){
     const ar=BOARD.width/BOARD.height, sr=W/H;
     if(ar>sr){bh=W/ar;by=(H-bh)/2;} else {bw=H*ar;bx=(W-bw)/2;}
-    if(use3D&&board3dReady) ctx.drawImage(BOARD3D,bx,by,bw,bh);   // the 3D plate at full strength (BOARD.md); same rect
+    if(EEon()&&boardEEReady) ctx.drawImage(BOARD_EE,bx,by,bw,bh);   // 1117: the Equal Earth plate (same 1.48 rect, same deck panels)
+    else if(use3D&&board3dReady) ctx.drawImage(BOARD3D,bx,by,bw,bh);   // the 3D plate at full strength (BOARD.md); same rect
     else { ctx.globalAlpha=.85; ctx.drawImage(BOARD,bx,by,bw,bh); ctx.globalAlpha=1; }
   } else { ctx.fillStyle='#0a0705'; ctx.fillRect(0,0,W,H); }
   const st=game.mapState, X=p=>bx+bw*p[0], Y=p=>by+bh*p[1];
-  const dpr=devicePixelRatio;
+  const dpr=devicePixelRatio, EE=EEon(), AT=code=>EE?OIL_GEO.at(code):((MP.BY[code]||(MP.OPTIONAL_PLACES||[]).find(q=>q.code===code)||{}).at||[0,0]);
   // 1117 (Joe: "make the text/icons smaller overall"): every token, track and space mark on the board is drawn at
   // dI = dpr × MAPK, which scales with the board and runs 25% under the old size; the KEY panels keep dpr.
   // Label type scales with the board too but never under FS_MIN (10px on a desktop board, 7px on a phone's).
@@ -1038,7 +1073,7 @@ function drawMap(){
     const kind=kindOfRoute(MP,R[0],R[1]);
     const iced=kind==='arctic'&&!(st.built&&st.built.ARCTIC_DEV);
     const mode=iced?'iced':(!liveA||!liveB||disabled)?'dead':'live';
-    tracks.push({R,rid:id,A,B,kind,mode,ax:X(A.at),ay:Y(A.at),bx:X(B.at),by:Y(B.at),sx:0,sy:0});
+    tracks.push({R,rid:id,A,B,kind,mode,ax:X(AT(A.code)),ay:Y(AT(A.code)),bx:X(AT(B.code)),by:Y(AT(B.code)),sx:0,sy:0});
   });
   // two tracks leaving the same port at nearly the same heading get pushed apart, like double routes on a printed board
   const from=(t,c)=>{ const u=c===t.R[0]?[t.bx-t.ax,t.by-t.ay]:[t.ax-t.bx,t.ay-t.by], l=Math.hypot(u[0],u[1])||1; return [u[0]/l,u[1]/l]; };
@@ -1051,6 +1086,7 @@ function drawMap(){
   const trackPts=[];
   tracks.forEach(t=>{ const ax=t.ax+t.sx,ay=t.ay+t.sy,bx2=t.bx+t.sx,by2=t.by+t.sy;
     const MSP=game.momentum&&window.OIL_MOMENTUM?OIL_MOMENTUM.spacesOf(t.rid,game.momDials):null;
+    if(EE){ drawLaneEE(t,MSP?MSP.N:(t.R[2]||1),dI,clr(t.A),clr(t.B),MSP?MSP.types:null,X,Y,bw,bh,trackPts); return; }
     drawTrack(ax,ay,bx2,by2,MSP?MSP.N:(t.R[2]||1),t.kind,t.mode,dI,clr(t.A),clr(t.B),MSP?MSP.types:null);
     t.gx=[ax,ay,bx2,by2];
     const L=Math.hypot(bx2-ax,by2-ay), k=Math.max(1,Math.floor(L/(12*dpr)));
@@ -1060,7 +1096,7 @@ function drawMap(){
   // if a closure is lengthening it — the way it would have gone with nothing shut (red dash).
   const you=game.players.find(q=>q.isHuman), pi=you&&you.barrels>0?pathInfo(game,you):null;
   const line=(codes,col,w,dash)=>{ if(codes.length<2)return; ctx.setLineDash(dash||[]); ctx.strokeStyle=col; ctx.lineWidth=w*dpr;
-    ctx.beginPath(); codes.forEach((c,i)=>{const P=MP.BY[c].at; i?ctx.lineTo(X(P),Y(P)):ctx.moveTo(X(P),Y(P));}); ctx.stroke(); ctx.setLineDash([]); };
+    ctx.beginPath(); if(EE) laneTrace(codes,X,Y); else codes.forEach((c,i)=>{const P=MP.BY[c].at; i?ctx.lineTo(X(P),Y(P)):ctx.moveTo(X(P),Y(P));}); ctx.stroke(); ctx.setLineDash([]); };
   if(pi&&pi.to){
     if(pi.detour) line(pi.openRoute,'rgba(226,60,42,.85)',2.6,[6*dpr,4*dpr]);
     line(pi.route,'rgba(255,240,200,.35)',13);            // halo over the track
@@ -1074,7 +1110,7 @@ function drawMap(){
   if(game.path) Object.entries(game.structureOwner).forEach(([k,name])=>{ const S2=(MP.STRUCTURES||{})[k]||{};
     (S2.raises||S2.opens||[]).forEach(code=>{ raisedBy[code]=name; }); });
   MP.PLACES.concat((MP.OPTIONAL_PLACES||[]).filter(q=>st.opts&&st.opts[q.set])).forEach(pl=>{
-    const open=MP.placeOpen(pl.code,st), x=X(pl.at), y=Y(pl.at);
+    const open=MP.placeOpen(pl.code,st), x=X(AT(pl.code)), y=Y(AT(pl.code));
     if(pl.kind==='built'&&!open)return;
     if(pl.kind==='hq'){
       const seat=game.players.find(q=>q.faction===pl.code);
@@ -1129,7 +1165,7 @@ function drawMap(){
         L.push({t:'▲ '+raisedBy[pl.code],font:fnt(1,FS2),col:game._colors[k2]||'#2f9e5b'}); }
       if(pl.rig&&game.rig){ const o=game.ownerOf('RIG'), k3=game.players.findIndex(z=>z.name===o);
         L.push({t:o?'⛽ held by '+o.split(/[ /(]/)[0]:'⛽ unheld — sell here to take it',font:fnt(1,FS2),col:o?(game._colors[k3]||'#2f9e5b'):'#cdbf9e'}); }
-      labels.push({x,y,lines:L,prio:pl.rig?0.5:({gate:1,onshore:2,built:2,port:2}[pl.kind]||3),gap:6*dI+2*dpr});
+      labels.push({x,y,lines:L,prio:pl.rig?0.5:({gate:1,onshore:2,built:2,port:2}[pl.kind]||3),gap:6*dI+2*dpr,optional:EE&&FS<9&&!pl.rig&&!contracts.has(pl.code)&&pl.kind!=='onshore'});
     }
   });
 
@@ -1137,7 +1173,7 @@ function drawMap(){
   if(game.path){
     Object.entries(game.controlTable()).forEach(([code,name])=>{ const pl=MP.BY[code]; if(!pl)return;
       const k=game.players.findIndex(z=>z.name===name); ctx.strokeStyle=game._colors[k]||'#2f9e5b'; ctx.lineWidth=2.4*dpr;
-      ctx.setLineDash([3*dpr,2*dpr]); ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),13*dI,0,7); ctx.stroke(); ctx.setLineDash([]); });
+      ctx.setLineDash([3*dpr,2*dpr]); ctx.beginPath(); ctx.arc(X(AT(code)),Y(AT(code)),13*dI,0,7); ctx.stroke(); ctx.setLineDash([]); });
   }
 
   // the labels — placed after every dot is known, so a name never sits on another place
@@ -1148,19 +1184,20 @@ function drawMap(){
   // MOMENTUM: the ◆ STOP lines get a white collar (you must halt there)
   if(game.momentum&&window.OIL_MOMENTUM) MP.PLACES.forEach(pl=>{ if(!OIL_MOMENTUM.isStop(pl.code,game.momDials))return;
     ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.6*dpr; ctx.setLineDash([2.5*dpr,2*dpr]);
-    ctx.beginPath(); ctx.arc(X(pl.at),Y(pl.at),10*dI,0,7); ctx.stroke(); ctx.setLineDash([]); });
+    ctx.beginPath(); ctx.arc(X(AT(pl.code)),Y(AT(pl.code)),10*dI,0,7); ctx.stroke(); ctx.setLineDash([]); });
   // the seats
   game.players.forEach((q,i)=>{
     if(game.momentum&&q.under){ // under way: drawn ON the route, at its space
-      const t=tracks.find(z=>z.rid===q.under.rid); if(!t||!t.gx)return;
-      const N=OIL_MOMENTUM.spacesOf(q.under.rid,game.momDials).N, f=(q.under.k-0.5*(q.under.dir>0?1:-1))/N;
-      const x=t.gx[0]+(t.gx[2]-t.gx[0])*Math.max(0.05,Math.min(0.95,q.under.k/N)), y=t.gx[1]+(t.gx[3]-t.gx[1])*Math.max(0.05,Math.min(0.95,q.under.k/N));
+      const t=tracks.find(z=>z.rid===q.under.rid); if(!t||(!t.gx&&!EE))return;
+      const N=OIL_MOMENTUM.spacesOf(q.under.rid,game.momDials).N, f=(q.under.k-0.5*(q.under.dir>0?1:-1))/N, fk=Math.max(0.05,Math.min(0.95,q.under.k/N));
+      const ep=EE?OIL_GEO.along(OIL_GEO.lane(t.R[0],t.R[1]),fk).at:null;   // 1117: under way ON the Equal Earth lane, by arc length
+      const x=EE?X(ep):t.gx[0]+(t.gx[2]-t.gx[0])*fk, y=EE?Y(ep):t.gx[1]+(t.gx[3]-t.gx[1])*fk;
       ctx.fillStyle=game._colors[i]||'#f6c95a'; ctx.beginPath(); ctx.moveTo(x,y-6*dpr); ctx.lineTo(x+5*dpr,y+4*dpr); ctx.lineTo(x-5*dpr,y+4*dpr); ctx.closePath(); ctx.fill();
       ctx.strokeStyle=q.isHuman?'#fff':'rgba(0,0,0,.85)'; ctx.lineWidth=(q.isHuman?2:1.2)*dpr; ctx.stroke(); return; }
     const pl=MP.BY[q.at]; if(!pl)return;
     const here=game.players.filter(z=>z.at===q.at&&!(game.momentum&&z.under)), n=here.length, k=here.indexOf(q);
     const a=(k/Math.max(1,n))*Math.PI*2, r=(n>1?11:0)*dI;
-    const x=X(pl.at)+Math.cos(a)*r, y=Y(pl.at)+Math.sin(a)*r;
+    const x=X(AT(pl.code))+Math.cos(a)*r, y=Y(AT(pl.code))+Math.sin(a)*r;
     ctx.fillStyle=game._colors[i]||'#f6c95a';
     ctx.beginPath(); ctx.arc(x,y,q.isHuman?5.5*dI:4*dI,0,7); ctx.fill();
     ctx.strokeStyle=q.isHuman?'#fff':'rgba(0,0,0,.8)'; ctx.lineWidth=(q.isHuman?2:1.2)*dpr; ctx.stroke();
@@ -1224,7 +1261,44 @@ function drawKey2(bx,by,bw,bh,dpr){
   ctx.fillStyle='rgba(202,161,94,.75)'; ctx.font='italic '+(fs*.8)+'px Trebuchet MS'; ctx.fillText('full key: 📖 RULES › THE BOARD',x0+8*dpr,Math.min(y1-fs*.7,my+fs*1.35));
 }
 
-function draw(){ if(game&&game.map&&S.view==='map')return drawMap(); return draw0(); }
+function draw(){ if(game&&game.map&&S.view==='world'&&window.OIL_WORLD_VIEW&&window.OIL_GEO)return OIL_WORLD_VIEW.start(); if(game&&game.map&&S.view==='map')return drawMap(); return draw0(); }
+// 1117: THE EQUAL EARTH LANES — a route drawn along its real sea lane (OIL_GEO.lane): beads in the route's colour, the
+// spaces at even arc length (OIL_GEO.spaces, the same layout the 3D board's pieces use), the momentum marks on them.
+function laneTrace(codes,X,Y){ for(let i=1;i<codes.length;i++){ const L=OIL_GEO.lane(codes[i-1],codes[i]); if(!L)continue;
+  L.pieces.forEach((pc,j)=>pc.forEach((q,k)=>{ (k===0&&(j>0||i===1))?ctx.moveTo(X(q),Y(q)):ctx.lineTo(X(q),Y(q)); })); } }
+function drawLaneEE(t,n,dI,clear1,clear2,types,X,Y,bw,bh,trackPts){
+  const L=OIL_GEO.lane(t.R[0],t.R[1]); if(!L)return; const col=ROUTE_STYLE[t.kind]||'#9a8f7c', dpr=devicePixelRatio;
+  const A=[X(L.pieces[0][0]),Y(L.pieces[0][0])], lp=L.pieces[L.pieces.length-1], Bp=[X(lp[lp.length-1]),Y(lp[lp.length-1])];
+  ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+  if(t.kind==='pipe'&&t.mode!=='dead'){ L.pieces.forEach(pc=>{ ctx.beginPath(); pc.forEach((q,k)=>k?ctx.lineTo(X(q),Y(q)):ctx.moveTo(X(q),Y(q)));
+    ctx.strokeStyle='rgba(10,6,3,.9)'; ctx.lineWidth=7*dI; ctx.stroke(); ctx.strokeStyle=col; ctx.lineWidth=4.2*dI; ctx.stroke(); }); }
+  else { const step=10*dI, r=2.3*dI; L.pieces.forEach(pc=>{ let acc=step/2;
+    for(let k=1;k<pc.length;k++){ const x0=X(pc[k-1]),y0=Y(pc[k-1]),x1=X(pc[k]),y1=Y(pc[k]),l=Math.hypot(x1-x0,y1-y0);
+      while(acc<=l){ const x=x0+(x1-x0)*acc/l, y=y0+(y1-y0)*acc/l; acc+=step;
+        if(Math.hypot(x-A[0],y-A[1])<clear1||Math.hypot(x-Bp[0],y-Bp[1])<clear2)continue;
+        ctx.beginPath(); ctx.arc(x,y,r+1.1*dI,0,7); ctx.fillStyle='rgba(10,6,3,.85)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(x,y,r,0,7);
+        if(t.mode==='iced'){ ctx.strokeStyle='rgba(207,238,255,.75)'; ctx.lineWidth=1*dI; ctx.stroke(); }
+        else { ctx.fillStyle=t.mode==='dead'?'rgba(150,40,28,.9)':col; ctx.fill(); }
+        trackPts.push({x,y,r:3*dI,w:0.5}); }
+      acc-=l; } }); }
+  // the spaces: N-1 counters between the places (the printed board's count), trimmed clear of the end tokens
+  const trim=c=>((c||9*dpr)/bw)*1.48*0.9;
+  OIL_GEO.spaces(t.R[0],t.R[1],n,trim(clear1),trim(clear2)).forEach((sp,i)=>{ const x=X(sp.at),y=Y(sp.at), s=4.6*dI;
+    ctx.save(); ctx.translate(x,y); ctx.rotate(-sp.heading);
+    ctx.beginPath(); ctx.roundRect?ctx.roundRect(-s-1.2*dI,-s*0.7-1.2*dI,2*s+2.4*dI,1.4*s+2.4*dI,2*dI):ctx.rect(-s,-s*0.7,2*s,1.4*s); ctx.fillStyle='rgba(10,6,3,.9)'; ctx.fill();
+    ctx.beginPath(); ctx.roundRect?ctx.roundRect(-s,-s*0.7,2*s,1.4*s,1.6*dI):ctx.rect(-s,-s*0.7,2*s,1.4*s);
+    if(t.mode==='dead'){ ctx.fillStyle='rgba(120,30,22,.9)'; ctx.fill(); ctx.strokeStyle='#ff6a4a'; ctx.lineWidth=1.2*dI; ctx.beginPath(); ctx.moveTo(-2.5*dI,-2.5*dI); ctx.lineTo(2.5*dI,2.5*dI); ctx.moveTo(2.5*dI,-2.5*dI); ctx.lineTo(-2.5*dI,2.5*dI); ctx.stroke(); }
+    else if(t.mode==='iced'){ ctx.strokeStyle='rgba(207,238,255,.8)'; ctx.lineWidth=1.2*dI; ctx.stroke(); }
+    else { ctx.fillStyle=col; ctx.fill(); ctx.fillStyle='rgba(255,255,255,.3)'; ctx.fillRect(-s+1*dI,-s*0.7+0.8*dI,2*s-2*dI,1.1*dI); }
+    ctx.restore();
+    const ty=types&&types[i+1]; if(ty&&t.mode==='live') drawSpaceMark(x,y,ty,dpr,0);
+    trackPts.push({x,y,r:s,w:0.5}); });
+  // the Atlantic seam: a lane that runs off one edge comes back on the other — small arrows say so
+  if(L.wraps) L.pieces.forEach((pc,j)=>{ const e=j<L.pieces.length-1?pc[pc.length-1]:null, b=j>0?pc[0]:null;
+    [e,b].forEach(q=>{ if(!q)return; const x=X(q),y=Y(q); ctx.fillStyle=col; ctx.beginPath(); const dir=q[0]<0.5?-1:1;
+      ctx.moveTo(x+dir*6*dI,y); ctx.lineTo(x-dir*2*dI,y-4*dI); ctx.lineTo(x-dir*2*dI,y+4*dI); ctx.closePath(); ctx.fill(); }); });
+  ctx.restore(); }
 function draw0(){
   const W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=cv.clientHeight*devicePixelRatio; ctx.clearRect(0,0,W,H);
   const D=(game&&game.dials)||{PRICE_MAX:120,OIL_START:60,EDD_PRICE:88,SCARCITY_BAND:30};
@@ -1266,7 +1340,7 @@ $('#bootGo').onclick=()=>{buildSetup();show('setup');};
 $('#startGo').onclick=()=>{ if(!$('#startGo').disabled) startGame(); };
 // THE RULEBOOK (src/oil-rulebook.js): the board game, in the game — from the box, the setup and the table
 ['#rbBoot','#rbSetup','#rbPlay'].forEach(id=>{ const b=$(id); if(b) b.onclick=()=>window.OIL_RULEBOOK&&OIL_RULEBOOK.open(); });
-$('#viewBtn').onclick=()=>{S.view=S.view==='map'?'chart':'map';$('#viewBtn').textContent=S.view==='map'?'◍ MAP':'▤ TAPE';draw();};
+$('#viewBtn').onclick=()=>{S.view=S.view==='map'?'chart':S.view==='chart'?'world':'map';$('#viewBtn').textContent=S.view==='map'?'◍ MAP':S.view==='chart'?'▤ TAPE':'◉ WORLD';draw();};   // 1117: ◍ MAP → ▤ TAPE → ◉ WORLD
 $('#boardBtn').onclick=toggleBoard; boardLabel();
 // 1117: hover the board — a real pipeline names itself (and says which game route it is), a place gives its full location
 cv.addEventListener('mousemove',e=>{ if(!game||!game.map||S.view!=='map'){cv.title='';return;}

@@ -503,6 +503,12 @@
   }
   function movePick(g, p, ctx) {
     const MP = OilGame._mapFX(), opts = ctx.options;
+    if (ctx.trapped) {                                     // PIPELINE MODE (bot policy): trapped in a line — the way out
+      const T = ctx.trapped, P = g.pipeDials;
+      if (opts.indexOf('IWS') >= 0 && (p.policy === 'stable' || p.value >= P.PUMP_COST + 15)) return 'IWS';
+      if (opts.indexOf('REROUTE') >= 0 && p.policy === 'greedy' && T.left >= 2 && p.value >= P.REROUTE_COST + 25) return 'REROUTE';
+      return 'WAIT';
+    }
     if (!MP.BY || !opts.length) return p.at;
     if (p.policy === 'random' && !(g.heg2 && g.rng.random() < g.hegDials.RANDOM_FOCUS)) return g.rng.pick(opts);
     const risky = c => { const k = (MP.BY[c] || {}).kind; return k === 'cape' || k === 'arctic' || k === 'ocean'; };
@@ -570,6 +576,9 @@
       v -= g._trafficAt(c).blocked * 2;                          // don't sail into a squeeze
       if (g.levels === 'voyage' && !ctx.momentum && c !== p.at) v += g._lvBotPull(p, MP.pathOf(MP.reach(p.at, 99, g.mapState), c));
       if (g.era === 'CHAOTIC' && risky(c)) v -= (p.policy === 'stable' ? 8 : 3);
+      // PIPELINE MODE (bot policy): a line costs a turn of no sale, and the read says how likely it is cut
+      if (ctx.pipe && ctx.pipe.lines[c] && p.barrels > 0) { const L = ctx.pipe.lines[c], P = g.pipeDials;
+        v -= P.BOT_TREK + L.cut * ((P.BOT_RISK_W || {})[p.policy] || 0) + (L.fire ? 10 : 0); }
       return v;
     };
     if (ctx.momentum) {                                     // MOMENTUM: choose the fork, or camp
@@ -775,6 +784,18 @@
       this.crisisStats = { heated: 0, cooled: 0, gateShuts: 0, blowouts: 0, fireTurns: 0,
         oilBurnedByFire: 0, callOuts: 0, callOutSpend: 0, retainers: 0, retainerSaves: 0,
         stateAbsorb: 0, privateAbsorb: 0, annihilation: 0 };
+      // ---- optional THE WORLD (1117, src/oil-world.js): PIPELINE MODE + THE CREW. Both off by default:
+      //      off -> nothing below runs, no RNG is drawn, the fingerprint is untouched.
+      const WF = OilGame._worldFX();
+      this.pipeMode = !!(opts.pipeMode && this.map && WF.PIPE_DIALS);
+      this.pipeDials = Object.assign({}, WF.PIPE_DIALS || {}, (opts.pipeMode && typeof opts.pipeMode === 'object') ? opts.pipeMode : {});
+      this.iwsCrew = !!(opts.iwsCrew && this.crisis && WF.CREW_DIALS);
+      this.crewDials = Object.assign({}, WF.CREW_DIALS || {}, (opts.iwsCrew && typeof opts.iwsCrew === 'object') ? opts.iwsCrew : {});
+      this.pumpFires = {};       // pipe route id -> seat-turns burning (PIPELINE MODE's pump-station fires)
+      this.crew = this.iwsCrew ? { at: this.crewDials.BASE, job: null, left: 0, queue: [] } : null;
+      this.worldStats = { commits: { STABLE: 0, CHAOTIC: 0 }, ahead: { STABLE: 0, CHAOTIC: 0 }, landed: { STABLE: 0, CHAOTIC: 0 },
+        trapped: { STABLE: 0, CHAOTIC: 0 }, why: { political: 0, sabotage: 0, fire: 0 }, trapTurns: 0, waits: 0, reroutes: 0, pumpIWS: 0,
+        released: 0, pumpFires: 0, pumpBurn: 0, crewJobs: 0, crewTravel: 0, crewWait: 0, crewBurned: 0, maxQueue: 0 };
 
       // ---- optional THE PRIVILEGE (docs/THE-PRIVILEGE.md) ----------------------
       // opts.privilege: true | { ...PRIV_DIALS overrides }. Off -> nothing below runs.
@@ -1058,6 +1079,7 @@
     static _crisisFX() { return (typeof global !== 'undefined' && global.OIL_CRISIS) || OilGame.CRISIS_FX || {}; }
 
     // the map registry (src/oil-map.js); {} when the layer isn't loaded
+    static _worldFX() { return (typeof global !== 'undefined' && global.OIL_WORLD) || OilGame.WORLD_FX || {}; }
     static _mapFX() { return (typeof global !== 'undefined' && global.OIL_MAP) || OilGame.MAP_FX || {}; }
 
     // the deal-layer registry (src/oil-deals.js); {} when the layer isn't loaded
@@ -1332,12 +1354,125 @@
       return burn;
     }
 
+    // ---- THE WORLD (1117, src/oil-world.js) — PIPELINE MODE ----------------------------------
+    // reach() with a STABLE season's fast line: pipe legs cost less (map mode). Off -> the state as given.
+    _pipeState(st) {
+      if (!this.pipeMode || this.era !== 'STABLE') return st;
+      const MP = OilGame._mapFX(), W = OilGame._worldFX(), d = this.pipeDials.STABLE_DISCOUNT;
+      return Object.assign({}, st, { costOf: (r, from) => W.isPipe(MP, from, r.to) ? Math.max(1, r.cost - d) : r.cost });
+    }
+    _lineOf(a, b) { const MP = OilGame._mapFX(); return (MP.ADJ[a] || []).find(x => x.to === b); }
+    // a line runs through SOMEBODY's ground unless both its ends are your own yard
+    _lineContested(p, a, b) { const own = this.hqOf(p); return !(a === own && b === own); }
+    // what the move prompt shows: the season, and the odds that next turn's roll cuts each line you could take
+    _pipeRead(p, r, options) {
+      const MP = OilGame._mapFX(), W = OilGame._worldFX(), hot = this.era === 'CHAOTIC', out = { era: this.era, lines: {} };
+      for (const c of options) {
+        const path = MP.pathOf(r, c); if (path.length < 2) continue;
+        const a = path[path.length - 2]; if (!W.isPipe(MP, a, c)) continue;
+        const o = W.lineOdds(this.dials, this.pipeDials, this._lineContested(p, a, c), hot);
+        out.lines[c] = { from: a, cut: o.cut, fire: this._pumpRisk(a, c), fast: !hot };
+      }
+      return out;
+    }
+    _pumpRisk(a, b) { return !!(this.crisis && [a, b].some(c => this.burningAt(c) || (this.heat[c] || 0) >= this.pipeDials.CUT_FIRE_HEAT)); }
+    // after any move: did the cargo go INTO a line? (the last leg a pipe, cargo aboard, landed at a node)
+    _pipeAfterMove(p, path, r) {
+      const MP = OilGame._mapFX(), W = OilGame._worldFX(), S = this.worldStats, n = path.length;
+      if (p.barrels <= 0 || n < 2) return;
+      const a = path[n - 2], b = path[n - 1]; if (!W.isPipe(MP, a, b)) return;
+      const rt = this._lineOf(a, b);
+      S.commits[this.era]++;
+      if (r && this.era === 'STABLE') {                    // GET AHEAD: would this trip have been out of reach without the fast line?
+        const slow = MP.reach(path[0], 99, this.levels ? this._lvState(p) : this.mapState).dist[b];
+        if (slow !== undefined && slow > (r.dist[b] || 0)) S.ahead.STABLE++;
+      } else if (!r && p._pipePush) S.ahead.STABLE++;      // MOMENTUM: the stable push carried the cargo up the line
+      p._pipePush = false;
+      p.inLine = { rid: rt ? rt.id : a + '>' + b, from: a, to: b, hot: this.era === 'CHAOTIC', era: this.era, contested: this._lineContested(p, a, b) };
+      this.emit('pipe_in', { player: p.name, from: a, to: b, era: this.era });
+    }
+    // a turn starts in the line: read the new roll. Returns true when the seat may move on this turn.
+    async _pipeTurnStart(p) {
+      const P = this.pipeDials, S = this.worldStats;
+      if (p.inLine && !p.trapped) {
+        const L = p.inLine, [sup, , wld] = this.lastDice, chaos = this.era === 'CHAOTIC', live = L.hot || chaos;
+        let why = null;
+        if (this._pumpRisk(L.from, L.to)) why = 'fire';
+        else if (live && L.contested && wld <= P.CUT_WORLD_AT) why = 'political';
+        else if (live && sup <= P.CUT_SUPPLY_AT) why = 'sabotage';
+        if (!why) { S.landed[L.era]++; this.emit('pipe_out', { player: p.name, at: L.to }); p.inLine = null; return true; }
+        S.trapped[L.era]++; S.why[why]++;
+        p.trapped = { why, left: why === 'fire' ? P.FIRE_TRAP_TURNS : P.TRAP_TURNS, rid: L.rid, at: L.to, from: L.from };
+        if (why === 'fire') { this.pumpFires[L.rid] = (this.pumpFires[L.rid] || 0) + 1; S.pumpFires++; }
+        this.emit('pipe_cut', { player: p.name, why, from: L.from, to: L.to, dice: this.lastDice.slice() });
+      }
+      const T = p.trapped;
+      if (T.why === 'fire' && !this.pumpFires[T.rid]) return this._pipeRelease(p, 'the fire is out');
+      if (T.why === 'fire' && this.iwsCrew && this._crewBooked('pipe:' + T.rid)) { S.trapTurns++; T.left--; if (T.left <= 0) return this._pipeRelease(p, 'the line company'); p.stayed = true; return false; }
+      // the way out is always there: WAIT it out, REROUTE (pay to pull the cargo back at the line's head), or IWS (a fire)
+      const opts = ['WAIT'];
+      if (p.value >= P.REROUTE_COST) opts.push('REROUTE');
+      if (T.why === 'fire' && p.value >= P.PUMP_COST) opts.push('IWS');
+      const pick = opts.length > 1 ? await this.ask(p, 'move', opts, { trapped: T }) : 'WAIT';
+      if (pick === 'REROUTE') { p.value -= P.REROUTE_COST; p.at = T.from; S.reroutes++; this.emit('pipe_reroute', { player: p.name, at: T.from, cost: P.REROUTE_COST });
+        if (T.why === 'fire' && this.pumpFires[T.rid]) { /* the fire stays: somebody else's problem now */ }
+        p.trapped = null; p.inLine = null; return true; }
+      if (pick === 'IWS') { p.value -= P.PUMP_COST; S.pumpIWS++; this.crisisStats.callOuts++; this.crisisStats.callOutSpend += P.PUMP_COST;
+        if (this.iwsCrew) { this._crewHire(p, 'pipe:' + T.rid, 'pump', P.PUMP_COST); S.trapTurns++; T.left--; p.stayed = true; return false; }
+        delete this.pumpFires[T.rid]; this.emit('iws', { player: p.name, at: T.at, cost: P.PUMP_COST, pump: true }); return this._pipeRelease(p, 'IWS capped the pump station'); }
+      S.waits++; S.trapTurns++; T.left--; p.stayed = true;
+      if (T.left <= 0) return this._pipeRelease(p, T.why === 'fire' ? 'the line company' : 'the line reopens');
+      this.emit('pipe_wait', { player: p.name, why: T.why, left: T.left });
+      return false;
+    }
+    _pipeRelease(p, how) {
+      const T = p.trapped; if (T && T.why === 'fire') delete this.pumpFires[T.rid];
+      this.worldStats.released++; p.at = T ? T.at : p.at; p.trapped = null; p.inLine = null;
+      this.emit('pipe_out', { player: p.name, at: p.at, how });
+      return false;                                      // the line spits you out at its end: this turn you sell, you don't sail
+    }
+    _pumpBurn() {
+      const n = Object.keys(this.pumpFires).length; if (!n) return 0;
+      for (const k in this.pumpFires) this.pumpFires[k]++;
+      const b = n * this.pipeDials.PUMP_BURN; this.worldStats.pumpBurn += Math.min(b, this.oil); return b;
+    }
+    // ---- THE WORLD — THE CREW (IWS / Box & Scooter on the map) ---------------------------------
+    _crewBooked(place) { const C = this.crew; return !!C && ((C.job && C.job.place === place) || C.queue.some(j => j.place === place)); }
+    _crewHire(p, place, kind, cost) {
+      const C = this.crew; C.queue.push({ place, kind, by: p.name, cost, hired: this.turn });
+      this.worldStats.crewJobs++; this.worldStats.maxQueue = Math.max(this.worldStats.maxQueue, C.queue.length + (C.job ? 1 : 0));
+      this.crisisStats.callOuts++; this.crisisStats.callOutSpend += kind === 'yard' ? cost : 0;
+      if (kind === 'pump') this.crisisStats.callOuts--;     // (counted once, by the caller)
+      this.emit('crew_hired', { player: p.name, at: place, queue: C.queue.length + (C.job ? 1 : 0) });
+      if (!C.job) this._crewNext();
+    }
+    _crewNode(place) { return place.indexOf('pipe:') === 0 ? (Object.values(this.players).map(q => q.trapped).find(t => t && 'pipe:' + t.rid === place) || {}).at || this.crewDials.BASE : place; }
+    _crewNext() {
+      const C = this.crew, MP = OilGame._mapFX(); if (!C.queue.length) { C.job = null; return; }
+      C.job = C.queue.shift();
+      const to = this._crewNode(C.job.place), d = MP.reach(C.at, 999, this.mapState).dist[to];
+      C.left = d === undefined ? 0 : d; C.job.dist = C.left; C.job.to = to;
+      this.emit('crew_go', { from: C.at, to, dist: C.left });
+    }
+    _crewTick() {
+      const C = this.crew, S = this.worldStats; if (!C || !C.job) return;
+      S.crewTravel++; S.crewWait += C.queue.length;
+      C.left -= this.crewDials.SPEED; if (C.left > 0) return;
+      const J = C.job, D = this.crisisDials;
+      if (J.kind === 'yard') { if (this.fires[J.place]) S.crewBurned += (this.fires[J.place] - 1) * D.FIRE_BURN;
+        delete this.fires[J.place]; this.heat[J.place] = Math.max(0, (this.heat[J.place] || 0) - D.BLOWOUT_AT); }
+      else { const rid = J.place.slice(5); delete this.pumpFires[rid]; }
+      C.at = this.crewDials.STAY ? J.to : this.crewDials.BASE;
+      this.emit('crew_done', { at: J.to, kind: J.kind, by: J.by });
+      this._crewNext();
+    }
+
     // ---- IWS: what the deliver step may offer instead of a sale ---------------
     iwsPrice(place) {
       const D = this.crisisDials;
       return D.IWS_BASE + D.IWS_PER_TURN * Math.max(0, (this.fires[place] || 1) - 1);
     }
-    canCallIWS(p) { return !!(this.crisis && this.burningAt(p.at) && p.value >= this.iwsPrice(p.at)); }
+    canCallIWS(p) { return !!(this.crisis && this.burningAt(p.at) && p.value >= this.iwsPrice(p.at) && !(this.iwsCrew && this._crewBooked(p.at))); }
     canRetain(p) {
       const M = this.crisisDials.RETAINER_MODE;
       if (M === 'cut' || M === 'rider') return false;           // rework knob: cut, or cover rides the sale instead
@@ -1354,6 +1489,7 @@
       if (!this.canCallIWS(p)) return false;
       const D = this.crisisDials, cost = this.iwsPrice(p.at), turns = this.fires[p.at] || 1;
       p.value -= cost; p.exposure += D.IWS_EXPOSURE;
+      if (this.iwsCrew) { this._crewHire(p, p.at, 'yard', cost); return true; }   // THE CREW: paid now, the fire burns until they arrive
       delete this.fires[p.at];
       this.heat[p.at] = Math.max(0, (this.heat[p.at] || 0) - D.BLOWOUT_AT);
       this.crisisStats.callOuts++; this.crisisStats.callOutSpend += cost;
@@ -1477,12 +1613,14 @@
       // again before most of the table had sailed. (docs/THE-PATH.md, finding 3)
       if (!(this.path && this.path.rounds) || this.idx === 0) this.mapGateTick();
       if (this.crisis) this._crisisTick(p);      // no new phase — upkeep, not a decision
+      if (this.pipeMode) p._pipePush = false;   // the stable push is THIS turn's (never carried from an earlier one)
+      if (this.pipeMode && (p.inLine || p.trapped) && !(await this._pipeTurnStart(p))) return;   // PIPELINE MODE: still in the line
       // THE PRIVILEGE: you sail on the bodies in your hand. Only the 'spread' read is defined
       // on fewer than three; other reads keep all three (stepsFor clamps to MOVE_MIN).
       let steps = MP.stepsFor((this.privilege && D.MOVE_READ === 'spread') ? this.moveDice(p) : this.lastDice, D);
       if (this.privilege) steps = Math.max(D.MOVE_MIN, this.privSteps(p, steps));
       const from = p.at;
-      const r = MP.reach(from, steps, this.levels ? this._lvState(p) : this.mapState);
+      const r = MP.reach(from, steps, this._pipeState(this.levels ? this._lvState(p) : this.mapState));
       const options = r.places.slice().sort();
       p.longWay = false; p.stayed = false; p.moved = false;
       if (this.privilege) p._transit = null;     // THE PRIVILEGE: a new voyage — last one's canal is behind you
@@ -1492,9 +1630,11 @@
       // THE EXPANSION's fix (round 5): under MOMENTUM your momentum is YOUR bodies' spread — a seat
       // short of bodies drifts (and the house's bodies carry nobody)
       if (this.momentum && this.privilege && this.privDials.PRIV_MOM === 'own') steps = Math.max(this.privDials.PRIV_MOM_MIN || 0, MP.stepsFor(this._ownDice(p), D));
+      if (this.momentum && this.pipeMode && this.era === 'STABLE' && !p.under && (MP.ADJ[p.at] || []).some(x => OilGame._worldFX().isPipe(MP, p.at, x.to)))
+      { steps += this.pipeDials.MOM_STABLE_PUSH; p._pipePush = true; }   // PIPELINE MODE: in a stable season the line runs fast
       if (this.momentum) return this._momentumPhase(p, steps);   // MOMENTUM: the ocean carries you
       if (options.length > 1) {
-        const pick = await this.ask(p, 'move', options);
+        const pick = await this.ask(p, 'move', options, this.pipeMode ? { pipe: this._pipeRead(p, r, options) } : undefined);
         const to = (options.indexOf(pick) >= 0) ? pick : from;
         const path = MP.pathOf(r, to);
         if (to !== from && path.length > 1) {
@@ -1540,6 +1680,7 @@
           }
           this.mapStats.moves++; this.mapStats.steps += (r.dist[to] || 0);
           this.emit('move', { player: p.name, from, to, cost: r.dist[to] || 0, steps, path, lost, longWay: p.longWay });
+          if (this.pipeMode) this._pipeAfterMove(p, path, r);
         } else {
           // You had somewhere to be and you stayed. The penalty for that is no longer
           // charged here — see FOLD 1 at the action step: ONE idleness rule, "move or
@@ -1617,6 +1758,7 @@
         }
       }
       w.trail.forEach(x => { if (x.type === 'INSPECT') S.inspectClean++; });
+      if (this.pipeMode && !w.under && nodes.length > 1) this._pipeAfterMove(p, nodes, null);
       if (this.path) this._passageToll(p, nodes.length ? (fromUnder ? [from].concat(entered) : nodes) : []);
       let under = w.under ? Object.assign({}, w.under) : null, at = w.at;
       // landing on a typed space
@@ -2386,7 +2528,7 @@
       //    an HQ. Mid-ocean you are IN TRANSIT: no claim, and no idleness penalty,
       //    because a hull under way is not a hull sitting still. That is exactly
       //    what a shut canal costs you: turns, and turns are oil.
-      if (this.map && ((this.momentum && p.under) || !(this.atHQ(p) || (this.path && (this.sellableAt(p.at) || this.domesticAt(p.at)))))) {
+      if (this.map && ((this.momentum && p.under) || (this.pipeMode && (p.inLine || p.trapped)) || !(this.atHQ(p) || (this.path && (this.sellableAt(p.at) || this.domesticAt(p.at)))))) {
         this.mapStats.atSea++;
         this.emit('intransit', { player: p.name, at: p.at, place: (OilGame._mapFX().BY[p.at] || {}).name });
       } else {
@@ -2477,7 +2619,8 @@
         const MP = OilGame._mapFX();
         if (MP.hqsConnected && !MP.hqsConnected(this.mapState)) this._hqSplit = (this._hqSplit || 0) + 1;
       }
-      const fire = this._fireBurn();
+      if (this.iwsCrew) this._crewTick();
+      const fire = this._fireBurn() + (this.pipeMode ? this._pumpBurn() : 0);
       const burn = D.BURN_BASE + Math.floor(this.price / D.BURN_PER_PRICE) + fire;
       this.oil = Math.max(0, this.oil - burn);
       this.emit('deplete', { oil: this.oil, burn, fire });
