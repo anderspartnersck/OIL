@@ -178,7 +178,10 @@
 
     // ONE TABLE ACTION: the card in your hand competes with the deal on the table.
     if (ctx.kind === 'table') {
-      const cards = ctx.cards || [];
+      let cards = ctx.cards || [];
+      // SUPREXCORE (bot temperament): a FIREBREAK is worth more held (secret) than played — unless the hand is full.
+      // Reads only this seat's own hand; no bot ever looks at a rival's (LAB 19 proves it).
+      if (g.suprex && global.OIL_SUPREX && cards.length) { const keep = cards.filter(c => !global.OIL_SUPREX.isBlock(c)); if (keep.length || (p.hand || []).length < 3) cards = keep; }
       // THE DEFECTION CASCADE: once E.D.D. is armed, everyone but the steward
       // walks. This is the mechanic that makes the collapse socially ugly.
       if (breaks.length && p.policy !== 'stable') {

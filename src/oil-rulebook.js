@@ -193,11 +193,20 @@
       <li><b>Privilege markers</b> (●●●) and <b>held-die markers</b>: ◉ seized · ◐ tolled · ☠ pirates / embargo · ⊛ the firm.</li>
       <li><b>Megastructure tiles</b> — ${Object.values(MAP().STRUCTURES || {}).map(s => esc(s.name)).join(', ')}.</li>
       <li><b>The seat clock card</b>, the <b>expansion insert</b> and the <b>HEGEMONY card</b> (2 players).</li>
+      ${global.OIL_SUPREX ? `<li><b>SuprexCore:</b> the <b>${global.OIL_SUPREX.CARDS.length}-card SuprexCore deck</b>, <b>3 war tracks</b> (intensity 0–3) with markers, <b>⚓ seizure</b> and <b>☠ ransom</b> markers, and a face-down <b>📒 ledger</b> marker for each company.</li>` : ''}
     </ul>
     <h3>THE CARDS</h3>
     ${Object.keys(decks).map(k => `<h4>${esc(k)} <span class="rb-dim">(${decks[k].length}) — ${esc(DECK_WHAT[k] || '')}</span></h4>
-      <table class="rb-cards">${decks[k].map(c => `<tr><td><b>${esc(c.name)}</b><div class="rb-dim">${esc(c.type || '')}${(c.tags || []).length ? ' · ' + c.tags.map(esc).join(' · ') : ''}</div></td><td>${T[c.name] ? esc(T[c.name]) : '<span class="rb-dim">— text pending —</span>'}</td></tr>`).join('')}</table>`).join('')}`;
+      <table class="rb-cards">${decks[k].map(c => `<tr><td><b>${esc(c.name)}</b><div class="rb-dim">${esc(c.type || '')}${(c.tags || []).length ? ' · ' + c.tags.map(esc).join(' · ') : ''}</div></td><td>${T[c.name] ? esc(T[c.name]) : '<span class="rb-dim">— text pending —</span>'}</td></tr>`).join('')}</table>`).join('')}${suprexBible()}`;
   };
+  // THE CARD BIBLE — SuprexCore (1118): the expansion's 44 cards, by family, printed text + flavor (src/oil-suprex.js)
+  function suprexBible() {
+    const SX = global.OIL_SUPREX; if (!SX) return '';
+    const fams = {}; SX.CARDS.forEach(c => (fams[c.family] = fams[c.family] || []).push(c));
+    return `<h3>THE SUPREXCORE DECK <span class="rb-dim">(expansion — ${SX.CARDS.length} cards, shuffled into the three decks)</span></h3>
+    ${Object.keys(fams).map(f => `<h4>${esc(f)} <span class="rb-dim">(${fams[f].length}) — ${esc(SX.FAMILIES[f] || '')}</span></h4>
+      <table class="rb-cards">${fams[f].map(c => `<tr><td><b>${esc(c.name)}</b><div class="rb-dim">${esc(c.deck)} · ${esc(c.type)}${c.theatre ? ' · ' + esc(SX.THEATRES[c.theatre].name) : ''}</div></td><td>${esc(c.text)}${c.block ? `<div style="margin-top:3px;color:#9fd8a8">${esc(c.block.text)}</div>` : ''}<div class="rb-dim" style="font-style:italic">“${esc(c.flavor)}”</div></td></tr>`).join('')}</table>`).join('')}`;
+  }
 
   // ---- the overlay -----------------------------------------------------------------------------------
   const CSS = `

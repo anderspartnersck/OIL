@@ -21,6 +21,8 @@
   const load = (k, src) => { const i = new Image(); i.onload = () => { IMG[k] = i; tinted = {}; }; i.src = src; };
   load('plate', 'assets/world/oil_world_ee.webp'); load('sea', 'assets/world/sea_mask.webp');
   load('atlas', 'assets/world/pieces_flat.webp'); load('mask', 'assets/world/mask_flat.webp');
+  load('tatlas', 'assets/world/theatres_flat.webp');                       // 1118: the theatre pieces (fire-cutter)
+  const THEATRE_STAT = { n: 0, ms: 0 };
   const PC = () => window.OIL_PIECES, GEO = () => window.OIL_GEO, MP = () => window.OIL_MAP;
   let tinted = {}, sheen = null, raf = 0, lastT = 0, H = null;
   const attach = h => { H = h; };
@@ -157,6 +159,8 @@
     // shut straits: a red boom across the water
     Object.keys(st.closed || {}).forEach(code => { const p = at(code), x = X(p), y = Y(p);
       c.strokeStyle = 'rgba(226,60,42,.9)'; c.lineWidth = 2.2 * dpr; c.beginPath(); c.moveTo(x - 9 * dpr, y - 3 * dpr); c.lineTo(x + 9 * dpr, y + 3 * dpr); c.stroke(); });
+    // 1118 SUPREXCORE: the three theatres (src/oil-theatres-view.js) — under the refineries, the crew and the ships
+    if (window.OIL_THEATRES_VIEW) { const t0 = performance.now(); THEATRE_STAT.n = OIL_THEATRES_VIEW.draw(c, g, { X, Y, dpr, k, now }); THEATRE_STAT.ms = performance.now() - t0; }
     // refineries: a pilot flame where the yard is not burning
     M.PLACES.filter(p => p.kind === 'hq').forEach(pl => { if (g.crisis && g.burningAt(pl.code)) return;
       const kk = Math.max(0.75, k), p = at(pl.code), x = X(p), y = Y(p) - 9 * dpr * kk, f = 0.65 + 0.35 * Math.sin(now * 0.013 + x) * Math.sin(now * 0.007 + y);
@@ -186,6 +190,8 @@
         if (pts.length > 1) { const f = Math.max(0, Math.min(1, 1 - C.left / C.job.dist)), m = { pts, t0: 0, dur: 1 }; const q = pos(m, f); p = [q[0], q[1]]; going = C.job; } }
       const x = X(p), y = Y(p), s = 10.5 * dpr * Math.max(0.75, k);
       glow(c, x, y, s * 2.6, '255,90,70', 0.35 + 0.15 * Math.sin(now * 0.008));    // the beacon: they are coming
+      const TS = window.OIL_THEATRE_SPRITES, TA = window.OIL_THEATRES_VIEW && window.OIL_THEATRES_VIEW.state(g) && TS && TS.cells.fcut_h00;   // 1118: under SuprexCore the crew is their fire-cutter
+      if (TA && IMG.tatlas) { const [sx, sy, w, h, ax, ay] = TS.cells.fcut_h00, kk = s * 0.09; c.drawImage(IMG.tatlas, sx, sy, w, h, x - ax * kk, y + s * 1.2 - ay * kk, w * kk, h * kk); }
       c.fillStyle = '#f4f0e6'; c.strokeStyle = '#c62f22'; c.lineWidth = 1.6 * dpr;
       c.beginPath(); c.moveTo(x, y - s); c.lineTo(x + s, y); c.lineTo(x, y + s); c.lineTo(x - s, y); c.closePath(); c.fill(); c.stroke();
       c.fillStyle = '#c62f22'; c.font = `bold ${10.5 * dpr * Math.max(0.8, k)}px Trebuchet MS`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('IWS', x, y + 0.5 * dpr);
@@ -226,5 +232,5 @@
     raf = requestAnimationFrame(loop);
   }
   function start() { if (!raf) raf = requestAnimationFrame(loop); }
-  window.OIL_WORLD_VIEW = { attach, start, drawWorld, motion };
+  window.OIL_WORLD_VIEW = { attach, start, drawWorld, motion, _img: () => IMG.atlas, theatreStat: THEATRE_STAT };
 })();

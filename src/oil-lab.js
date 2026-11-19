@@ -74,6 +74,7 @@
         disputes: !!opts.disputes,              // THE DISPUTE DECK (docs/THE-EXPANSION.md) — cut in round 8, dormant
         clock: opts.clock || undefined,         // THE SEAT CLOCK (round 8): the well and the triggers scale with the seats
         hegemony: opts.hegemony || undefined,   // HEGEMONY (round 11): the designed 2-player game
+        suprex: opts.suprex || undefined, tiers: opts.tiers || undefined,       // SUPREXCORE PREMIUM (1118): the three theatres + the SuprexCore deck
       });
       facs && facs.forEach((c, k) => { if (g.players[k]) g.players[k].faction = g.players[k].faction || c; });
       await g.run();
@@ -286,7 +287,7 @@
     opts = opts || {};
     const OG = global.OilGame;
     const FX = (OG && OG.CARD_FX) || global.OIL_CARD_FX || {};
-    const entry = FX[name];
+    const entry = FX[name] || ((global.OIL_SUPREX || {}).FX || {})[name];   // SUPREXCORE cards are classified the same way
     const flags = { touchesSelf: false, touchesRival: false, touchesPrice: false, touchesEra: false, touchesClock: false };
     if (!entry || !entry.fx) return Object.assign({ name, deck: '?', wired: false, competitive: false, noop: true }, flags);
     for (const shove of [2, -2]) {

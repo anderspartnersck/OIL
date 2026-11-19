@@ -178,6 +178,7 @@
       <div class="rh"><div class="er">OiL!</div><div class="tg">NATIVE ENGINE</div></div>
       <div id="pathbar"></div>
       <div id="players"></div>
+      <div id="wars" style="display:none;font:11px Trebuchet MS,sans-serif;color:#e8d9b5;padding:3px 6px;border-top:1px solid #3a2c18"></div>
       <div id="log"></div>
     </aside>
   </div>
@@ -212,10 +213,12 @@
 <script src="src/oil-map.js"></script>
 <script src="src/oil-crisis.js"></script>
 <script src="src/oil-momentum.js"></script>
+<script src="src/oil-suprex.js"></script><script src="src/oil-tiers.js"></script><!-- 1118: THE CONCESSIONS — tiered spots (core + expansion) --><!-- 1118: SuprexCore Premium — the three theatres + the 44-card deck (expansion box) -->
 <script src="src/oil-geo.js"></script><!-- 1117: Equal Earth — one lat/lon source for the board (render-only) -->
 <script src="src/oil-world.js"></script><!-- 1117: PIPELINE MODE + THE CREW prototypes (HOUSE RULES, off by default) -->
 <script src="assets/world/pieces.js"></script>
 <script src="src/oil-world-view.js"></script><!-- 1117: ◉ WORLD, the living ocean (render-only) -->
+<script src="assets/world/theatres.js"></script><script src="src/oil-theatres-view.js"></script><!-- 1118: SuprexCore theatres (render-only) -->
 <script src="src/oil-desk.js"></script>
 <script src="src/oil-cardtext.js"></script>
 <script src="src/oil-rulebook.js"></script>
@@ -236,7 +239,7 @@ const cardByName={}; (window.OIL&&OIL.CARDS||[]).forEach(c=>cardByName[c.name]=c
 // powers) and CORE + EXPANSION — the expansion box is "OIL! THE HOME GAME — NOW WITH SuprexCore PREMIUM" (Joe 1117; the
 // Green Anders die is ONE component of it, not its name) — (the Green Anders die and ★ THE FULL EXPANSION: the privilege, momentum, pirates and
 // the firm, the seat clock, the ducks / RICO; at 2 players, HEGEMONY). The module chips stay under LAB for testing.
-const S={expansion:false,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,privilege:false,momentum:false,disputes:false,clock:false,hegemony:false,ducks:false,view:'map',
+const S={tiers:!/tiers=off/.test(location.hash+location.search),suprex:false,expansion:false,cards:true,deals:true,map:true,path:true,pathPreset:'path',crisis:true,privilege:false,momentum:false,disputes:false,clock:false,hegemony:false,ducks:false,view:'map',
   youCode:FAC[0]&&FAC[0].code, seat:{}};
 // default table: you + three bots, core companies in order
 FAC.filter(f=>f.edition!=='EXPANSION').slice(0,4).forEach((f,i)=>{S.seat[f.code]=i?'bot':'you';});
@@ -261,7 +264,7 @@ const HOUSE_RULES=[['backhaul','BACKHAUL (CORE-022)','A landed contract loads th
   ['rig','THE SUPER-RIG (contested)','One offshore rig on the Brazilian pre-salt, in nobody\'s yard. Sell there to hold it (the station meter); its holder lifts a barrel each turn it starts there (+1 exposure, heats the rig). docs/THE-SUPER-RIG.md','map']];
 S.house={backhaul:/supply=backhaul/.test(location.hash),rider:/retainer=rider/.test(location.hash),rim:/west=(rim|both)/.test(location.hash),rig:/rig=on|[#&]rig\b/.test(location.hash),pipe:/pipe=on|[#&]pipemode\b/.test(location.hash),crew:/crew=on|[#&]iwscrew\b/.test(location.hash)};
 if(/firm=big/.test(location.hash+location.search)) document.body.classList.add('firmbig');   // carry-over #5 preview
-const CORE_MODS={cards:1,deals:1,map:1,path:1,crisis:1};
+const CORE_MODS={cards:1,deals:1,map:1,path:1,crisis:1,tiers:1};   // 1118: THE CONCESSIONS are core
 const on=k=>CORE_MODS[k]?S[k]:(S.expansion&&S[k]);
 const SEATS=()=>S.expansion?[2,8]:[4,6];   // core 4–6 (the one sheet); expansion 2–8 (the seat clock; 2 = HEGEMONY)
 function rosterCodes(){ return FAC.filter(f=>S.expansion||f.edition!=='EXPANSION').map(f=>f.code); }
@@ -273,7 +276,7 @@ function activeCodes(){ // the companies at the table, YOU first
   { const m=/seats=(\d)/.exec(location.hash); if(m){ const all=list.concat(r.filter(c=>!list.includes(c))); return all.slice(0,Math.max(2,Math.min(+m[1],all.length))); } }   // test seam: #seats=N
   return list;
 }
-function setFull(v){ S.privilege=v; S.momentum=v; S.clock=v; S.ducks=v; if(v){S.map=true;S.path=true;} }
+function setFull(v){ S.privilege=v; S.momentum=v; S.clock=v; S.ducks=v; S.suprex=v&&!/suprex=off/.test(location.hash+location.search); if(v){S.map=true;S.path=true;} }   // 1118: SuprexCore theatres ride the box (#suprex=off = the 1117 expansion)
 function buildSetup(){
   const segExp=$('#segExp'); segExp.innerHTML='';
   [['core','CORE GAME','three dice · the map · three decks · deals · fire · eight… six companies'],['exp','NOW WITH SuprexCore PREMIUM — CORE + EXPANSION','the fourth die (the Green Anders die) · the privilege · momentum · pirates & the firm · the seat clock · the ducks · 2-player HEGEMONY']].forEach(([k,l,sub])=>{
@@ -287,7 +290,7 @@ function buildSetup(){
       buildSetup(); }; segExp.appendChild(c); });
   $('#expRules').style.display=S.expansion?'':'none';
   const segOpt=$('#segOpt'); segOpt.innerHTML='';
-  [['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['path','THE PATH (contracts)'],['crisis','CRISIS (fire)'],['privilege','THE PRIVILEGE (dice ●●●)'],['momentum','MOMENTUM (must move)'],['clock','SEAT CLOCK (oil scales)'],['hegemony','HEGEMONY (2 players)']].forEach(
+  [['cards','Card deck'],['deals','THE TABLE (deals)'],['map','THE MAP (routes)'],['path','THE PATH (contracts)'],['crisis','CRISIS (fire)'],['tiers','THE CONCESSIONS (tiers)'],['privilege','THE PRIVILEGE (dice ●●●)'],['momentum','MOMENTUM (must move)'],['clock','SEAT CLOCK (oil scales)'],['hegemony','HEGEMONY (2 players)'],['suprex','SUPREXCORE (3 wars · 44 cards)']].forEach(
   ([k,l])=>{
     const c=document.createElement('div'); c.className='chip'+(S[k]?' on':''); c.textContent=l;
     c.onclick=()=>{S[k]=!S[k]; if(k==='map'&&S.map)S.path=true; if(k==='disputes'&&S.disputes)S.privilege=true; buildSetup();}; segOpt.appendChild(c);
@@ -390,6 +393,9 @@ function startGame(){
     momentum:on('map')&&on('momentum'),
     disputes:on('privilege')&&on('disputes'),   // round 8: cut — no chip sets it
     clock:on('clock'),
+    suprex:(on('suprex')&&on('map')&&on('crisis'))?true:undefined,   // 1118 SUPREXCORE PREMIUM: the three theatres + the SuprexCore deck (docs/SUPREXCORE-1118.md)
+    tiers:(on('tiers')&&on('map'))?true:undefined,
+    order:/order=fixed/.test(location.hash+location.search)?undefined:'draw',   // 1118 SEAT FAIRNESS: the house deals the FIRST PLAYER (seed mod seats); #order=fixed = seat 1 always first   // 1118 THE CONCESSIONS: tiered spots to chase (src/oil-tiers.js; #tiers=off = the 1117 core)
     hegemony:on('map')&&(on('hegemony')||on('ducks')),   // round 12: the ducks ride ★ THE FULL EXPANSION at every table under 8   // HEGEMONY (round 11; docs/THE-HEGEMONY.md): 2 seats, 6 sitting-duck pawns   // THE SEAT CLOCK (round 8): oil 15 a seat, E.D.D. arms with ~a round left   // THE DISPUTE DECK (docs/THE-EXPANSION.md)   // MOMENTUM (docs/THE-MOMENTUM.md): typed spaces, you MUST move, camping = demurrage   // THE PRIVILEGE (docs/THE-PRIVILEGE.md): penalties -> how many of the three bodies you roll
     path:(on('map')&&S.path)?(S.house.backhaul?Object.assign(OilGame.pathRules(S.pathPreset),{supply:'cargo'}):S.pathPreset):undefined,   // HOUSE RULES: backhaul (CORE-022)
     crisisDials:(/retainer=(policy|cut)/.exec(location.hash)||[])[1]?{RETAINER_MODE:/retainer=(policy|cut)/.exec(location.hash)[1]}:(S.house.rider&&on('crisis')?{RETAINER_MODE:'rider'}:undefined),   // HOUSE RULES: THE RIDER chip (#retainer=rider preselects it)   // RETAINER REWORK preview (docs/DECISIONS-1110.md): #retainer=policy|rider|cut
@@ -410,7 +416,7 @@ function startGame(){
   $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#desk').classList.remove('on'); $('#log').innerHTML='';
   deskScar=false; deskSpike=false;
   buildPanels(); updatePanels(); show('play'); draw();
-  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'NOW WITH SuprexCore PREMIUM (core + expansion)':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
+  logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'NOW WITH SuprexCore PREMIUM (core + expansion)':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.suprex?' · SUPREXCORE: THE GULF ON FIRE · WAR IN RUSSIA/UKRAINE · VENEZUELA TO THE CALIFORNIA LANES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
 }
 function buildPanels(){
@@ -425,7 +431,16 @@ function buildPanels(){
     w.appendChild(d);
   });
 }
+function updateWars(){   // 1118 SUPREXCORE: one line, the three wars (the 3D board draws them; this is the text read)
+  const el=document.getElementById('wars'); if(!el)return; const st=game&&game.theatreState&&game.theatreState();
+  const ts=game&&game.tierState&&game.tierState(); const held=ts?ts.spots.filter(x=>x.holder).map(x=>`♜${'I'.repeat(x.tier)} ${x.at} ${x.holder}`).join(' · '):'';
+  if(!st&&!ts){ el.style.display='none'; return; } el.style.display='';
+  if(!st){ el.innerHTML='CONCESSIONS · '+(held||'all open'); return; }
+  const col=['#9aa3ad','#e8c23a','#ff9a6a','#ff4a3a'];
+  el.innerHTML='WARS · '+Object.values(st).map(t=>`<span title="${t.anchor} · front ${t.labels[t.front]||t.front}" style="color:${col[t.intensity]}">${t.name.replace('VENEZUELA TO THE CALIFORNIA LANES','VENEZUELA→CALIFORNIA').replace('WAR IN RUSSIA / UKRAINE','RUSSIA/UKRAINE').replace('THE GULF ON FIRE','THE GULF')} ${'●'.repeat(t.intensity)}${'○'.repeat(3-t.intensity)}${t.seizures.length?' ⚓'+t.seizures.length:''}${t.piracy.length?' ☠'+t.piracy.length:''}${t.fires.length?' 🔥':''}</span>`).join(' · ')+(held?' · CONCESSIONS '+held:'');
+}
 function updatePanels(){
+  updateWars();
   const mV=Math.max(1,...game.players.map(p=>p.holdings(game.price))), mE=Math.max(1,...game.players.map(p=>p.exposure));
   game.players.forEach((p,i)=>{ const d=$('#pl'+i); if(!d)return;
     d.querySelector('.ctl').textContent='▰'+p.control+(game.heg2?` ◇${game._hegStake(p)}`:'');
@@ -478,7 +493,7 @@ function updatePanels(){
         if(p.campTurns)bits.push(`<span class="grud" title="camping: demurrage rises each turn">⚓ camped ${p.campTurns}</span>`); }
       tie.innerHTML=bits.join(' · ');
     }
-    d.classList.toggle('act',game.players[game.idx]===p&&!game.done);
+    d.classList.toggle('act',(game.nextSeat?game.nextSeat():game.players[game.idx])===p&&!game.done);
     const b=d.querySelectorAll('.bar i');
     b[0].style.width=(100*p.holdings(game.price)/mV)+'%'; b[1].style.width=(100*p.exposure/mE)+'%';
     b[2].style.width=(100*p.pips/(window.OIL_DIALS?OIL_DIALS.PIPS_START:3))+'%';
@@ -592,6 +607,21 @@ async function stepOnce(){
       :`<span class="out">☠ the pirates are ${ev.mood==='severe'?'out in force — the world is at war':'awake — the world is unsettled'}</span>`); deskSay(ev.mood==='quiet'?'piratesQuiet':'piratesWake',game.turn); }
     else if(ev.type==='pirates'){ logLine(ev.who==='the embargo'?`&nbsp;&nbsp;<span class="out">☠ THE EMBARGO</span> stops ${ev.on} (${ev.where}) — caught running the embargo, Cuba style; piracy with a flag. The house throws ${ev.roll}: a body held, ${ev.rolls} rolls`
       :`&nbsp;&nbsp;<span class="out">☠ PIRATES</span> board ${ev.on} (${ev.where}) — the house throws ${ev.roll}: a body held for ransom, ${ev.rolls} rolls`); deskSay('pirates',game.turn); }
+    // 1118 SUPREXCORE: the three theatres, seizures, piracy, secret blocks, the audit
+    else if(ev.type==='theatre'){ const T=(window.OIL_SUPREX||{}).THEATRES||{}, L=(window.OIL_SUPREX||{}).LEVELS||[]; logLine(`<span class="${ev.intensity>ev.was?'out':'grn'}">${ev.intensity>ev.was?'▲':'▼'} ${(T[ev.id]||{}).name||ev.id}</span> → <b>${L[ev.intensity]||ev.intensity}</b> (${ev.cause})`); updateWars(); }
+    else if(ev.type==='theatre_peak'){ logLine(`&nbsp;&nbsp;<span class="out">✹ PEAK — ${ev.what}</span>`); }
+    else if(ev.type==='seizure'){ logLine(`&nbsp;&nbsp;<span class="out">⚓ SEIZED</span> — ${ev.who} takes ${ev.barrels} barrel${ev.barrels===1?'':'s'} off ${ev.on} at ${ev.label}${ev.prize?` (${ev.by} takes ${ev.prize} as prize)`:''}`); updateWars(); }
+    else if(ev.type==='piracy'){ logLine(`&nbsp;&nbsp;<span class="out">☠ PIRACY</span> — ${ev.on} pays a $${ev.ransom} ransom off ${ev.label}`); updateWars(); }
+    else if(ev.type==='block_reveal'){ logLine(`&nbsp;&nbsp;<span class="grn">🂠 REVEALED</span> — ${ev.player} turns over <b>${ev.card}</b> (${ev.trigger.replace('_',' ')})`); }
+    else if(ev.type==='concession'){ const N=(window.OIL_TIERS||{}).NAMES||[]; const pl=(window.OIL_MAP&&OIL_MAP.BY[ev.at]||{}).name||ev.at;
+      if(ev.kind==='settle') logLine(`&nbsp;&nbsp;<span class="grn">♜ SETTLED</span> — ${ev.player} takes ${pl} (TIER ${'I'.repeat(ev.tier)} · ${N[ev.tier]})${ev.loophole?' — through the PRIVILEGE LOOPHOLE':''}`);
+      else if(ev.kind==='fail') logLine(`&nbsp;&nbsp;<span class="out">♜ FAILED CHASE</span> — ${ev.player} cannot settle ${pl} (${ev.why})`);
+      else if(ev.kind==='evict') logLine(`&nbsp;&nbsp;<span class="out">♜ SHUT OUT</span> — ${pl} shuts under ${ev.player}`);
+      else if(ev.kind==='vacate') logLine(`&nbsp;&nbsp;♜ ${ev.player} sails off ${pl}`); updateWars(); }
+    else if(ev.type==='siphon'){ logLine(`&nbsp;&nbsp;<span class="grn">♜ SIPHON</span> — ${ev.player} takes $${ev.amount} off the table at ${(window.OIL_MAP&&OIL_MAP.BY[ev.at]||{}).name||ev.at}`); }
+    else if(ev.type==='scramble'){ logLine(`&nbsp;&nbsp;<span class="out">🔥 THE SCRAMBLE</span> — ${ev.why}: ${ev.burned} oil burns (${ev.oil} left)`); }
+    else if(ev.type==='tier_pass'){ logLine(`&nbsp;&nbsp;♜ ${ev.player} files a TIER PASS (${ev.via}${ev.card?': '+ev.card:''}) → ${ev.pass}`); }
+    else if(ev.type==='audit'){ logLine(`&nbsp;&nbsp;<span class="out">📒 AUDIT</span> — ${ev.player}'s books: ${ev.cooked} cooked → +${ev.exposure} exposure, $${ev.fine} fine (${ev.cause})`); }
     else if(ev.type==='dispute'){ logLine(`&nbsp;&nbsp;<span class="${ev.won?'grn':'out'}">⚖ DISPUTE</span> — ${ev.player} contests ${ev.against}'s ${ev.kind} with <b>${ev.card}</b>: ${ev.def.join('-')||'—'} vs ${ev.by.join('-')}${ev.anders!=null?` · tie → <span class="grn">Anders ${ev.anders}</span>`:''} → ${ev.won?'CLAIM VOID':'the claim stands'}`); deskSay(ev.anders!=null?'arbiter':'dispute',game.turn); }
     // ROUND 9 — the firm files the Protocol (ANDERS_ROLE 'protocol'); THE DESK reads it in its existing lines
     // HEGEMONY (round 11): the matrix, the courting, the collection (THE DESK reads it in its EAT lines)
@@ -684,7 +714,7 @@ function presentPrompt(g,p,ctx){
       const cards=(ctx.cards||[]), moves=(ctx.moves||[]);
       opts=[];
       cards.forEach(n=>{const c=cardByName[n];
-        const tx=(window.OIL_CARDTEXT||{})[n]||(c&&c.effects&&c.effects[0])||'';
+        const sxc=((window.OIL_SUPREX||{}).CARD||{})[n]; const tx=(window.OIL_CARDTEXT||{})[n]||(sxc?(sxc.block?'Play now: '+sxc.text+' — or HOLD it: '+sxc.block.text:sxc.text):'')||(c&&c.effects&&c.effects[0])||'';
         opts.push({group:'Play',label:n,value:n,tip:tx,desc:tx?`<b>${n}</b> — ${tx}`:''});});
       const breaks=moves.filter(m=>String(m).indexOf('BREAK:')===0);
       ['PACT','TRIBUTE','SCAPEGOAT'].forEach(t=>{
@@ -1059,6 +1089,7 @@ function drawMap(){
 
   drawKey(bx,by,bw,bh,dpr); drawKey2(bx,by,bw,bh,dpr);
   drawPipelines(MP,X,Y,dI);   // 1117: the world's real pipelines — drawn context under the network (hover names them)
+  if(EE&&window.OIL_THEATRES_VIEW) OIL_THEATRES_VIEW.drawBoard(ctx,game,{X,Y,dpr,k:bw/(1100*dpr)});   // 1118: the theatres, UNDER the lanes
 
   // routes — tracks of spaces, coloured by what the route is FOR
   const clr=pl=>(pl.kind==='hq'?11:pl.kind==='ocean'?7:9)*dI;
@@ -1201,7 +1232,7 @@ function drawMap(){
     ctx.fillStyle=game._colors[i]||'#f6c95a';
     ctx.beginPath(); ctx.arc(x,y,q.isHuman?5.5*dI:4*dI,0,7); ctx.fill();
     ctx.strokeStyle=q.isHuman?'#fff':'rgba(0,0,0,.8)'; ctx.lineWidth=(q.isHuman?2:1.2)*dpr; ctx.stroke();
-    if(game.players[game.idx]===q&&!game.done){ ctx.strokeStyle='#f6c95a'; ctx.lineWidth=1.4*dpr;
+    if((game.nextSeat?game.nextSeat():game.players[game.idx])===q&&!game.done){ ctx.strokeStyle='#f6c95a'; ctx.lineWidth=1.4*dpr;
       ctx.beginPath(); ctx.arc(x,y,9*dI,0,7); ctx.stroke(); }
   });
 

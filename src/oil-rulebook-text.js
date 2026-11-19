@@ -84,8 +84,23 @@
       <tr><td class="r">${faces('DIVIDE')}</td><td><b>DIVIDE</b></td><td>Half their control (rounded down) moves to you.</td></tr>
       <tr><td class="r">${faces('DESTROY')}</td><td><b>DESTROY</b></td><td>They lose ▰1 and take +2 exposure; 1 oil burns; the strait nearest them shuts.</td></tr></table>
     <p>Every strike also puts +${C.HEAT_EDD} heat where the target stands. <b>The game ends the moment the well hits 0 — always.</b></p>
-    ${box(`<b>WHO WINS:</b> the most <b>control ▰</b>. Tied: the <b>least exposure</b>. Still tied: the richest <b>holdings</b> ($ + barrels at the final price). <br><span class="rb-dim">Most Protocols arm because the oil is nearly gone; some on a spike; a few because too much of the world is on fire. You are not playing to save it. You are playing to be holding the most when it goes.</span>`, 'red')}`;
+    ${box(`<b>WHO WINS:</b> the most <b>control ▰</b>. Tied: the <b>least exposure</b>. Still tied: the richest <b>holdings</b> ($ + barrels at the final price). <br><span class="rb-dim">Most Protocols arm because the oil is nearly gone; some on a spike; a few because too much of the world is on fire. You are not playing to save it. You are playing to be holding the most when it goes.</span>`, 'red')}
+    ${tiersRules()}`;
   };
+
+  // THE CONCESSIONS (1118) — read from src/oil-tiers.js, so the book cannot drift from the engine
+  function tiersRules() {
+    const TR = global.OIL_TIERS; if (!TR) return '';
+    const D = TR.DIALS, N = TR.NAMES, nm = c => RB.placeName(c), by = t => Object.keys(D.SPOTS).filter(c => D.SPOTS[c] === t).map(nm).join(' · ');
+    return `<h3>♜ THE CONCESSIONS — tiered spots to chase</h3>
+    <p>The chokepoints are <b>concessions</b>: settle on one and you collect from everyone who ships. <b>TIER I ${N[1]}</b>: ${by(1)}. <b>TIER II ${N[2]}</b>: ${by(2)}. <b>TIER III ${N[3]}</b>: ${by(3)}. One holder each.</p>
+    <ul><li><b>Settle</b> by ending your move on an open, unheld spot. You hold it while your ship stays there. Sail off and it is open again.</li>
+      <li><b>Entry.</b> Tier I is open to anyone. Tier II needs a <b>TIER PASS</b>, Tier III two. A pass is filed by <b>holding</b> a lower spot through a round (the climb), <b>by card</b> (every ${esc(D.CARD_DECK)} card you play is paperwork: it files one), or through <b>THE PRIVILEGE LOOPHOLE</b> — with the privilege on, a company whose dice are untouched (●●●) counts ${D.LOOPHOLE} pass higher.</li>
+      <li><b>The siphon.</b> Each round, every holder on an open spot takes <b>$${D.SIPHON} × its tier</b> from each rival ($${D.SX_SIPHON} × tier with SuprexCore).</li></ul>
+    ${box(`<b>THE SCRAMBLE — the world burns faster.</b> End your move on a spot you cannot settle (a rival holds it, or you lack the pass) and the chase fails: <b>${D.FAIL_BURN} oil burns</b> and the spot takes +${D.FAIL_HEAT} heat. If a strait <b>shuts</b> under a holder, they are thrown off and <b>oil burns equal to its tier</b>.`, 'red')}
+    ${global.OIL_SUPREX ? box(`<b>WITH SUPREXCORE the concessions run hot.</b> The Pacific ports (${Object.keys(D.SX_SPOTS).map(nm).join(' · ')}) join Tier I, and the war zones (${Object.keys(D.SX_THEATRE_SITES).map(nm).join(' · ')}) are <b>Tier III</b> while their war is ACTIVE or PEAK. A concession is a <b>lease</b>: it stays yours after you sail, until it shuts or is taken. Land on a rival's with <b>more</b> passes and you take it; with <b>equal</b> passes the house throws a die — ${D.SX_CONTEST_AT}+ takes it, less is a failed chase. <b>When a war moves</b> (up or down), the state <b>re-deals</b> its concessions: holders there are thrown off (oil burns = tier) and their passes are void. Passes also come from THEATRE and BOOKS cards and from the <b>Green Anders</b> die's intervention (the loophole). A failed chase burns <b>${D.SX_FAIL_BURN}</b> oil.`, 'red') : ''}
+    <p class="rb-dim">No decision is added: settling rides the move you already chose. No oil is ever added. The old core: <code>#tiers=off</code>.</p>`;
+  }
 
   // ==================================================================================== THE EXPANSION
   RB.SECTIONS.expansion = ctx => {
@@ -131,8 +146,28 @@
     <h3>⑥ THE DUCKS · RICO</h3>
     <p>Under eight players, <b>every company nobody plays sits at its HQ as a sitting duck</b> (◇).</p>
     ${box(`<b>RICO — ducks on a pond, we all go down.</b> A Protocol strike that lands <b>spreads</b> when the board carries <b>${H.RICO_HEAT_AT}+ heat</b>, when <b>the firm filed it</b>, or when <b>${(H.RICO_CARDS || []).map(esc).join(', ')}</b> was played since the Protocol armed (that arms the next spread). Every standing <b>partner</b> of the struck company, and its <b>franchise ally</b> at the table, loses <b>▰${H.RICO_CONTROL}</b> and takes <b>+${H.RICO_EXPOSURE} exposure</b>. The striker is never splashed. It spreads once and never chains. Break the deal first if you want out — and carry the grudge.`, 'red')}
-    <p><b>Franchise allies:</b> ${allyLine}. ${esc(brandOf('PETRO_SUR'))} and ${esc(brandOf('HADDAD'))} are <b>never</b> allies.</p>`;
+    <p><b>Franchise allies:</b> ${allyLine}. ${esc(brandOf('PETRO_SUR'))} and ${esc(brandOf('HADDAD'))} are <b>never</b> allies.</p>
+    ${suprexRules()}`;
   };
+
+  // ⑦ SUPREXCORE PREMIUM (1118) — read from src/oil-suprex.js, so the book cannot drift from the engine
+  function suprexRules() {
+    const SX = global.OIL_SUPREX; if (!SX) return '';
+    const X = SX.DIALS, T = SX.THEATRES, L = SX.LEVELS, at = a => a.map((v, i) => v <= 6 ? `${L[i]} ${v}+` : null).filter(Boolean).join(' · ');
+    const lab = (id, c) => (T[id].labels || {})[c] || RB.placeName(c);
+    const fam = {}; SX.CARDS.forEach(c => { fam[c.family] = (fam[c.family] || 0) + 1; });
+    return `<h3>⑦ SUPREXCORE — THREE WARS, COOKED BOOKS, SECRET FIREBREAKS</h3>
+    <p>Three wars are burning when the game starts. Each has an <b>intensity</b> track: ${L.map((n, i) => `<b>${i}</b> ${n}`).join(' · ')}. Every war starts at <b>${L[X.START.gulf_fire]}</b>.</p>
+    <table><tr><td><b>THE WAR</b></td><td><b>WHERE</b> <span class="rb-dim">(its places on the board)</span></td><td><b>AT PEAK</b></td></tr>
+      ${SX.IDS.map(id => `<tr><td><b>${esc(T[id].name)}</b><div class="rb-dim">${esc(T[id].anchor)}</div></td><td>${T[id].places.map(c => esc(lab(id, c))).join(' · ')}</td><td>${esc(T[id].peak)}</td></tr>`).join('')}</table>
+    <ul><li><b>A war escalates</b> (+1, and the price moves +${X.ESC_PRICE}) when the <b>Green Anders die</b> intervenes (5+ on a CHAOTIC turn — the war where the roller stands or calls home, else the quietest: Anders opens a new market), when a <b>THEATRE card</b> says so, or when a strait shuts or a well blows inside it (once a round). Reaching <b>PEAK</b> lands its blow once.</li>
+      <li><b>A war at PEAK leans on its front:</b> +${X.FRONT_HEAT} heat a round on one of its places, in turn.</li>
+      <li><b>A war stands down</b> a step (the price moves ${X.COOL_PRICE}) after <b>${X.STAND_DOWN} rounds</b> with no escalation — never below ${L[X.FLOOR]}. <b>The Gulf never stands down while a well there burns: fires never go out on their own.</b> Only a card makes a CEASEFIRE.</li></ul>
+    ${box(`<b>SEIZURE AND PIRACY — the house throws.</b> After you sail, if your ship touched a war's <b>seizure water</b> with cargo aboard, or (private companies only) its <b>pirate lanes</b>, the house throws one die for you (one throw a turn). <b>Seized</b> on ${at(X.SEIZE_AT)}: ${X.SEIZE_TAKE} barrels are impounded; if the seizing state's company is at the table it takes ${X.PRIZE} as a prize. <b>Piracy</b> on ${at(X.PIRATE_AT)}: pay a ransom of $${X.RANSOM} + $${X.RANSOM_PER} × intensity. Who seizes whom: in a war's home yard, the state there seizes <b>foreign</b> cargo; in the Baltic, at Panama and in the California lanes (LONG BEACH, CALIFORNIA, USA), the patrols board the <b>sanctioned flags</b> — ${SX.SANCTIONED.map(brandOf).map(esc).join(', ')}; in the Strait of Hormuz, anyone.`, 'red')}
+    <p><b>📒 COOKED BOOKS.</b> BOOKS cards pay you now and <b>cook</b> your ledger — keep the count face down. <b>THE AUDIT:</b> when the Protocol arms, every company's books are opened: <b>+${X.AUDIT_MULT} exposure and $${X.AUDIT_FINE} for each cooked point</b>, and the ledger clears. Audit cards open a rival's books early.</p>
+    ${box(`<b>🂠 FIREBREAKS — held in secret.</b> A FIREBREAK in your hand is a standing contract. When its trigger lands on you (your well about to blow, a seizure, a ransom, an audit, an E.D.D. strike…) you <b>turn it over</b>: it blocks, and its reveal line happens. That is not a decision and costs no action. You may also play it face up as your table action, for its printed effect.`, 'grn')}
+    <p class="rb-dim">The SuprexCore deck: ${SX.CARDS.length} cards shuffled into the three decks — ${Object.entries(fam).map(([k, v]) => k + ' ' + v).join(' · ')}. Card list: IN THE BOX.</p>`;
+  }
 
   // ================================================================================ TWO PLAYERS
   RB.SECTIONS.two = ctx => {

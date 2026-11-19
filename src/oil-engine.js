@@ -554,6 +554,7 @@
         if (own === p.name && p.barrels < g.rig.LIFT_CAP) v += g.rig.BOT_PULL;
         else if (own !== p.name && p.barrels > 0) v += 6;
       }
+      if (g.tiers) v += OilGame._tiersFX().botPull(g, p, c);   // THE CONCESSIONS (bot policy): chase a spot you can settle; sit on yours
       if (P && P.botOnshore && P.onshore && pl.kind === 'onshore' && p.barrels > 0) {
         const nb = g.nearestBuyer(p, p.at).dist;
         if (nb === undefined || nb > (g.mapDials.LAND_WITHIN || 4)) v += 22;
@@ -690,6 +691,10 @@
       this.lastShove = 0; this.lastDice = [0, 0, 0];
       this.edd = false; this.eddLog = [];
       this.turn = 0; this.round = 0; this.idx = 0;
+      this.order = (opts.order === 'rotate' || opts.order === 'snake' || opts.order === 'draw') ? opts.order : null;   // SEAT ORDER (see step)
+      // 'draw' (1118 seat fairness): the house deals the FIRST PLAYER — seat (seed mod n), no RNG drawn — then play runs
+      // clockwise from there every round. A fair deal, never a bonus.
+      this.firstSeat = this.order === 'draw' ? (Math.abs(opts.seed | 0) % Math.max(1, this.players ? this.players.length : (opts.n_players || 1))) : 0;
       this.pressure = 0;                     // THE RATCHET: player lean on next turn's price
       this.throughput = {};                  // place -> { playerName: barrels }, decayed each round
       this.controlOwner = {};                // place -> playerName | null (null = CONTESTED/none)
@@ -708,6 +713,12 @@
       this.pathStats = { landed: 0, dumped: 0, tolls: 0, tollPaid: 0, passages: 0, passagePaid: 0,
         contractPoints: 0, megaPoints: 0, megaLandings: 0, domestic: 0, voyageTurns: 0, detourTurns: 0, detourSteps: 0,
         bypass: 0 };
+      // SUPREXCORE PREMIUM (1118, src/oil-suprex.js): the three theatres + the 44-card SuprexCore deck. Needs THE MAP and
+      // CRISIS (it rides their heat). Decided here, before the decks are built; set up after CRISIS below.
+      // Off (no opts.suprex) -> no branch, no RNG: the golden fingerprint is untouched.
+      this.suprex = !!(opts.suprex && opts.map && opts.crisis && OilGame._suprexFX().setup);
+      this.sxDials = this.suprex ? Object.assign({}, OilGame._suprexFX().DIALS, typeof opts.suprex === 'object' ? opts.suprex : {}) : null;
+      this.theatres = null;
       if (this.cards) this._buildDecks();
 
       // ---- optional THE TABLE (negotiation layer; src/oil-deals.js) ----------
@@ -784,6 +795,10 @@
       this.crisisStats = { heated: 0, cooled: 0, gateShuts: 0, blowouts: 0, fireTurns: 0,
         oilBurnedByFire: 0, callOuts: 0, callOutSpend: 0, retainers: 0, retainerSaves: 0,
         stateAbsorb: 0, privateAbsorb: 0, annihilation: 0 };
+      if (this.suprex && !this.crisis) this.suprex = false;
+      if (this.suprex) OilGame._suprexFX().setup(this);
+      // THE CONCESSIONS (1118, src/oil-tiers.js): tiered chokepoint spots to chase — settle, siphon, scramble. Off = no branch.
+      this.tiers = null; if (opts.tiers && this.map && OilGame._tiersFX().setup) OilGame._tiersFX().setup(this, opts.tiers);
       // ---- optional THE WORLD (1117, src/oil-world.js): PIPELINE MODE + THE CREW. Both off by default:
       //      off -> nothing below runs, no RNG is drawn, the fingerprint is untouched.
       const WF = OilGame._worldFX();
@@ -1077,6 +1092,17 @@
 
     // the crisis registry (src/oil-crisis.js); {} when the layer isn't loaded
     static _crisisFX() { return (typeof global !== 'undefined' && global.OIL_CRISIS) || OilGame.CRISIS_FX || {}; }
+    // the SuprexCore registry (src/oil-suprex.js); {} when the layer isn't loaded
+    static _suprexFX() { return (typeof global !== 'undefined' && global.OIL_SUPREX) || OilGame.SUPREX_FX || {}; }
+    static _cardFX(name) {
+      const FX = OilGame.CARD_FX || (typeof global !== 'undefined' && global.OIL_CARD_FX) || {};
+      return FX[name] || (OilGame._suprexFX().FX || {})[name];
+    }
+    // SUPREXCORE: the renderers' snapshot of the three theatres (docs/SUPREXCORE-1118.md); null when off
+    theatreState() { return this.suprex ? OilGame._suprexFX().state(this) : null; }
+    static _tiersFX() { return (typeof global !== 'undefined' && global.OIL_TIERS) || OilGame.TIERS_FX || {}; }
+    // THE CONCESSIONS: the renderers' snapshot (spots, holders, passes); null when off
+    tierState() { return this.tiers ? OilGame._tiersFX().state(this) : null; }
 
     // the map registry (src/oil-map.js); {} when the layer isn't loaded
     static _worldFX() { return (typeof global !== 'undefined' && global.OIL_WORLD) || OilGame.WORLD_FX || {}; }
@@ -1191,7 +1217,9 @@
       const ALL = (typeof global !== 'undefined' && global.OIL && global.OIL.CARDS) || [];
       this.decks = {}; this.discards = {};
       for (const dk of ['DEEDS', 'FREEDOM-MARKET', 'COMPETITION']) {
-        this.decks[dk] = this.rng.shuffle(ALL.filter(c => c.deck === dk && FX[c.name]).map(c => c.name));
+        const names = ALL.filter(c => c.deck === dk && FX[c.name]).map(c => c.name);
+        if (this.suprex) (OilGame._suprexFX().CARDS || []).forEach(c => { if (c.deck === dk) names.push(c.name); });   // SUPREXCORE deck
+        this.decks[dk] = this.rng.shuffle(names);
         this.discards[dk] = [];
       }
       this.players.forEach(p => { p.hand = []; });
@@ -1204,9 +1232,10 @@
       return this.decks[dk].pop();
     }
     playCard(name, p) {
-      const FX = OilGame.CARD_FX || (typeof global !== 'undefined' && global.OIL_CARD_FX) || {};
-      const e = FX[name]; if (!e || !e.fx) return;
+      const e = OilGame._cardFX(name); if (!e || !e.fx) return;
       e.fx(this, p);
+      if (this.tiers) { const cc = ((typeof global !== 'undefined' && global.OIL && global.OIL.CARDS) || []).find(c => c.name === name), sc = (OilGame._suprexFX().CARD || {})[name];
+        OilGame._tiersFX().onCard(this, p, name, (cc || sc || {}).deck); }   // THE CONCESSIONS: paperwork files a tier pass
       // THE RICO PROTOCOL (round 12): "or a card wills it" — a RICO card played while E.D.D. is armed arms the next strike
       if (this.hegemony && this.hegDials.RICO && this.edd && (this.hegDials.RICO_CARDS || []).indexOf(name) >= 0) { this._ricoCard = name; this.emit('rico_armed', { player: p.name, card: name }); }
       // war-and-government cards land WHERE THE SEAT IS STANDING (src/oil-crisis.js
@@ -1324,7 +1353,9 @@
             continue;
           }
           const cover = seat && this.retainer[seat.id] ? D.RETAINER_SHIELD : 0;
-          if (h >= D.BLOWOUT_AT + cover) {
+          if (h >= D.BLOWOUT_AT + cover && this.suprex && OilGame._suprexFX().blockBlowout(this, seat, code)) {
+            /* SUPREXCORE FIREBREAK: a secret block was revealed — the well does not catch */
+          } else if (h >= D.BLOWOUT_AT + cover) {
             this.fires[code] = 1; this.crisisStats.blowouts++;
             this.emit('blowout', { at: code, name: pl.name, player: seat && seat.name });
           } else if (cover && h >= D.BLOWOUT_AT) {
@@ -1336,6 +1367,7 @@
 
       // 4. what is alight goes on burning. Fires do not go out on their own.
       for (const code in this.fires) {
+        if (this.suprex && OilGame._suprexFX().blockFire(this, this.seatAtHQ(code), code)) continue;   // SUPREXCORE FIREBREAK: capped
         this.fires[code]++;
         this.crisisStats.fireTurns++;
         const seat = this.seatAtHQ(code);
@@ -2372,8 +2404,7 @@
         if (drawn) { p.hand.push(drawn); this.emit('drawcard', { player: p.name, card: drawn, deck: dk }); }
         if (p.hand.length > 3) {
           const dropped = p.hand.shift();
-          const FX = OilGame.CARD_FX || (typeof global !== 'undefined' && global.OIL_CARD_FX) || {};
-          (this.discards[(FX[dropped] || {}).deck] || []).push(dropped);
+          (this.discards[(OilGame._cardFX(dropped) || {}).deck] || []).push(dropped);
         }
       }
 
@@ -2415,14 +2446,23 @@
     }
 
     // ---- one active turn = ONE 3-die roll, read on two layers ----------------
+    // the seat whose turn is NEXT (honours opts.order) — renderers use this, not players[idx]
+    nextSeat() { return this.players[this.order ? this._seatAt(this.idx, this.idx === 0 ? this.round + 1 : this.round) : this.idx]; }
+    _seatAt(j, r) { const n = this.players.length; if (this.order === 'draw') return (this.firstSeat + j) % n; if (this.order === 'rotate') return ((r - 1) % n + j) % n; if (this.order === 'snake') return r % 2 === 1 ? j : n - 1 - j; return j; }
     async step() {
       if (this.done) return;
-      const D = this.dials, p = this.players[this.idx];
+      // SEAT ORDER (1118, opts.order; default null = seat 0 first every round — the golden fingerprint). The house's
+      // seat-fairness band is fixed by ORDER, never by a bonus: 'rotate' = the start passes one seat left each round;
+      // 'snake' = odd rounds 0→n-1, even rounds n-1→0. idx stays the position in the round.
+      const D = this.dials, p = this.players[this.order ? this._seatAt(this.idx, this.idx === 0 ? this.round + 1 : this.round) : this.idx];
+      this.cur = p;
       this._oilMark = this.oil;
       this.turn++;
       if (this.levels) this._lvUpkeep(p);                               // OIL LEVELS: the licence
       if (this.idx === 0 && this.privilege) this._govTick();          // THE PRIVILEGE: wartime requisitions
       if (this.idx === 0) { this.round++; this._settleControl(); if (this.path && this.path.shut) this._shutShape(); if (this.path && this.path.supply === 'produce') this._produceRound(); }
+      if (this.idx === 0 && this.suprex) OilGame._suprexFX().roundTick(this);
+      if (this.idx === 0 && this.tiers) OilGame._tiersFX().roundTick(this);    // THE CONCESSIONS: evict / siphon / climb   // SUPREXCORE: the three theatres lean on their fronts
 
       // THE DISPUTE DECK: the claims on you are answered before you throw (when they would bite)
       if (this.disputes) await this._disputePhase(p);
@@ -2504,6 +2544,8 @@
           // one named seat. Aimed at the leader by holdings: the house leans on whoever is winning.
           if (g >= D.GREEN_PUNITIVE_AT) this._andersPunish();
           if (this.privilege && this.privDials.ANDERS_ROLE === 'hand') this._andersHand();   // ROUND 9 prototype
+          if (this.suprex) OilGame._suprexFX().green(this, p);
+          if (this.tiers && this.suprex) OilGame._tiersFX().green(this, p);   // THE CONCESSIONS (SuprexCore): the Green Anders loophole   // SUPREXCORE: the firm sells to both sides — a war escalates
         }
       }
 
@@ -2515,6 +2557,8 @@
       // 5.45 THE MAP (optional): the same three bodies that moved the price also
       //      say how far the world moved. Sail, and find out what the sea is doing.
       if (this.map) await this._mapPhase(p);
+      if (this.suprex) OilGame._suprexFX().incident(this, p);
+      if (this.tiers) OilGame._tiersFX().arrive(this, p);   // THE CONCESSIONS: settle or fail the chase — rides the move, no new ask   // SUPREXCORE: seizure / piracy — a house throw, no decision
       if (this.levels) this._lvApply(false);
 
       // 5.5 THE TABLE (optional): draw where you landed, then take ONE action —
@@ -2641,6 +2685,7 @@
           : this.oil <= D.EDD_OIL ? 'E.D.D. — the oil ran out' : 'E.D.D. — price + instability';
         this.emit('edd_begin', { reason: this.end_reason, price: this.price, oil: this.oil });
         this._andersDebtDue();
+        if (this.suprex) OilGame._suprexFX().audit(this);   // SUPREXCORE: THE AUDIT — the cooked books come due
       }
 
       // 9. if E.D.D. is live, this player resolves a predatory roll
@@ -2799,6 +2844,7 @@
       const S = this.privStats; S.pirateWater = (S.pirateWater || 0) + 1;
       const t = this.rng.d6();                                 // THE HOUSE THROWS
       if (t < at) return false;
+      if (this.suprex && OilGame._suprexFX().tryBlock(this, p, 'hold', { cause: 'pirates' })) return false;   // SUPREXCORE FIREBREAK
       p._requisition = { rolls: D.PIRATE_ROLLS, by: null, cause: 'pirates' };
       S.pirates = (S.pirates || 0) + 1;
       S.pirateByMood = S.pirateByMood || { quiet: 0, awake: 0, severe: 0 }; S.pirateByMood[mood]++;
@@ -2929,6 +2975,7 @@
           by = st.reduce((a, b) => (dist(b) < dist(a) ? b : a));
         }
       }
+      if (this.suprex && OilGame._suprexFX().tryBlock(this, v, 'hold', { cause })) return true;   // SUPREXCORE FIREBREAK
       v._requisition = { rolls: D.GOV_ROLLS, by, cause };
       const S = this.privStats; S.requisitions = (S.requisitions || 0) + 1;
       this.emit('requisition', { on: v.name, by: by && by.name, cause, level: this.wartime(), rolls: D.GOV_ROLLS });
@@ -3067,6 +3114,7 @@
         if (spared) { this.dealStats.spared++; this.emit('edd_spared', { player: p.name, partners: this.partnersOf(p).map(q => q.name) }); }
         if (revenge && target) { this.dealStats.revenge++; p.grudges = p.grudges.filter(id => id !== target.id); this.emit('edd_revenge', { player: p.name, on: target.name }); }
       }
+      if (this.suprex && target && OilGame._suprexFX().tryBlock(this, target, 'edd', { by: p })) target = null;   // SUPREXCORE FIREBREAK
       switch (choice) {
         case 'EAT':     if (target) { p.control += 1; p.value += target.barrels * this.price; target.barrels = 0; target.exposure += 3;
           // "acquire territory": you take their ground — they wash up at their own HQ.
@@ -3105,7 +3153,7 @@
     _end() {
       if (this.done) return;
       this.done = true;
-      if (!this.edd) { this.edd = true; this.end_reason = this.end_reason || 'E.D.D. — the oil ran out'; this.emit('edd_begin', { reason: this.end_reason, price: this.price, oil: this.oil }); this._andersDebtDue(); }
+      if (!this.edd) { this.edd = true; this.end_reason = this.end_reason || 'E.D.D. — the oil ran out'; this.emit('edd_begin', { reason: this.end_reason, price: this.price, oil: this.oil }); this._andersDebtDue(); if (this.suprex) OilGame._suprexFX().audit(this); }
       // graded VERDICT (Charter G8/G9): most control, then least exposure, then holdings.
       const ctl = q => this.heg2 ? this.verdictControl(q) : q.control;   // HEGEMONY: the matrix stake counts
       const ranked = this.players.slice().sort((a, b) =>
