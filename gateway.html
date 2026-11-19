@@ -1393,7 +1393,7 @@ if(location.hash.indexOf('setup')>=0){buildSetup();show('setup');}
 // test hook (scripts/e2e_gateway.mjs): read-only handle on the live game, only with #e2e in the URL
 if(location.hash.indexOf('e2e')>=0) window.__OIL_GAME=()=>game;
 // X7 phone touch layouts: a read-only handle (game) + a redraw on rotate; does nothing on the desktop page
-if(window.OIL_TOUCH&&OIL_TOUCH.on) OIL_TOUCH.attach({game:()=>game,draw:()=>{ if(game&&$('#play').classList.contains('on')) draw(); }});
+if(window.OIL_TOUCH&&OIL_TOUCH.on) OIL_TOUCH.attach({game:()=>game,view:()=>S.view,draw:()=>{ if(game&&$('#play').classList.contains('on')) draw(); }});
 if(location.hash.indexOf('autoplay')>=0){
   buildSetup();startGame();$('#spd').value='80';
   setInterval(()=>{const pr=$('#nprompt');if(pr.classList.contains('on'))pr.querySelector('button').click();},40);

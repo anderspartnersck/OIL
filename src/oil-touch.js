@@ -49,6 +49,16 @@
   body.touch aside{width:auto;flex:none;border-left:none;min-width:0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
   body.touch aside>*{flex-shrink:0}
   body.touch #players,body.touch #pathbar,body.touch #wars{flex:none;overflow:visible}
+  /* the WARS ticker gets its own row under the tabs (it was the last thing in the column and could print over the seats) */
+  body.touch aside{display:flex;flex-direction:column}
+  body.touch #tpHand{order:1} body.touch #tpTabs{order:2} body.touch #wars{order:3} body.touch #pathbar{order:4} body.touch #players{order:5} body.touch #log{order:6}
+  body.touch #wars{position:relative!important;margin:2px 8px 6px;padding:5px 8px!important;border:1px solid #3a2c18!important;border-radius:8px;
+    background:#15100a;line-height:1.45;white-space:normal;overflow-wrap:anywhere;z-index:0}
+  /* portrait MAP: the board's empty control deck (THE KEY row) is cut off below the stage; ▾ THE KEY brings it back */
+  body.touch.tp-por #stage{overflow:hidden}
+  body.touch.tp-por.tp-deckcut #cv{height:var(--tp-cv,100%)}
+  #tpKey{position:absolute;right:8px;bottom:6px;z-index:8;min-height:30px!important;padding:3px 12px!important;font-size:12px!important;display:none}
+  body.touch.tp-por.tp-map #tpKey{display:block}
   body.touch aside .rh{display:none}
   body.touch #log{min-height:0;font-size:12px}
   body.touch #desk{bottom:8px;max-width:92%}
@@ -119,13 +129,22 @@
   let peekOwner = null, peekT = 0, passWith = null, lastOwner = null, promptSeat = null;
   const $ = s => document.querySelector(s);
   const PEEK_MS = 6000;
+  let keyOpen = false, lastView = '';
 
   function orient() {
     const por = innerHeight >= innerWidth;
     document.body.classList.add('touch');
     document.body.classList.toggle('tp-por', por); document.body.classList.toggle('tp-lan', !por);
     // portrait: the board takes ~44% of the height, never less than the width ÷ 1.6 allows a readable board
-    const bh = Math.round(Math.max(200, Math.min(innerHeight * 0.46, innerWidth / 1.05)));
+    let bh = Math.round(Math.max(200, Math.min(innerHeight * 0.46, innerWidth / 1.05)));
+    // portrait on THE MAP: size the stage to the board itself (the plate is 1.48:1, fit to the width) plus the HUD headroom
+    // the canvas draws above it; with THE KEY tucked the canvas runs past the stage so the deck row is clipped away
+    const map = !!(H && H.view && H.view() === 'map');
+    document.body.classList.toggle('tp-map', por && map);
+    document.body.classList.toggle('tp-deckcut', por && map && !keyOpen);
+    if (por && map) { const W = innerWidth, plate = W / 1.48, head = 72;
+      bh = Math.round(keyOpen ? 2 * head + plate : head + 0.84 * plate);
+      document.body.style.setProperty('--tp-cv', Math.round(2 * head + plate) + 'px'); }
     document.body.style.setProperty('--tp-board', bh + 'px');
     const side = Math.round(Math.min(Math.max(300, innerWidth * 0.40), 400));
     document.body.style.setProperty('--tp-side', side + 'px');
@@ -187,18 +206,21 @@
       const o = owner(); if (!o) return;
       if (peekOwner === o) peekOwner = null; else { peekOwner = o; peekT = performance.now() + PEEK_MS; }
       hand._sig = ''; renderHand(); });
+    const st = document.getElementById('stage');
+    if (st && !$('#tpKey')) { const k = document.createElement('button'); k.id = 'tpKey'; k.className = 'alt sm'; k.textContent = '▾ THE KEY';
+      k.addEventListener('click', () => { keyOpen = !keyOpen; k.textContent = keyOpen ? '▴ HIDE THE KEY' : '▾ THE KEY'; orient(); }); st.appendChild(k); }
     const pass = document.createElement('div'); pass.id = 'tpPass';
     pass.innerHTML = '<div class="k">PASS THE PHONE</div><div class="nm"></div><div class="ss">It is their call. Everyone else, look away — their hand is secret.</div><button id="tpPassGo">I\'M HERE — SHOW MY CALL</button>';
     document.body.appendChild(pass);
     pass.querySelector('#tpPassGo').addEventListener('click', () => { pass.classList.remove('on'); passWith = promptSeat; $('#tpHand')._sig = ''; renderHand(); });
   }
 
-  API.state = () => ({ on: true, portrait: document.body.classList.contains('tp-por'), owner: (owner() || {}).name || null,
+  API.state = () => ({ on: true, key: keyOpen, deckCut: document.body.classList.contains('tp-deckcut'), portrait: document.body.classList.contains('tp-por'), owner: (owner() || {}).name || null,
     peek: !!peekOwner, pass: !!($('#tpPass') && $('#tpPass').classList.contains('on')), with: (passWith || {}).name || null });
   API.attach = hook => {
     H = hook; build(); orient();
     addEventListener('resize', orient); addEventListener('orientationchange', () => setTimeout(orient, 120));
-    setInterval(renderHand, 250);     // presentation poll (the hand changes inside the engine; we only read it)
+    setInterval(() => { renderHand(); const v = H.view ? H.view() : ''; if (v !== lastView) { lastView = v; orient(); } }, 250);     // presentation poll (the hand changes inside the engine; we only read it)
   };
   // presentPrompt calls this as a decision opens for seat p (before the sheet shows)
   API.prompt = p => {
