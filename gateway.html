@@ -3,7 +3,7 @@
 <head>
 <link rel="icon" href="data:,">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OiL! — The Home Game (Native Engine)</title>
 <style>
   :root{--gold:#e0a32a;--gold-lite:#f6c95a;--ink:#0c0a08;--ink2:#15110c;
@@ -224,6 +224,7 @@
 <script src="src/oil-rulebook.js"></script>
 <script src="src/oil-rulebook-text.js"></script>
 <script src="src/oil-uikit.js"></script><!-- UI KIT canvas sprites (render-only) -->
+<script src="src/oil-touch.js"></script><!-- X7 1119: phone touch layouts (portrait board-over-hand / landscape side panel; front-end only) -->
 <script>
 (function(){
 "use strict";
@@ -873,6 +874,7 @@ function presentPrompt(g,p,ctx){
         if(o.desc){ if(!row._gd){ row._gd=document.createElement('div'); row._gd.className='gd'; } row._gd.innerHTML+=(row._gd.innerHTML?'<br>':'')+o.desc; }});
       box.querySelectorAll('.gb').forEach(r=>{ if(r._gd) r.appendChild(r._gd); });   // the words go under the buttons (tips were hover-only)
     } else { box.className='po'; opts.forEach(o=>box.appendChild(mk(o))); }
+    if(window.OIL_TOUCH) OIL_TOUCH.prompt(p);   // X7 touch: the PASS THE PHONE curtain + whose hand shows (front-end only)
     updatePanels(); draw(); $('#nprompt').classList.add('on');
   });
 }
@@ -1390,6 +1392,8 @@ $('#vAgain').onclick=()=>{buildSetup();show('setup');};
 if(location.hash.indexOf('setup')>=0){buildSetup();show('setup');}
 // test hook (scripts/e2e_gateway.mjs): read-only handle on the live game, only with #e2e in the URL
 if(location.hash.indexOf('e2e')>=0) window.__OIL_GAME=()=>game;
+// X7 phone touch layouts: a read-only handle (game) + a redraw on rotate; does nothing on the desktop page
+if(window.OIL_TOUCH&&OIL_TOUCH.on) OIL_TOUCH.attach({game:()=>game,draw:()=>{ if(game&&$('#play').classList.contains('on')) draw(); }});
 if(location.hash.indexOf('autoplay')>=0){
   buildSetup();startGame();$('#spd').value='80';
   setInterval(()=>{const pr=$('#nprompt');if(pr.classList.contains('on'))pr.querySelector('button').click();},40);
