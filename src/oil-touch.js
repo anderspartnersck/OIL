@@ -48,7 +48,7 @@
   body.touch #ctrl select{min-height:36px;font-size:14px}
   body.touch aside{width:auto;flex:none;border-left:none;min-width:0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
   body.touch aside>*{flex-shrink:0}
-  body.touch #players{overflow:visible}
+  body.touch #players,body.touch #pathbar,body.touch #wars{flex:none;overflow:visible}
   body.touch aside .rh{display:none}
   body.touch #log{min-height:0;font-size:12px}
   body.touch #desk{bottom:8px;max-width:92%}
