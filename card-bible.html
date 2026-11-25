@@ -48,7 +48,32 @@
   #boot .presents-sub{margin-top:-6px;color:#9a927e;letter-spacing:.5em;font-size:12px;font-weight:800;animation:flickerIn 1.4s ease both;
     position:relative;z-index:3}   /* sits ABOVE the spinning boxes — a 3D face must never cover the credit */
   #boot .sub{margin-top:16px;padding-bottom:6px;color:#776f5e;font-size:12px;letter-spacing:.14em;text-align:center}
-  #boot .start-hint{margin-top:22px;animation:pulse 1.6s infinite}
+  #boot .start-hint{animation:pulse 1.6s infinite}   /* FIT 1125: no own margin — it sat 22px lower than CARD BIBLE */
+  /* FIT 1125: the logo PNG is a 1200² canvas with the mark in a band across the middle (rows ~263-646). Crop to that
+     band so ~150px of transparent sky stops pushing the stack off the top of a 720-tall window. */
+  #boot .presents{aspect-ratio:2/1;object-fit:cover;object-position:50% 26%}
+  #boot .boot-btns{display:flex;gap:10px;margin-top:20px;align-items:center}
+  /* FIT 1125: scale the title stack by viewport HEIGHT (1280x720, 1024x640 fit with nothing clipped) */
+  @media (max-height:820px){
+    #boot .presents{width:min(46vw,220px)}
+    #boot .presents-sub{margin-top:2px}
+    #boot .boxduo{margin-top:14px;margin-bottom:6px}
+    #boot .stage3d.mini{zoom:.6}
+    #boot .tagline{margin-top:10px}
+    #boot .byline{margin-top:4px}
+    #boot .boot-btns{margin-top:12px}
+    #boot #currentGame{margin-top:10px!important;padding:6px 16px!important}
+    #boot .sub{margin-top:8px!important;padding-bottom:0}
+  }
+  @media (max-height:680px){
+    #boot .presents{width:min(46vw,180px)}
+    #boot .boxduo{margin-top:10px;margin-bottom:4px}
+    #boot .stage3d.mini{zoom:.5}
+    #boot .tagline{margin-top:6px;font-size:clamp(13px,2.4vw,18px)}
+    #boot .boot-btns{margin-top:10px}
+    #boot #currentGame{margin-top:8px!important}
+    #boot .sub{margin-top:6px!important}
+  }
   @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
   /* 3D box (built to the 10.5×10.5×2 print spec) — slow spin + zoom */
   .stage3d{perspective:1300px;width:min(72vw,440px);height:min(44vh,420px);
@@ -84,7 +109,7 @@
      PRESENTS line. Clearance above, a little below for the tagline. */
   .boxduo{display:flex;align-items:center;justify-content:center;gap:min(4vw,30px);flex-wrap:nowrap;
     margin-top:26px;margin-bottom:12px;position:relative;z-index:1}
-  .stage3d.mini{width:min(40vw,250px);height:min(30vh,250px)}
+  .stage3d.mini{width:min(40vw,250px);height:340px;zoom:.85}   /* FIT 1125: the stage holds the WHOLE projected box (300 face + its lift), then zooms to the viewport height — no face climbs onto PRESENTS or the tagline */
   /* EXPANSION box (10.5×10.5×2, smaller) — blue, the SuprexCore PREMIUM badge as the spine */
   .box-exp{position:relative;width:210px;height:210px;transform-style:preserve-3d;
     animation:boxspin 18s linear infinite reverse, boxzoom 7.5s ease-in-out infinite alternate;animation-delay:-4s}
@@ -372,8 +397,8 @@
     </div></div>
   </div>
   <div class="tagline">EXTRACT. &nbsp;<b>MOVE BARRELS.</b>&nbsp; OUTLAST THE WORLD.</div>
-  <div class="byline">CREATED BY JOSEPH COLEMAN</div>
-  <div style="display:flex;gap:10px;margin-top:20px">
+  <div class="byline">Created by Joseph Coleman, Claude, ChatGPT, and Blender<br>Castle Killscreen · Anders &amp; Partners</div>
+  <div class="boot-btns">
     <button class="candy start-hint" id="bootBtn">FUEL UP ▸</button>
     <button class="candy alt sm" id="bibleBtn">📖 CARD BIBLE</button>
   </div>

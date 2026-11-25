@@ -661,6 +661,10 @@
   class OilGame {
     constructor(opts = {}) {
       opts = opts || {};
+      // THE MAP-ONLY CORE (ORDER 33, docs/CORE10-MAP.md): one switch turns the table into the ten-rule paper game.
+      // Off (no opts.mapOnly) -> this line does nothing, no RNG is drawn, the golden fingerprint is untouched.
+      if (opts.mapOnly) opts = OilGame.mapOnlyOpts(opts);
+      this.mapOnly = opts._mapOnly || null;
       this.rng = makeRng(opts.seed || 1);
       this.expansion = opts.expansion !== false;   // Green Anders die present
       this.edition = EDITIONS[opts.edition] ? opts.edition : 'classic';
@@ -695,6 +699,14 @@
       // 'draw' (1118 seat fairness): the house deals the FIRST PLAYER — seat (seed mod n), no RNG drawn — then play runs
       // clockwise from there every round. A fair deal, never a bonus.
       this.firstSeat = this.order === 'draw' ? (Math.abs(opts.seed | 0) % Math.max(1, this.players ? this.players.length : (opts.n_players || 1))) : 0;
+      // ORDER 36 (MODEL ONLY — the map-only core's 5p turn order). Both off by default: no branch taken, no RNG drawn.
+      //  opts.firstRound 'reverse' — round 1 runs from the LAST seat back to the first (a snake for the first round only)
+      //  opts.seatStep { pos: 'last' | 0..n-1, steps: 1 } — that round-1 turn position sails `steps` further on its first move
+      this.firstRound = opts.firstRound === 'reverse' ? 'reverse' : null;
+      this.seatStep = (opts.seatStep && typeof opts.seatStep === 'object') ? opts.seatStep : null;
+      // opts.eddRound (ORDER 36 MODEL): once E.D.D. arms, every seat resolves exactly ONE strike, in turn, starting with the
+      // seat whose turn armed it, and then the game ends (ORDER 43: the map-only core's default) (instead of striking until the oil is gone)
+      this.eddRound = !!opts.eddRound; this._eddStrikesLeft = null; this.finishRound = !!opts.finishRound;
       this.pressure = 0;                     // THE RATCHET: player lean on next turn's price
       this.throughput = {};                  // place -> { playerName: barrels }, decayed each round
       this.controlOwner = {};                // place -> playerName | null (null = CONTESTED/none)
@@ -705,8 +717,9 @@
       // MODEL: consigned cargo (see the CONSIGN_* dials). opts.path (docs/THE-PATH.md) is the
       // consign model grown into the game path; either flag turns contracts on. Both OFF by
       // default -> no new branch, no extra RNG, the frozen baseline stays byte-identical.
-      this.consign = !!(opts.consign || opts.path);
       this.path = opts.path ? OilGame.pathRules(opts.path) : null;
+      // (CORE10's rule-7 null: `contracts: false` keeps THE PATH's other rules with no contract on the table)
+      this.consign = !!(opts.consign || opts.path) && !(this.path && this.path.contracts === false);
       if (this.path && opts.west) this.path = Object.assign({}, this.path, { west: opts.west });   // WEST COAST (model): preview seam, e.g. gateway #west=rim
       this.market = [];                      // THE PATH: the face-up contracts (buyer place codes)
       this.structureOwner = {};              // THE PATH: STRUCT -> the seat that raised it
@@ -737,6 +750,12 @@
       this.map = !!(opts.map && MP.PLACES);
       this.mapDials = Object.assign({}, MP.MAP_DIALS || {}, opts.mapDials || {});
       this.mapState = { closed: {}, disabled: {}, built: Object.assign({}, opts.built || {}) };
+      // ORDER 36 (MODEL ONLY — the home-yards screen): opts.routeCost { 'A|B': steps } reprices printed routes (either
+      // direction) through reach()'s costOf seam. Absent -> no costOf, every route as printed, byte-identical.
+      if (opts.routeCost && typeof opts.routeCost === 'object') {
+        const RC = opts.routeCost, key = (a, b) => RC[a + '|' + b] !== undefined ? RC[a + '|' + b] : RC[b + '|' + a];
+        this.mapState.costOf = (r, from) => { const c = key(from, r.to); return c !== undefined ? c : r.cost; };
+      }
       // DECISIONS-0928 `geo`: an optional route exists only in this game (never in the baseline)
       if (this.path && this.path.geo === 'btc') this.mapState.opts = { BTC: true };
       // WEST COAST REACH (MODEL ONLY; docs/DECISIONS-1110.md): 'rim' | 'demand' | 'both' opens OIL_MAP.OPTIONAL_PLACES
@@ -852,6 +871,8 @@
         this.players.forEach((p, i) => { p.faction = this.factions[i] || null; });
         if (this.asym) this.players.forEach(p => { const f = p.faction && FX[p.faction]; if (f && f.setup) f.setup(this, p); });
         if (this.dials.PIP_CAP === 'own') this.players.forEach(p => { p.pipsStart = p.pips; });   // carry-over #12 knob
+        // ORDER 36 (MODEL): opts.yardStart { company: { control, barrels } } — a yard's printed head start. Absent -> nothing.
+        if (opts.yardStart) this.players.forEach(p => { const y = opts.yardStart[p.faction]; if (y) { p.control += y.control || 0; p.barrels += y.barrels || 0; } });
       }
       // ---- optional HEGEMONY (round 11): 2 seats, all 8 companies on the board ----
       // round 12 (designer: "have the ducks be there for all modes too… anything under 8 players"): the ducks
@@ -1208,8 +1229,13 @@
     bumpPrice(n) { this.price = Math.max(this.dials.PRICE_MIN, Math.min(this.dials.PRICE_MAX, this.price + n)); }
     burnOil(n) { this.oil = Math.max(0, this.oil - Math.max(0, n)); }
     forceEra(e) { this.era = e; }
-    richestOpp(p) { const o = this.players.filter(q => q !== p); return o.length ? o.reduce((a, b) => a.holdings(this.price) >= b.holdings(this.price) ? a : b) : null; }
-    leaderOpp(p) { const o = this.players.filter(q => q !== p); return o.length ? o.reduce((a, b) => a.control >= b.control ? a : b) : null; }
+    // SEAT FAIRNESS (1119, docs/FACTION-BALANCE-1119.md): a TIE goes to the nearest rival CLOCKWISE from the seat
+    // acting — not to the lowest chair. The old filter() kept chair order, so chair 1 (the gateway's YOU seat) took
+    // every tied mine, toll and steal: 0.79-0.88× fair at 4-6 seats even with the first player drawn. A fair order,
+    // never a bonus; with this every chair sits 0.92-1.08× (1,500 games each at 4/5/6 seats).
+    rivalsClockwise(p) { const n = this.players.length, o = []; for (let k = 1; k < n; k++) o.push(this.players[(p.id + k) % n]); return o; }
+    richestOpp(p) { const o = this.rivalsClockwise(p); return o.length ? o.reduce((a, b) => a.holdings(this.price) >= b.holdings(this.price) ? a : b) : null; }
+    leaderOpp(p) { const o = this.rivalsClockwise(p); return o.length ? o.reduce((a, b) => a.control >= b.control ? a : b) : null; }
 
     // ---- card deck system (optional; opts.cards) ------------------------------
     _buildDecks() {
@@ -1651,6 +1677,12 @@
       // on fewer than three; other reads keep all three (stepsFor clamps to MOVE_MIN).
       let steps = MP.stepsFor((this.privilege && D.MOVE_READ === 'spread') ? this.moveDice(p) : this.lastDice, D);
       if (this.privilege) steps = Math.max(D.MOVE_MIN, this.privSteps(p, steps));
+      if (this.seatStep && !p._seatStepped) {   // ORDER 36 (MODEL): the round-1 seat bonus, once, on that seat's first move
+        const n = this.players.length, want = this.seatStep.pos === 'last' ? n - 1 : (this.seatStep.pos | 0);
+        let pos = (p.id - (this.order === 'draw' ? this.firstSeat : 0) + n) % n; if (this.firstRound) pos = n - 1 - pos;
+        if (pos === want) steps += (this.seatStep.steps || 1);
+        p._seatStepped = true;
+      }
       const from = p.at;
       const r = MP.reach(from, steps, this._pipeState(this.levels ? this._lvState(p) : this.mapState));
       const options = r.places.slice().sort();
@@ -1689,7 +1721,7 @@
           // same journey would have been cheaper with everything open, you were
           // detoured, and the cargo you land is worth more for it.
           if (Object.keys(this.mapState.closed).length || Object.keys(this.mapState.disabled).length) {
-            const openState = { closed: {}, disabled: {}, built: this.mapState.built, opts: this.mapState.opts };
+            const openState = { closed: {}, disabled: {}, built: this.mapState.built, opts: this.mapState.opts, costOf: this.mapState.costOf };
             const openR = MP.reach(from, 99, openState);
             const wouldBe = openR.dist[to];
             if (hitCape || (wouldBe !== undefined && (r.dist[to] || 0) > wouldBe)) {
@@ -1959,6 +1991,80 @@
     //   mega     — raised structures are places you can sell at, pay their builder a passage
     //              toll, and score MEGA_POINTS ▰ to the builder per contract landed at them
     // ========================================================================
+    // ========================================================================
+    // THE MAP-ONLY CORE (opts.mapOnly — ORDER 33, docs/CORE10-MAP.md). MODEL / DRAFT.
+    // The studio gate audit: MAP + PATH are the game and CRISIS is idle. One switch keeps THE MAP and THE PATH
+    // (shared contracts, the holder's toll, home yards, closures as a TRANSFER) and the dice canon, and turns
+    // CRISIS, IWS, THE TABLE (deals), the cards, the concessions, faction powers and every expansion layer OFF.
+    // Two DECISIONS-0928 rule keys carry the rules the other layers used to supply: `supply: 'lift'` (cargo is
+    // loaded in your own yard — without the cards a hold never refills) and `shut: 'headline'` (a strait shuts
+    // every round — without CRISIS/cards only E.D.D.'s DESTROY ever shut one). `squeeze: 'shut'` makes the
+    // squeeze read only routes that are really shut. opts.mapOnly = true | { drop: 'R1'..'R10' } — `drop`
+    // plays the core with that one rule replaced by its NULL (MAP_ONLY_DROPS), for the ablation.
+    // ========================================================================
+    static get MAP_ONLY_PATH() {
+      return { mode: 'market', toll: true, home: true, supply: 'lift', shut: 'headline', squeeze: 'shut',
+        dials: { CONSIGN_THROUGHPUT: 2, CONSIGN_POINTS: 1 } };
+    }
+    static get MAP_ONLY_DROPS() {
+      const calm = { gate: 0, ocean: 0, cape: 0, arctic: 0 };
+      return {
+        R1:  { rule: 'THE ROLL', null: 'the shove never moves the price (weights 0): no CHAOTIC era, the price moves only by scarcity', dials: { SHOVE_W: [0, 0, 0] } },
+        R2:  { rule: 'THE FLIP', null: 'nobody can flip the dice', noFlip: true },
+        R3:  { rule: 'THE SAIL', null: 'movement is not diced: always 3 steps', mapDials: { MOVE_READ: 'fixed', MOVE_FIXED: 3 } },
+        R4:  { rule: 'THE SEA', null: 'the sea never takes cargo', mapDials: { PERIL: calm } },
+        R5:  { rule: 'THE LOAD', null: 'no loading: the 2 starting barrels are all you get', path: { supply: null } },
+        R6:  { rule: 'THE SALE', null: 'no move-or-sell charge', dials: { HOLD_PENALTY: 0 } },
+        R7:  { rule: 'THE CONTRACTS', null: 'no contracts: every yard buys at spot and a sale is ▰1', path: { contracts: false } },
+        R8:  { rule: 'THE STRAITS', null: 'no strait shuts by itself, and a shut strait moves no money', path: { shut: null },
+          mapDials: { FREIGHT_PCT: 0, BLOCK_PCT: 0, LONGWAY_PCT: 0 } },
+        R9:  { rule: "OTHER PEOPLE'S GROUND", null: 'a rival yard pays and costs nothing extra; nobody takes a toll', path: { toll: false },
+          mapDials: { INCURSION_BONUS: 0, INCURSION_HEAT: 0, INCURSION_HIT: 0 } },
+        R10: { rule: 'THE END', null: 'no E.D.D.: nothing arms or strikes, the game just ends when the oil does', dials: { EDD_OIL: -1, EDD_PRICE: 1e9 } },
+        // the two halves of rule 8, measured apart
+        R8a: { rule: 'THE STRAITS (source)', null: 'no strait shuts by itself (the transfer stays)', path: { shut: null } },
+        R8b: { rule: 'THE STRAITS (transfer)', null: 'straits still shut, but a shut strait moves no money', mapDials: { FREIGHT_PCT: 0, BLOCK_PCT: 0, LONGWAY_PCT: 0 } },
+      };
+    }
+    // ORDER 43 (JOE: GO): the map-only core's printed yard numbers, by yard. Each company starts with this much ▰
+    // (ORDER 36 FIX 2: the round trip from each yard to its nearest buyer, priced as a head start).
+    static get MAP_ONLY_YARDS() {
+      return { HARTSTARR: 0, STOCK: 0, NIKOYL: 1, MINA: 1, MILECASTLE: 1, BRIGHT: 2 };
+    }
+    static mapOnlyOpts(opts) {
+      const m = opts.mapOnly, key = (m && typeof m === 'object' && m.drop) || null, D = OilGame.MAP_ONLY_DROPS;
+      if (key && !D[key]) throw new Error('mapOnly: unknown rule ' + key);
+      const drop = key ? D[key] : {};
+      const n = Math.max(2, Math.min(8, opts.n_players || 5)), MP = OilGame._mapFX();
+      const factions = Array.isArray(opts.factions) ? opts.factions : (MP.HQS || []).slice(0, n);
+      // ORDER 43: the three ORDER 36 fixes are the map-only core's DEFAULT. Each comes back with its own knob:
+      //   opts.eddRound: false            -> E.D.D. strikes until the oil is gone (ORDER 33)
+      //   opts.yardStart: false           -> every yard starts at 0 ▰ (ORDER 33); an object still overrides by company
+      //   opts.mapDials.LONGWAY_PCT: 25   -> the long-way clause is back (ORDER 33)
+      //   opts.mapOnly: { core: 33 }      -> all three back at once: the ORDER 33 core exactly
+      // Only this function changes; the full / legacy game never comes through here.
+      const c33 = !!(m && typeof m === 'object' && String(m.core) === '33');
+      const Y = OilGame.MAP_ONLY_YARDS, FH = MP.FACTION_HQ || {};
+      let yardStart = opts.yardStart;
+      if (yardStart === undefined && !c33) {
+        yardStart = {};
+        factions.forEach(f => { const v = Y[FH[f] || f]; if (v) yardStart[f] = { control: v }; });
+      }
+      return Object.assign({}, opts, {
+        map: true, consign: false, path: (() => {   // (ORDER 36: opts.mapOnly.path merges over the core's PATH, dials key by key)
+          const P = Object.assign(OilGame.MAP_ONLY_PATH, drop.path || {}), X = (m && typeof m === 'object' && m.path) || null;
+          return X ? Object.assign(P, X, { dials: Object.assign({}, P.dials || {}, X.dials || {}) }) : P; })(),
+        // every company starts in its own yard; a symmetric call gets the first n yards as its companies
+        factions, asym: false,
+        // (rule 10's null, drop R10, has no E.D.D. to go round: that game still ends when the oil does)
+        eddRound: opts.eddRound !== undefined ? opts.eddRound : !(c33 || key === 'R10'), yardStart: yardStart || null,
+        cards: false, deals: false, crisis: false, tiers: false, suprex: false, privilege: false, momentum: false, clock: false,
+        hegemony: false, levels: null, rig: false, pipeMode: false, iwsCrew: false, disputes: false, expansion: false, west: null,
+        dials: Object.assign({}, opts.dials || {}, drop.dials || {}),
+        mapDials: Object.assign(c33 ? {} : { LONGWAY_PCT: 0 }, opts.mapDials || {}, drop.mapDials || {}),
+        mapOnly: undefined, _mapOnly: { drop: key, noFlip: !!drop.noFlip },
+      });
+    }
     static pathRules(x) {
       const PRESETS = {
         private: { mode: 'private' },
@@ -2159,7 +2265,8 @@
     // 'lift': start your turn in your own yard with a light hold, and you top it up
     _liftAtYard(p) {
       if (!(this.path && this.path.supply === 'lift') || !p.at || p.at !== this.hqOf(p)) return;
-      const to = this.pathDial('LIFT_TO') || 0;
+      const LB = this.path.dials && this.path.dials.LIFT_BY;   // ORDER 36 (MODEL): a yard's own fill line, by company
+      const to = (LB && LB[p.faction] != null ? LB[p.faction] : this.pathDial('LIFT_TO')) || 0;
       if (p.barrels < to) this._supply(p, to - p.barrels, 'lift');
     }
     // 'produce': once a round, your yard makes 1 and every place you HOLD makes 1 more (capped)
@@ -2448,7 +2555,7 @@
     // ---- one active turn = ONE 3-die roll, read on two layers ----------------
     // the seat whose turn is NEXT (honours opts.order) — renderers use this, not players[idx]
     nextSeat() { return this.players[this.order ? this._seatAt(this.idx, this.idx === 0 ? this.round + 1 : this.round) : this.idx]; }
-    _seatAt(j, r) { const n = this.players.length; if (this.order === 'draw') return (this.firstSeat + j) % n; if (this.order === 'rotate') return ((r - 1) % n + j) % n; if (this.order === 'snake') return r % 2 === 1 ? j : n - 1 - j; return j; }
+    _seatAt(j, r) { const n = this.players.length; if (this.firstRound && r === 1) j = n - 1 - j; if (this.order === 'draw') return (this.firstSeat + j) % n; if (this.order === 'rotate') return ((r - 1) % n + j) % n; if (this.order === 'snake') return r % 2 === 1 ? j : n - 1 - j; return j; }
     async step() {
       if (this.done) return;
       // SEAT ORDER (1118, opts.order; default null = seat 0 first every round — the golden fingerprint). The house's
@@ -2490,7 +2597,7 @@
         }
         if (bender !== p) this.privStats.bendLost++;
       }
-      if (bender && bender.pips > 0 && Math.abs(this.lastShove) >= D.T_CHAOS) {
+      if (bender && bender.pips > 0 && Math.abs(this.lastShove) >= D.T_CHAOS && !(this.mapOnly && this.mapOnly.noFlip)) {
         const choice = await this.ask(bender, 'slingshot', ['flip', 'keep'], bender !== p ? { forSeat: p.name, how: bender === this._turnSeizer ? 'seize' : bender === this._turnToller ? 'toll' : 'steward' } : undefined);
         if (choice === 'flip') {
           bender.pips--;
@@ -2690,12 +2797,17 @@
 
       // 9. if E.D.D. is live, this player resolves a predatory roll
       if (this.edd) await this._resolveEDD(p);
+      // ORDER 36 (MODEL): opts.eddRound — one strike per seat, then the game ends (the oil running dry no longer cuts it short)
+      if (this.eddRound && this.edd) this._eddStrikesLeft = (this._eddStrikesLeft == null ? this.players.length : this._eddStrikesLeft) - 1;
 
       if (this.levels) this._lvApply(true);           // OIL LEVELS: falls land at the end of the turn
 
       // 10. advance / end
       this.idx = (this.idx + 1) % this.players.length;
-      if (this.oil <= 0 || this.turn >= this.maxTurns) this._end();
+      if (this.eddRound) { if (this._eddStrikesLeft === 0 || this.turn >= this.maxTurns) this._end(); }
+      // ORDER 36 (MODEL): opts.finishRound — the oil running dry ends the game at the END of the round (equal turns)
+      else if (this.finishRound) { if ((this.oil <= 0 && this.idx === 0) || this.turn >= this.maxTurns) this._end(); }
+      else if (this.oil <= 0 || this.turn >= this.maxTurns) this._end();
     }
 
     // THE PRIVILEGE, at the roll. Bodies 0..k-1 are yours (Supply, Weather, World in that
@@ -3081,7 +3193,7 @@
       const D = this.dials, roll = this.rng.d6(), outcome = D.EDD_ROLL[roll];
       // player may steer toward EAT/DIVIDE/DESTROY within what the roll allows (kept simple)
       const choice = await this.ask(p, 'edd', [outcome]);
-      const victims = this.players.filter(q => q !== p);
+      const victims = this.rivalsClockwise(p);   // 1119 seat fairness: a tie is eaten clockwise from the roller, not chair 1
       // WHO GETS EATEN. Without the table, the protocol simply hits the biggest
       // holder. With THE TABLE on, the deals you made decide where it lands:
       //   1. a GRUDGE first — you strike the one who broke a deal with you, over

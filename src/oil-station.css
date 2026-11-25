@@ -1,0 +1,212 @@
+/* OiL! — THE STATION (1119): CANDY PLASTIC + the gas-station BIG BOARD. Paint only (loaded last; html.station = on).
+   Joe 1119: "candy plastic is a big sort of art direction for oil ... its UI should be feeling like gas station big
+   board/signs ... digital gas pump renditions". The reference is Joe's own ALT RETRO CANDY PLASIC sign (GAMES/OIL/GPT RAW):
+   a moulded red rim, a glowing cream face, a gloss highlight across the top half, chrome trim, a yellow band.
+     · button (THE SIGN)     → the candy-plastic lightbox: red moulded rim, backlit cream face, gloss, yellow band
+     · button.alt            → a pump key: black gloss plastic in a chrome bezel, amber legend
+     · #stPylon              → the price pylon (CRUDE / OIL LEFT / TURN in LED, LCD and amber windows; era in changeable letters)
+     · .pl                   → each company card = a dispenser face: brand colour lit along the top, readouts in windows,
+                               its beauty shot faded in behind; the seat on the clock (.act) lights up = its turn banner
+     · #desk                 → THE DESK on the changeable-letter board; #edd → the chase-light emergency sign
+     · .fac                  → the company placard with its forecourt faded in
+     · #stLoad / #stAttract  → the loading card and the boot attract (the greaser fades into every cover)
+   No padding, font-size, width, height or border-width changes on any selectable — tools/ui_rects.mjs proves it. */
+
+html.station{--cp-red:#d3241a;--cp-red-d:#8e130d;--cp-cream:#fff6dd;--cp-yel:#ffc928;--cp-glow:rgba(255,92,46,.38);
+  --chrome:linear-gradient(180deg,#fdfdfd 0,#a9adb3 38%,#5d6168 52%,#d9dce0 70%,#7b8088 100%);
+  --led:#ff3b1f;--amb:#ffb21a;--lcd-bg:#a9cfa1;--lcd-on:#102010}
+
+/* ================= THE SIGN → the candy-plastic lightbox ================= */
+html.station button:not(.alt):not(#runBtn):not(#stepBtn):not(#viewBtn):not(#boardBtn){border-radius:7px;color:#c21b12;
+  text-shadow:0 1px 0 rgba(255,255,255,.8),0 0 6px rgba(255,190,90,.55);
+  background:linear-gradient(180deg,rgba(255,255,255,.85) 0,rgba(255,255,255,.28) 44%,rgba(255,255,255,0) 50%),
+    radial-gradient(ellipse 90% 120% at 50% 115%,#ffd23a 0,#ffe48e 40%,var(--cp-cream) 78%);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75),inset 0 -4px 0 var(--cp-yel),inset 0 -5px 0 #e09a00,
+    0 0 0 2px var(--cp-red-d),0 0 0 4px var(--cp-red),0 0 0 5px #4a0905,0 4px 0 4px #2a0603,0 0 20px var(--cp-glow),0 9px 16px rgba(0,0,0,.5)}
+html.station button:not(.alt):not(#runBtn):not(#stepBtn):not(#viewBtn):not(#boardBtn):hover{
+  background:linear-gradient(180deg,rgba(255,255,255,.95) 0,rgba(255,255,255,.35) 44%,rgba(255,255,255,0) 50%),
+    radial-gradient(ellipse 90% 120% at 50% 115%,#ffdc4a 0,#fff0b0 42%,#fffaf0 80%);
+  box-shadow:inset 0 0 0 1.5px #fff,inset 0 -4px 0 #ffd84a,inset 0 -5px 0 #e09a00,
+    0 0 0 2px var(--cp-red-d),0 0 0 4px #ef3a2c,0 0 0 5px #4a0905,0 4px 0 4px #2a0603,0 0 30px rgba(255,110,60,.6),0 9px 16px rgba(0,0,0,.5)}
+html.station button:not(.alt):not(#runBtn):not(#stepBtn):not(#viewBtn):not(#boardBtn):active{transform:translateY(3px);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6),inset 0 -4px 0 var(--cp-yel),inset 0 2px 5px rgba(120,40,0,.3),
+    0 0 0 2px var(--cp-red-d),0 0 0 4px var(--cp-red),0 0 0 5px #4a0905,0 1px 0 4px #2a0603,0 0 14px var(--cp-glow)}
+html.station button:not(.alt):disabled,html.station button:not(.alt):disabled:hover{color:#8a7c63;text-shadow:none;transform:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.18) 0,rgba(255,255,255,0) 50%),linear-gradient(180deg,#6a5f50,#473f33);
+  box-shadow:inset 0 -4px 0 #6a5a2c,0 0 0 2px #3a0a06,0 0 0 4px #5a2a22,0 0 0 5px #200402,0 4px 0 4px #140302}
+
+/* ================= button.alt → a pump key: black gloss plastic, chrome bezel, amber legend ================= */
+html.station button.alt:not(#runBtn):not(#stepBtn):not(#viewBtn):not(#boardBtn),html.station #nprompt .po button.no{outline:none;border-radius:5px;color:#ffc24a;
+  text-shadow:0 0 6px rgba(255,170,40,.55),0 1px 0 #000;
+  background:linear-gradient(180deg,rgba(255,255,255,.22) 0,rgba(255,255,255,.04) 46%,rgba(255,255,255,0) 50%),linear-gradient(180deg,#24201c,#0b0907);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 -2px 0 rgba(0,0,0,.6),0 0 0 1.5px #050403,0 0 0 3px #b9bdc3,0 0 0 4px #4b4f55,0 3px 0 4px #111,0 6px 10px rgba(0,0,0,.45)}
+html.station button.alt:not(#runBtn):not(#stepBtn):not(#viewBtn):not(#boardBtn):hover,html.station #nprompt .po button.no:hover{color:#ffd77a;
+  background:linear-gradient(180deg,rgba(255,255,255,.28) 0,rgba(255,255,255,.06) 46%,rgba(255,255,255,0) 50%),linear-gradient(180deg,#2e2924,#110e0b);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 0 rgba(0,0,0,.6),0 0 0 1.5px #050403,0 0 0 3px #e3e6ea,0 0 0 4px #5b5f65,0 3px 0 4px #111,0 0 16px rgba(255,170,40,.28)}
+html.station button.alt:active,html.station #nprompt .po button.no:active{transform:translateY(2px)}
+
+/* ================= .chip tickets → backlit price-tag inserts ================= */
+html.station .chip.on:not(.box){background:linear-gradient(180deg,rgba(255,255,255,.8) 0,rgba(255,255,255,.2) 46%,rgba(255,255,255,0) 50%),linear-gradient(180deg,#fffaf0,#ffe9a8);
+  box-shadow:inset 0 0 0 1.5px #fff,inset 0 -3px 0 var(--cp-yel),0 0 0 2px var(--cp-red),0 0 0 3px #4a0905,0 2px 0 3px #2a0603,0 0 12px var(--cp-glow)}
+html.station .chip.box.on{background:linear-gradient(180deg,rgba(255,255,255,.85) 0,rgba(255,255,255,.25) 40%,rgba(255,255,255,0) 46%),radial-gradient(ellipse 90% 130% at 50% 120%,#ffd23a 0,#ffe48e 40%,var(--cp-cream) 80%);
+  box-shadow:inset 0 0 0 1.5px #fff,inset 0 -6px 0 var(--cp-yel),inset 0 -7px 0 #e09a00,0 0 0 3px var(--cp-red),0 0 0 4px #4a0905,0 3px 0 4px #2a0603,0 0 22px var(--cp-glow)}
+
+/* ================= changeable letters (the big board's black plastic letters on a backlit track) ================= */
+.cl{display:inline-flex;gap:2px;align-items:center;padding:3px 5px;border-radius:2px;
+  background:repeating-linear-gradient(180deg,transparent 0 calc(100% - 2px),rgba(0,0,0,.22) calc(100% - 2px) 100%),linear-gradient(180deg,#fffdf6,#eae4d2);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.25),0 0 10px rgba(255,248,220,.35)}
+.cl i{font-style:normal;font-family:"Arial Narrow","Helvetica Neue Condensed",Impact,sans-serif;font-weight:800;color:#121212;line-height:1;
+  padding:1px 2px;min-width:.62em;text-align:center;background:linear-gradient(180deg,rgba(0,0,0,.03),rgba(0,0,0,.08));border-radius:1px;box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.cl i.sp{min-width:.35em;background:none;box-shadow:none}
+.cl.red i{color:#c8150c}
+
+/* ================= seven-segment windows ================= */
+.sg{display:block;height:100%;width:auto;overflow:visible}
+.sg .off{fill:currentColor;opacity:.08}
+.sg .on{fill:currentColor}
+.led{color:var(--led)} .led .sg .on{filter:drop-shadow(0 0 3px rgba(255,60,30,.85))}
+.amb{color:var(--amb)} .amb .sg .on{filter:drop-shadow(0 0 3px rgba(255,170,30,.8))}
+.lcd{color:var(--lcd-on)} .lcd .sg .off{opacity:.11}
+
+/* ================= THE PYLON ================= */
+#stPylon{position:absolute;top:8px;left:8px;width:172px;z-index:6;pointer-events:none;display:none;transform-origin:top left;filter:drop-shadow(0 10px 14px rgba(0,0,0,.6))}
+#stPylon.on{display:block}
+#stPylon .crown{position:relative;margin:0 6px;height:62px;border-radius:12px;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%,#2b0d08,#0d0403 70%);box-shadow:inset 0 0 0 2px #000,0 0 0 2px #b9bdc3,0 0 0 3px #3f4349}
+#stPylon .crown img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(1.18);mix-blend-mode:screen}
+#stPylon .face{margin-top:5px;padding:7px 8px 8px;border-radius:10px;
+  background:linear-gradient(180deg,rgba(255,255,255,.55) 0,rgba(255,255,255,.12) 7%,rgba(255,255,255,0) 9%),linear-gradient(180deg,#e6382a,#b81a10 60%,#8e130d);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 0 0 2px #4a0905,0 0 0 3.5px #b9bdc3,0 0 0 4.5px #3f4349,0 0 24px rgba(255,70,40,.35)}
+#stPylon .pr{display:flex;align-items:center;gap:4px;height:34px;margin:0 0 6px;padding:3px 6px 3px 5px;border-radius:4px;background:#070404;
+  box-shadow:inset 0 3px 8px #000,inset 0 0 0 1px #000,0 0 0 1.5px #d8dbe0,0 0 0 2.5px #4b4f55}
+#stPylon .pr.lcd{background:linear-gradient(180deg,#b9dcb1,var(--lcd-bg));box-shadow:inset 0 2px 6px rgba(0,0,0,.35),0 0 0 1.5px #d8dbe0,0 0 0 2.5px #4b4f55}
+#stPylon .pr b{font:800 8.5px/1.05 "Arial Narrow",Arial,sans-serif;letter-spacing:.04em;color:#f3eee0;width:30px;flex:none;opacity:.85}
+#stPylon .pr.lcd b{color:#18301a}
+#stPylon .pr .v{flex:1;height:100%;display:flex;justify-content:flex-end}
+#stPylon .pr .cur{font:900 15px/1 Arial,sans-serif;align-self:flex-start;margin-top:2px;opacity:.9}
+#stPylon .pr small{font:800 8px/1 "Arial Narrow",Arial,sans-serif;align-self:flex-end;margin-bottom:2px;opacity:.75}
+#stPylon .pr.led{height:40px}
+#stPylon.rolling .pr.led .v{animation:stRoll .14s linear infinite}
+@keyframes stRoll{0%{transform:translateY(-1px)}50%{transform:translateY(1px)}100%{transform:translateY(-1px)}}
+#stPylon .gauge{position:relative;height:9px;margin:-2px 2px 7px;border-radius:5px;background:#170505;box-shadow:inset 0 2px 3px #000,0 0 0 1px #d8dbe0}
+#stPylon .gauge i{position:absolute;left:2px;top:2px;bottom:2px;border-radius:3px;max-width:calc(100% - 4px);background:linear-gradient(90deg,#ff3b1f,#ffb21a 35%,#ffd84a);box-shadow:0 0 6px rgba(255,170,30,.7)}
+#stPylon .gauge em{position:absolute;top:-1px;font:900 7px/11px Arial,sans-serif;color:#fff;font-style:normal;opacity:.75}
+#stPylon .gauge em:first-of-type{left:-9px} #stPylon .gauge em:last-of-type{right:-9px}
+#stPylon .era{display:flex;justify-content:center}
+#stPylon .era .cl i{font-size:13px}
+#stPylon .edd{display:none;margin-top:6px;text-align:center;font:900 12px/22px Arial,sans-serif;letter-spacing:.2em;color:#fff;border-radius:4px;
+  background:radial-gradient(circle,#fff3b0 0 1.4px,transparent 2px) 0 2px/9px 100% repeat-x,radial-gradient(circle,#fff3b0 0 1.4px,transparent 2px) 4px 18px/9px 100% repeat-x,#9e0e06;
+  box-shadow:0 0 0 1.5px #d8dbe0,0 0 18px rgba(255,40,20,.8);animation:stChase .5s steps(2) infinite}
+#stPylon.eddon .edd{display:block}
+#stPylon.chaos .face{background:linear-gradient(180deg,rgba(255,255,255,.55) 0,rgba(255,255,255,.12) 7%,rgba(255,255,255,0) 9%),linear-gradient(180deg,#ff4a2a,#c21c0f 60%,#7a0d08)}
+#stPylon .legs{display:flex;justify-content:space-between;padding:0 34px;height:22px}
+#stPylon .legs i{width:10px;background:var(--chrome);border-radius:0 0 3px 3px;-webkit-mask:linear-gradient(#000,transparent);mask:linear-gradient(#000,transparent)}
+@keyframes stChase{0%{background-position:0 2px,4px 18px,0 0}100%{background-position:4px 2px,0 18px,0 0}}
+/* DESKTOP: the pylon at the head of the side panel — the header above is its crown, the readouts a 2×2 price board */
+#stPylon.side{position:relative;top:auto;left:auto;width:auto;margin:7px 10px 3px;flex:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}
+#stPylon.side .crown,#stPylon.side .legs{display:none}
+#stPylon.side .face{margin:0;display:grid;grid-template-columns:1fr 1fr;column-gap:7px;padding:6px 7px 7px}
+#stPylon.side .pr{height:30px;margin:0 0 5px}
+#stPylon.side .pr.led{height:30px}
+#stPylon.side .gauge{grid-column:1/3;margin:0 10px 6px}
+#stPylon.side .edd{grid-column:1/3}
+#stPylon.side .era{align-items:center;height:30px}
+/* TOUCH: one slim strip where the canvas tape used to print */
+#stPylon.strip{top:4px;left:4px;width:auto;filter:drop-shadow(0 4px 6px rgba(0,0,0,.6))}
+#stPylon.strip .crown,#stPylon.strip .legs,#stPylon.strip .gauge{display:none}
+#stPylon.strip .face{margin:0;display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:6px}
+#stPylon.strip .pr{height:22px;margin:0;padding:2px 4px}
+#stPylon.strip .pr.led{height:22px}
+#stPylon.strip .pr b{width:auto;font-size:6.5px;max-width:26px}
+#stPylon.strip .pr .cur{font-size:10px}
+#stPylon.strip .pr small{display:none}
+#stPylon.strip .pr .v{min-width:24px}
+#stPylon.strip .era .cl i{font-size:9px}
+#stPylon.strip .edd{margin:0;font-size:8px;line-height:18px;padding:0 4px}
+
+/* ================= THE PUMPS (company cards) ================= */
+html.station .pl{position:relative;border-image:none!important;border-radius:6px;
+  background:linear-gradient(180deg,rgba(255,255,255,.10) 0,rgba(255,255,255,0) 30%),linear-gradient(90deg,rgba(14,10,6,.96) 34%,rgba(14,10,6,.74) 100%),var(--shot,none) right 30%/cover no-repeat,#17110a;
+  box-shadow:inset 0 4px 0 var(--c,#e0a32a),inset 0 5px 0 rgba(0,0,0,.4),inset 0 0 0 1px rgba(255,255,255,.07),0 0 0 1px #000,0 2px 0 1px #050302}
+html.station .pl.you{box-shadow:inset 0 4px 0 var(--c,#e0a32a),inset 0 5px 0 rgba(0,0,0,.4),0 0 0 1.5px #000,0 0 0 3px var(--gold-lite,#f6c95a),0 2px 0 3px #050302}
+html.station .pl.act{background:linear-gradient(180deg,rgba(255,255,255,.16) 0,rgba(255,255,255,0) 30%),linear-gradient(90deg,rgba(14,10,6,.9) 26%,rgba(14,10,6,.35) 100%),var(--shot,none) right 30%/cover no-repeat,#2a1d0e;
+  box-shadow:inset 0 4px 0 var(--c,#e0a32a),inset 0 0 0 1px rgba(255,255,255,.12),0 0 0 1.5px #000,0 0 0 3px var(--c,#e0a32a),0 0 18px color-mix(in srgb,var(--c,#e0a32a) 55%,transparent)}
+html.station .pl.act::after{content:'ON THE PUMP';position:absolute;right:6px;top:-7px;font:900 8px/12px Arial,sans-serif;letter-spacing:.14em;color:#fff;padding:0 6px;border-radius:2px;
+  background:var(--c,#e0a32a);box-shadow:0 0 0 1px #000,0 0 10px var(--c,#e0a32a);pointer-events:none}
+html.station .pl .bars b{margin-left:3px}
+html.station .pl .w{display:inline-block;vertical-align:-4px;height:15px;padding:1px 3px;border-radius:2px}
+html.station .pl .w.lcd{background:linear-gradient(180deg,#bfe0b7,var(--lcd-bg));box-shadow:inset 0 1px 2px rgba(0,0,0,.4),0 0 0 1px #000}
+html.station .pl .w.led,html.station .pl .w.amb{background:#060303;box-shadow:inset 0 1px 3px #000,0 0 0 1px #3b3f45}
+html.station .pl .w .sg{height:100%}
+
+/* ================= the side panel's header = a backlit sign ================= */
+html.station .rh{background:linear-gradient(180deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.1) 40%,rgba(255,255,255,0) 46%),linear-gradient(180deg,#e2372a,#a8170e);
+  box-shadow:inset 0 -3px 0 var(--cp-yel),inset 0 -4px 0 #e09a00,0 2px 0 #000;border-bottom:0}
+html.station .rh .er{color:var(--cp-cream);text-shadow:0 0 8px rgba(255,220,150,.7),0 2px 0 #6a0a05;font-family:"Arial Black",Arial,sans-serif;font-style:italic;letter-spacing:.02em}
+html.station .rh .tg{color:#ffe1c0;opacity:.85}
+
+/* ================= THE DESK on the changeable-letter board ================= */
+html.station #desk .b{border-image:none!important;border:0;border-radius:4px;padding:8px 14px;
+  background:repeating-linear-gradient(180deg,transparent 0 21px,rgba(0,0,0,.16) 21px 23px),linear-gradient(180deg,#fffdf5,#ebe4cf);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.25),0 0 0 3px #b9bdc3,0 0 0 4px #3f4349,0 0 26px rgba(255,248,220,.35),0 10px 22px rgba(0,0,0,.6)}
+html.station #desk .w{color:#c8150c;font-family:"Arial Black",Arial,sans-serif;font-style:normal}
+html.station #desk .l{color:#121212;font-style:normal;font-family:"Arial Narrow",Arial,sans-serif;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+
+/* ================= E.D.D. = the chase-light emergency sign ================= */
+html.station #edd{border-radius:8px;color:#fff;text-shadow:0 0 10px #fff,0 2px 0 #5a0603;
+  background:radial-gradient(circle,#fff3b0 0 2px,transparent 2.6px) 0 3px/12px 100% repeat-x,radial-gradient(circle,#fff3b0 0 2px,transparent 2.6px) 6px calc(100% - 3px)/12px 100% repeat-x,
+    linear-gradient(180deg,rgba(255,255,255,.35) 0,rgba(255,255,255,0) 48%),linear-gradient(180deg,#e8261a,#9e0e06);
+  box-shadow:0 0 0 2px #4a0905,0 0 0 4px #b9bdc3,0 0 0 5px #3f4349,0 0 40px rgba(255,40,20,.75);animation:stChase2 .45s steps(2) infinite}
+@keyframes stChase2{0%{background-position:0 3px,6px calc(100% - 3px),0 0,0 0}100%{background-position:6px 3px,0 calc(100% - 3px),0 0,0 0}}
+
+/* ================= SETUP: the marquee + the company placards with their forecourts ================= */
+html.station #setup h2{display:inline-block;padding:4px 18px 3px;border-radius:6px;color:#141414;font-family:"Arial Black",Arial,sans-serif;letter-spacing:.06em;
+  background:repeating-linear-gradient(180deg,transparent 0 calc(50% - 1px),rgba(0,0,0,.14) calc(50% - 1px) 50%),linear-gradient(180deg,#fffdf6,#e9e2cc);
+  box-shadow:0 0 0 3px var(--cp-red),0 0 0 4px #4a0905,0 0 0 6px #b9bdc3,0 0 0 7px #3f4349,0 0 30px rgba(255,90,50,.35)}
+html.station .fac{background:radial-gradient(circle at 6px 6.5px,#f0d9a0 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at calc(100% - 6px) 6.5px,#f0d9a0 0 1.6px,#3a2408 2.2px,transparent 2.8px),
+    linear-gradient(180deg,rgba(255,255,255,.45) 0,rgba(255,255,255,0) 6px),linear-gradient(180deg,var(--fc,#e0a32a) 0 12px,rgba(0,0,0,.55) 12px 13px,transparent 13px),
+    linear-gradient(180deg,rgba(16,11,6,.5) 13px,rgba(16,11,6,.9) 80%),var(--shot,none) center 38%/cover no-repeat,#120d07}
+html.station .fac.on{background:radial-gradient(circle at 6px 6.5px,#fff1c4 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at calc(100% - 6px) 6.5px,#fff1c4 0 1.6px,#3a2408 2.2px,transparent 2.8px),
+    linear-gradient(180deg,rgba(255,255,255,.55) 0,rgba(255,255,255,0) 6px),linear-gradient(180deg,var(--fc,#e0a32a) 0 12px,rgba(0,0,0,.55) 12px 13px,transparent 13px),
+    linear-gradient(180deg,rgba(16,11,6,.25) 13px,rgba(16,11,6,.82) 82%),var(--shot,none) center 38%/cover no-repeat,#2c1f10}
+html.station .fac .fb,html.station .fac .fr{text-shadow:0 1px 2px #000,0 0 6px #000}
+
+/* ================= THE LOADING CARD ================= */
+#stLoad{position:fixed;inset:0;z-index:300;opacity:0;transition:opacity .45s;background:#050302;overflow:hidden;cursor:pointer}
+#stLoad.in{opacity:1} #stLoad.out{opacity:0;transition:opacity .6s}
+#stLoad .ph{position:absolute;inset:0;background:center/cover no-repeat;animation:stKB 3.4s ease-out both}
+@keyframes stKB{0%{transform:scale(1.12) translate(1.5%,1%)}100%{transform:scale(1.0) translate(0,0)}}
+#stLoad .vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 45%,rgba(0,0,0,.65)),linear-gradient(180deg,transparent 55%,rgba(0,0,0,.75))}
+#stLoad .board{position:absolute;left:clamp(14px,4vw,48px);bottom:clamp(14px,6vh,56px);max-width:calc(100vw - 28px);padding:10px 14px 12px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.1) 8%,rgba(255,255,255,0) 10%),linear-gradient(180deg,#e6382a,#b81a10 60%,#8e130d);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),inset 0 5px 0 var(--fc),0 0 0 2px #4a0905,0 0 0 3.5px #b9bdc3,0 0 0 4.5px #3f4349,0 0 40px rgba(255,70,40,.45),0 18px 30px rgba(0,0,0,.6)}
+#stLoad .now{font:900 11px/1 Arial,sans-serif;letter-spacing:.3em;color:#ffe9c0;margin:2px 2px 7px}
+#stLoad .nm .cl i{font-size:clamp(20px,3.4vw,40px)}
+#stLoad .rg{font:800 10px/1.2 "Arial Narrow",Arial,sans-serif;letter-spacing:.12em;color:#ffe1c0;margin:7px 2px 9px}
+#stLoad .rd{display:flex;gap:10px;flex-wrap:wrap}
+#stLoad .pr{display:flex;align-items:center;gap:5px;height:38px;padding:3px 8px;border-radius:4px;background:#070404;box-shadow:inset 0 3px 8px #000,0 0 0 1.5px #d8dbe0,0 0 0 2.5px #4b4f55}
+#stLoad .pr b{font:800 8.5px/1.05 "Arial Narrow",Arial,sans-serif;color:#f3eee0;width:46px;opacity:.85}
+#stLoad .pr .sg{height:30px} #stLoad .pr .cur{font:900 16px/1 Arial,sans-serif} #stLoad .pr small{font:800 9px/1 Arial,sans-serif;align-self:flex-end;opacity:.75}
+
+/* ================= THE ATTRACT (boot): the greaser fades into every cover ================= */
+#boot.st-boot{position:fixed}
+#boot.st-boot>:not(#stAttract){position:relative;z-index:3;filter:opacity(var(--title,1))}   /* filter, not opacity: the logo fade-in + FUEL UP pulse animate opacity */
+#stAttract{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#050302}
+#stAttract .fr{position:absolute;inset:0;opacity:0;overflow:hidden}
+#stAttract .gr .img{position:absolute;inset:0;background:center/cover no-repeat;transform-origin:50% 60%}
+#stAttract .gr::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(12,9,6,.5),rgba(12,9,6,.82))}
+#stAttract .blur{position:absolute;inset:-60px;background:center/cover no-repeat;filter:blur(30px) brightness(.38) saturate(1.25)}
+#stAttract .lid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#stAttract .lid img{max-width:92vw;max-height:86vh;aspect-ratio:1/1;object-fit:contain;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 30px 70px rgba(0,0,0,.75)}
+#stAttract .cap{position:absolute;left:50%;bottom:clamp(10px,3vh,26px);transform:translateX(-50%);white-space:nowrap}
+#stAttract .cap .cl i{font-size:clamp(9px,1.3vw,14px)}
+#stAttract .ex .sx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,1.4vh,14px);padding:16px}
+#stAttract .ex .badge{width:min(60vw,560px,50vh);filter:drop-shadow(0 12px 22px rgba(0,0,0,.6))}
+#stAttract .ex .hd .cl i{font-size:clamp(16px,2.6vw,30px)}
+#stAttract .ex ul{list-style:none;margin:0;padding:clamp(8px,1.6vh,16px) clamp(10px,2vw,22px);width:min(92vw,680px);border-radius:12px;display:flex;flex-direction:column;gap:clamp(4px,1vh,9px);
+  background:linear-gradient(180deg,rgba(255,255,255,.28) 0,rgba(255,255,255,.04) 7%,rgba(255,255,255,0) 9%),linear-gradient(180deg,#123a8e,#0a2260 70%,#071640);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25),inset 0 -4px 0 var(--cp-yel,#ffc928),0 0 0 2px #050c22,0 0 0 4px #b9bdc3,0 0 0 5px #3f4349,0 0 40px rgba(60,120,255,.35)}
+#stAttract .ex li{display:flex;align-items:center;gap:12px;color:#fff;font:900 clamp(11px,1.6vw,18px)/1.1 "Arial Black",Arial,sans-serif;letter-spacing:.04em}
+#stAttract .ex li b{flex:none;width:2.2em;text-align:center;color:#ffd23a;text-shadow:0 0 10px rgba(255,200,40,.8);font-size:1.35em}
+#stAttract .ex li b.grn{color:#4fe07a;text-shadow:0 0 10px rgba(60,220,110,.8)}
+#stAttract .ex li small{display:block;font:700 clamp(8px,1vw,11px)/1.25 Arial,sans-serif;letter-spacing:.06em;color:#b8c8ff;margin-top:2px}

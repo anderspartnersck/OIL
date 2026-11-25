@@ -16,14 +16,16 @@
   css.textContent = `
   #pmenu{position:fixed;inset:0;z-index:900;display:none;align-items:center;justify-content:center;background:rgba(8,6,4,.78)}
   #pmenu.on{display:flex}
-  #pmenu .box{background:linear-gradient(180deg,#241a0f,#15110c);border:1px solid #4a3413;border-radius:14px;padding:20px 26px;width:min(420px,calc(100% - 32px));
-    max-height:86vh;overflow:auto;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+  #pmenu .box{background:linear-gradient(180deg,#241a0f,#15110c);border:1px solid #4a3413;border-radius:2px;padding:20px 26px;width:min(420px,calc(100% - 32px));
+    max-height:86vh;overflow:auto;text-align:center;box-shadow:inset 0 0 0 3px #15110c,inset 0 0 0 4px rgba(205,160,80,.45),0 0 0 2px #0b0703,0 0 0 3px #8a5a22,0 20px 50px rgba(0,0,0,.6);
+    background-image:radial-gradient(circle at 9px 9px,#c9a15a 0 2px,#5a3d16 2.6px,transparent 3.2px),radial-gradient(circle at calc(100% - 9px) 9px,#c9a15a 0 2px,#5a3d16 2.6px,transparent 3.2px),radial-gradient(circle at 9px calc(100% - 9px),#c9a15a 0 2px,#5a3d16 2.6px,transparent 3.2px),radial-gradient(circle at calc(100% - 9px) calc(100% - 9px),#c9a15a 0 2px,#5a3d16 2.6px,transparent 3.2px),linear-gradient(180deg,#241a0f,#15110c)}
   #pmenu h2{margin:0 0 4px;font-family:Georgia,serif;color:var(--gold-lite);letter-spacing:.14em;font-size:22px}
   #pmenu .ss{color:#9a8f7c;font-size:12px;margin:0 0 12px;letter-spacing:.06em}
   #pmenu .col{display:flex;flex-direction:column;gap:10px;margin-top:8px}
-  #pmenu .col button.sel{outline:2px solid var(--cream);outline-offset:2px}
-  #pmenu label{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#1a140d;border:1px solid #4a3413;border-radius:10px;padding:8px 12px;font-size:14px;text-align:left}
-  #pmenu select{font:inherit;background:#0c0a08;color:var(--cream);border:1px solid #4a3413;border-radius:6px;padding:4px 6px}
+  #pmenu .col button.sel{outline:2px dashed var(--cream);outline-offset:5px}
+  #pmenu label{display:flex;justify-content:space-between;align-items:center;gap:10px;background:linear-gradient(180deg,#1d150c,#120d07);border:1px solid #4a3413;border-radius:2px;padding:8px 12px;font-size:14px;text-align:left;
+    box-shadow:inset 0 0 0 2px #120d07,inset 0 0 0 3px rgba(205,160,80,.25);color:#cdb98e}  /* a pump's readout row: the label left, the number window right */
+  #pmenu select{font:inherit;background:#0c0a08;color:var(--cream);border:1px solid #4a3413;border-radius:2px;padding:4px 6px}
 `;
   document.head.appendChild(css);
 

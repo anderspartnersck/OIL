@@ -52,8 +52,8 @@
   /* the WARS ticker gets its own row under the tabs (it was the last thing in the column and could print over the seats) */
   body.touch aside{display:flex;flex-direction:column}
   body.touch #tpHand{order:1} body.touch #tpTabs{order:2} body.touch #wars{order:3} body.touch #pathbar{order:4} body.touch #players{order:5} body.touch #log{order:6}
-  body.touch #wars{position:relative!important;margin:2px 8px 6px;padding:5px 8px!important;border:1px solid #3a2c18!important;border-radius:8px;
-    background:#15100a;line-height:1.45;white-space:normal;overflow-wrap:anywhere;z-index:0}
+  body.touch #wars{position:relative!important;margin:2px 8px 6px;padding:5px 8px!important;border:1px solid #3a2c18!important;border-radius:0;box-shadow:inset 3px 0 0 var(--die-supply,#c8321f);
+    background:repeating-linear-gradient(90deg,rgba(242,193,78,.035) 0 1px,transparent 1px 6px),#120d08;line-height:1.45;white-space:normal;overflow-wrap:anywhere;z-index:0}
   /* portrait MAP: the board's empty control deck (THE KEY row) is cut off below the stage; ▾ THE KEY brings it back */
   body.touch.tp-por #stage{overflow:hidden}
   body.touch.tp-por.tp-deckcut #cv{height:var(--tp-cv,100%)}
@@ -82,22 +82,24 @@
 
   /* the tabs: TABLE (path · companies · wars) · LOG — the hand strip sits above them, always */
   #tpTabs{display:flex;gap:6px;padding:6px 8px 4px;flex:none}
-  #tpTabs .chip{flex:1;justify-content:center;font-size:13px;padding:6px 8px;min-height:36px}
+  #tpTabs .chip{flex:1;justify-content:center;font-size:13px;padding:6px 8px;min-height:36px;border-radius:3px 3px 0 0!important}
   body.touch aside[data-tab=table] #log{display:none}
   body.touch aside[data-tab=log] #pathbar,body.touch aside[data-tab=log] #players,body.touch aside[data-tab=log] #wars{display:none!important}
   body.touch aside[data-tab=log] #log{flex:1 0 auto;border-top:none;overflow:visible}
 
   /* THE HAND — face down until you peek */
-  #tpHand{flex:none;margin:6px 8px 0;padding:8px 10px;border-radius:10px;background:#1f170d;border:1px solid #4a3413;min-height:52px}
+  #tpHand{flex:none;margin:6px 8px 0;padding:8px 10px;border-radius:2px;background:linear-gradient(180deg,#1f170d,#160f08);border:1px solid #4a3413;min-height:52px;
+    box-shadow:inset 0 0 0 2px #160f08,inset 0 0 0 3px rgba(205,160,80,.22)}
   #tpHand .hh{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.1em;color:#8a7550}
   #tpHand .hh b{color:var(--gold-lite);letter-spacing:.04em;font-size:12.5px}
   #tpHand .hh .sp{flex:1}
   #tpHand button.peek{min-height:38px;padding:4px 14px;font-size:13px}
   #tpHand .backs{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
-  #tpHand .back{width:30px;height:42px;border-radius:5px;background:repeating-linear-gradient(45deg,#3a2210 0 5px,#2a180b 5px 10px);
-    border:1px solid #93660f;box-shadow:inset 0 0 0 2px #1a1007;display:flex;align-items:center;justify-content:center;color:#caa15e;font-size:16px}
+  #tpHand .back{width:30px;height:42px;border-radius:2px;background:linear-gradient(180deg,transparent 0 72%,#f2c230 72% 84%,transparent 84%),linear-gradient(180deg,#f6eed8,#e2d2a8);
+    border:1px solid #2a170a;box-shadow:inset 0 0 0 2px #f6eed8,inset 0 0 0 3px #c3261a,0 2px 0 #050302;display:flex;align-items:center;justify-content:center;color:transparent;font-size:16px;position:relative;overflow:hidden}
+  #tpHand .back::after{content:'OiL!';position:absolute;left:0;right:0;top:9px;text-align:center;font:900 10px/1 'Arial Black','Trebuchet MS',sans-serif;color:#c3261a;letter-spacing:-.02em}
   #tpHand .cards{display:flex;flex-direction:column;gap:6px;margin-top:7px;max-height:var(--tp-handmax,34vh);overflow-y:auto}
-  #tpHand .cd{border-radius:8px;padding:6px 9px;background:#2a1e10;border-left:4px solid var(--gold);font-size:11.5px;line-height:1.35;color:#cdbf9e}
+  #tpHand .cd{border-radius:2px;padding:6px 9px;background:#2a1e10;border-left:4px solid var(--gold);box-shadow:inset 0 0 0 1px rgba(205,160,80,.2);font-size:11.5px;line-height:1.35;color:#cdbf9e}
   #tpHand .cd .n{font-weight:800;font-size:13px;color:var(--gold-lite)}
   #tpHand .cd.secret{border-left-color:#2f9e5b;background:#132016}
   #tpHand .cd .tag{float:right;font-size:9.5px;font-weight:800;letter-spacing:.12em;color:#2f9e5b}
@@ -116,9 +118,9 @@
 
   /* PASS THE PHONE (pass-and-play): covers a new seat's call and its hand until they tap in */
   #tpPass{position:fixed;inset:0;z-index:950;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;
-    background:radial-gradient(ellipse at center,#241a0f 0,#0c0a08 70%);padding:calc(24px + var(--sat,0px)) 24px calc(24px + var(--sab,0px))}
+    background:radial-gradient(ellipse at center,rgba(242,194,48,.10) 0,transparent 45%),radial-gradient(ellipse at center,#241a0f 0,#0c0a08 70%);padding:calc(24px + var(--sat,0px)) 24px calc(24px + var(--sab,0px))}
   #tpPass.on{display:flex}
-  #tpPass .k{font-size:12px;font-weight:800;letter-spacing:.2em;color:#8a7550}
+  #tpPass .k{font-size:12px;font-weight:800;letter-spacing:.2em;color:#c3261a;background:linear-gradient(180deg,#f6eed8,#e2d2a8);padding:4px 14px;box-shadow:inset 0 -3px 0 #f2c230,0 0 0 2px #2a170a,0 0 0 3px #8a5a22}
   #tpPass .nm{font-family:Georgia,serif;font-size:30px;color:var(--gold-lite)}
   #tpPass .ss{color:#9a8f7c;font-size:13px;max-width:320px;line-height:1.45}
   #tpPass button{font-size:17px;padding:14px 28px;min-height:56px}

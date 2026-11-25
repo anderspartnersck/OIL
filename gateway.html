@@ -134,6 +134,29 @@
 </style>
 <link rel="stylesheet" href="src/oil-uikit.css"><!-- UI KIT skin (3D PIPELINE lib/ui): art only, layout untouched -->
 <style>/* gateway-owned fit fixes over the generated kit: the kit paints a 13px colour band inside the top of each company card — keep the name below it */ .fac{padding-top:17px}</style>
+<link rel="stylesheet" href="src/oil-selectables.css"><link rel="stylesheet" href="src/oil-station.css"><!-- 1119 THE STATION: candy plastic + gas-station big boards (paint only) --><!-- 1119: every selectable = an OiL! printed component (sign / manifest / ticket / placard / dice tray), paint only -->
+<style>/* FIT 1125 (desktop side panel, layout only): in a short window (<=900 tall, e.g. 1280x720) all six company pumps must show
+   without scrolling. The pumps take priority (flex:none); the PATH card and the log give up height and scroll instead.
+   Cards compact: tighter padding, smaller readout windows, one readout row. Taller windows keep the full-size cards. */
+@media (max-height:900px){
+  body:not(.touch) aside .rh{padding:5px 14px}
+  body:not(.touch) #stPylon.side{margin:5px 10px 2px}
+  body:not(.touch) #stPylon.side .face{padding:5px 6px 5px}
+  body:not(.touch) #stPylon.side .pr,body:not(.touch) #stPylon.side .pr.led,body:not(.touch) #stPylon.side .era{height:24px;margin-bottom:4px}
+  body:not(.touch) #stPylon.side .gauge{margin:-1px 10px 5px}
+  body:not(.touch) #players{flex:none;overflow:visible;padding:5px 8px;gap:5px}
+  body:not(.touch) .pl{padding:4px 8px 5px}
+  html:not(.station) body:not(.touch) .pl{padding-left:20px}
+  body:not(.touch) .pl .nm{font-size:12px;line-height:15px}
+  body:not(.touch) .pl .tie{margin-top:0;line-height:11px;min-height:11px}   /* wraps rather than clips: a long PACT/holds line costs the PATH card a line, never the record */
+  body:not(.touch) .pl .bars{margin-top:2px;align-items:flex-end}
+  body:not(.touch) .pl .bar{height:3px;margin-top:1px}
+  html.station body:not(.touch) .pl .w{height:13px;vertical-align:-3px}
+  html.station body:not(.touch) .pl{background-size:auto,auto,auto 100%}   /* the forecourt strip: card-height, pinned right, not a full cover */
+  body:not(.touch) #pathbar.on{flex:0 1 auto;min-height:40px;overflow-y:auto;margin:0 10px 4px;padding:5px 9px;font-size:10.5px;line-height:1.4}
+  body:not(.touch) #log{flex:1 1 48px;min-height:48px;padding:4px 12px;line-height:1.4}
+}
+</style>
 </head>
 <body>
 
@@ -141,6 +164,7 @@
   <img class="logo" src="assets/logo/oil_logo.png" alt="OiL!">
   <div class="tag">EXTRACT. &nbsp;<b>MOVE BARRELS.</b>&nbsp; OUTLAST THE WORLD.</div>
   <div class="sub">THE HOME GAME · NATIVE ENGINE · the oil-rig table</div>
+  <div class="sub">Created by Joseph Coleman, Claude, ChatGPT, and Blender<br>Castle Killscreen · Anders &amp; Partners</div>
   <button class="go" id="bootGo">FUEL UP ▸</button>
   <button class="alt sm" id="rbBoot" style="margin-top:14px">📖 READ THE RULES</button>
 </section>
@@ -224,7 +248,7 @@
 <script src="src/oil-rulebook.js"></script>
 <script src="src/oil-rulebook-text.js"></script>
 <script src="src/oil-uikit.js"></script><!-- UI KIT canvas sprites (render-only) -->
-<script src="src/oil-touch.js"></script><!-- X7 1119: phone touch layouts (portrait board-over-hand / landscape side panel; front-end only) -->
+<script src="src/oil-touch.js"></script><script src="src/oil-station.js"></script><!-- 1119 THE STATION: pylon / pump readouts / beauty shots / cover attract (render-only; #station=0 = before) --><!-- X7 1119: phone touch layouts (portrait board-over-hand / landscape side panel; front-end only) -->
 <script>
 (function(){
 "use strict";
@@ -322,7 +346,7 @@ function buildSetup(){
   FAC.forEach(f=>{
     const inRoster=S.expansion||f.edition!=='EXPANSION';
     const st=active.includes(f.code)?(f.code===S.youCode?'you':(S.seat[f.code]==='human'?'human':'bot')):'out';
-    const d=document.createElement('div'); d.className='fac'+(st==='you'?' on':st==='human'?' hu':''); d.style.setProperty('--fc',colorFor(f.code));
+    const d=document.createElement('div'); d.className='fac'+(st==='you'?' on':st==='human'?' hu':''); d.style.setProperty('--fc',colorFor(f.code)); d.dataset.code=f.code;
     if(!inRoster)d.style.opacity='.35';
     d.innerHTML=`<div class="fb">${f.brand}${f.edition==='EXPANSION'?' <span style="color:#2f9e5b;font-size:8px">⊕EXP</span>':''}</div>
       <div class="fr">${f.region}</div><div class="seat ${st}">${st==='you'?'★ YOU':st==='human'?'▸ PLAYER':st==='bot'?'BOT':'— tap to seat'}</div>
@@ -419,6 +443,7 @@ function startGame(){
   buildPanels(); updatePanels(); show('play'); draw();
   logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'NOW WITH SuprexCore PREMIUM (core + expansion)':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.suprex?' · SUPREXCORE: THE GULF ON FIRE · WAR IN RUSSIA/UKRAINE · VENEZUELA TO THE CALIFORNIA LANES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
+  if(window.OIL_STATION&&OIL_STATION.on) OIL_STATION.opened();   // 1119 THE STATION: the loading card (your company's forecourt)
 }
 function buildPanels(){
   const w=$('#players'); w.innerHTML='';
@@ -501,6 +526,7 @@ function updatePanels(){
     { const nv=d.querySelector('.nv'); if(nv){ nv.textContent='$'+(p.holdings(game.price)|0); d.querySelector('.ne').textContent=p.exposure; d.querySelector('.np').textContent=p.pips; } }
   });
   updatePathBar();
+  if(window.OIL_STATION&&OIL_STATION.on) OIL_STATION.panels();   // 1119 THE STATION: VAL/EXP/PIPS as pump readouts (render-only)
 }
 /* ---------- THE PATH — presentation over the engine (the engine stays the authority) ---------- */
 const placeName=c=>{ const q=((window.OIL_MAP&&OIL_MAP.BY[c])||{}); return q.full||q.name||c; };   // 1117: the full location wherever there is one ("GENESEE COUNTY, MICHIGAN, USA"); straits/seas keep their names
@@ -858,6 +884,7 @@ function presentPrompt(g,p,ctx){
     const box=$('#npo'); box.innerHTML='';
     const mk=o=>{const b=document.createElement('button'); if(o.cls)b.className=o.cls; b.textContent=o.label; b.dataset.v=String(o.value);
       if(o.tip)b.title=o.tip;
+      { const si=g.players.findIndex(q=>q.name===o.label); if(si>=0){ b.classList.add('co'); b.style.setProperty('--fc',(g._colors||[])[si]||'#e0a32a'); } }   // 1119 paint only: a company option wears its placard colour
       b.onclick=()=>{$('#nprompt').classList.remove('on'); resolve(o.value);}; return b;};
     if(opts.some(o=>o.group)){
       box.className='po grouped';
@@ -1068,10 +1095,43 @@ function layoutLabels(labels,dots,box,dpr,keepOut){
       ctx.fillStyle=l.col; ctx.fillText(l.t,best.cx,y); y+=l.h/2; });
   });
 }
+// 1119 THE HOUSE LOOK (Joe 1119: "use the unlit as a base and bathe it in shadow and light ... make sure that any board game
+// situation has this cleanness"; 3D PIPELINE games/oil/blender/look_1119.py is the tabletop version). RENDER-ONLY, over the
+// board plate and UNDER every mark: the plate stays the clean base; a neutral light pool sits on the play area, the board's
+// rim and rails fall off toward petroleum-black, two sodium pools glow on the refinery coasts (the Gulf, the Gulf Coast), and
+// the room around the board is night. Tracks, tokens, labels and THE KEY are drawn after it, untouched (never a tint over
+// the print). #look=1119 / ?look=1119 turns it on; #look=off forces the plain board.
+const LOOK1119=/look=1119/.test(location.hash+location.search)&&!/look=off/.test(location.hash+location.search);
+function lookRoom(W,H){   // the room: night, a breath of petroleum where the table is
+  const g=ctx.createRadialGradient(W/2,H*.46,0,W/2,H*.46,Math.hypot(W,H)*.6);
+  g.addColorStop(0,'#0c1313'); g.addColorStop(.55,'#070b0b'); g.addColorStop(1,'#020303');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+}
+function lookBath(bx,by,bw,bh,pools){
+  ctx.save();
+  const cx=bx+bw*.5, cy=by+bh*.43, k=bh/bw*1.05;
+  // the falloff: an elliptical pool the size of the map; past it the board multiplies down toward petroleum-black
+  ctx.globalCompositeOperation='multiply';
+  ctx.setTransform(1,0,0,k,0,cy*(1-k));
+  let g=ctx.createRadialGradient(cx,cy,bw*.30,cx,cy,bw*.62);
+  g.addColorStop(0,'rgb(255,255,255)'); g.addColorStop(.55,'rgb(178,196,196)'); g.addColorStop(1,'rgb(70,96,98)');
+  ctx.fillStyle=g; ctx.fillRect(bx,(by-cy*(1-k))/k,bw,bh/k);
+  ctx.setTransform(1,0,0,1,0,0);
+  // the sodium pools: refinery light on the coasts, soft and low (screen, so the black sea glows a little, the gold warms)
+  ctx.globalCompositeOperation='screen';
+  pools.forEach(([x,y,r,a])=>{ const q=ctx.createRadialGradient(x,y,0,x,y,r);
+    q.addColorStop(0,`rgba(255,168,84,${a})`); q.addColorStop(.5,`rgba(255,140,60,${a*.45})`); q.addColorStop(1,'rgba(255,120,40,0)');
+    ctx.fillStyle=q; ctx.fillRect(x-r,y-r,2*r,2*r); });
+  // a little haze: the light hangs in the air over the play area
+  const h=ctx.createRadialGradient(cx,cy,0,cx,cy,bw*.55); h.addColorStop(0,'rgba(210,225,222,.035)'); h.addColorStop(1,'rgba(210,225,222,0)');
+  ctx.fillStyle=h; ctx.fillRect(bx,by,bw,bh);
+  ctx.restore();
+}
 function drawMap(){
   const MP=window.OIL_MAP; if(!MP||!game){draw0();return;}
   const W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=cv.clientHeight*devicePixelRatio;
   ctx.clearRect(0,0,W,H);
+  if(LOOK1119) lookRoom(W,H);   // 1119: the room around the board is night
   // the board art, letterboxed to the stage
   let bx=0,by=0,bw=W,bh=H;
   if(boardReady){
@@ -1089,6 +1149,7 @@ function drawMap(){
   const bwc=bw/dpr, MAPK=Math.max(0.5,Math.min(0.78,0.78*bwc/1100)), dI=dpr*MAPK;
   const FS=Math.max(7,Math.min(10,10*bwc/1050)), FS2=FS>=10?10:Math.max(7,FS-0.5), fnt=(b,px)=>(b?'bold ':'')+(px*dpr)+'px Trebuchet MS';
 
+  if(LOOK1119&&boardReady){ const pp=['HADDAD','HARTSTARR'].map(c=>AT(c)).filter(p=>p&&p[0]); lookBath(bx,by,bw,bh,pp.map((p,i)=>[X(p),Y(p),bw*(i?.13:.15),i?.13:.16])); }   // 1119 THE HOUSE LOOK (under every mark)
   drawKey(bx,by,bw,bh,dpr); drawKey2(bx,by,bw,bh,dpr);
   drawPipelines(MP,X,Y,dI);   // 1117: the world's real pipelines — drawn context under the network (hover names them)
   if(EE&&window.OIL_THEATRES_VIEW) OIL_THEATRES_VIEW.drawBoard(ctx,game,{X,Y,dpr,k:bw/(1100*dpr)});   // 1118: the theatres, UNDER the lanes
@@ -1242,20 +1303,21 @@ function drawMap(){
   const D=game.dials;
   ctx.textAlign='left'; ctx.font=('bold '+12*dpr+'px Trebuchet MS');
   const hud=`$${game.price}  ·  OIL ${game.oil}/${D.OIL_START}  ·  ${game.era}${game.hegemony?`  ·  ${game.heg2?'HEGEMONY ':''}◇${game.pawns.filter(z=>!z.by).length} ducks`:''}`;
-  { const hw=ctx.measureText(hud).width;   // UI KIT (render-only): a plate behind the readout + the era lamp
+  const stOn=!!(window.OIL_STATION&&OIL_STATION.on&&OIL_STATION.covers()), hx=(stOn?OIL_STATION.clearX():10)*dpr;   // 1119: THE PYLON carries this readout
+  if(!stOn){ { const hw=ctx.measureText(hud).width;   // UI KIT (render-only): a plate behind the readout + the era lamp
     if(UIK.nine(ctx,'hudplate',3*dpr,5*dpr,hw+34*dpr,22*dpr,dpr)) UIK.spr(ctx,game.era==='CHAOTIC'?'era.chaotic':'era.stable',10*dpr+hw+8*dpr,8*dpr,16*dpr,16*dpr); }
   ctx.fillStyle=game.era==='CHAOTIC'?'#e2632a':'#f6c95a';
-  ctx.fillText(hud,10*dpr,16*dpr);
+  ctx.fillText(hud,10*dpr,16*dpr); }
   const shutList=Object.keys(st.closed||{});
   if(shutList.length){ ctx.fillStyle='#e2632a'; ctx.font=(10.5*dpr)+'px Trebuchet MS';
-    ctx.fillText('SHUT: '+shutList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),10*dpr,31*dpr); }
+    ctx.fillText('SHUT: '+shutList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),hx,(stOn?16:31)*dpr); }
   const fireList=game.crisis?Object.keys(game.fires):[];
   if(fireList.length){ ctx.fillStyle='#ff8a4a'; ctx.font=('bold '+11*dpr+'px Trebuchet MS');
-    ctx.fillText('ON FIRE: '+fireList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),10*dpr,(shutList.length?46:31)*dpr); }
+    ctx.fillText('ON FIRE: '+fireList.map(k=>(MP.BY[k]||{}).name||k).join(' · '),hx,((shutList.length?46:31)-(stOn?15:0))*dpr); }
   const builtList=Object.keys(st.built||{}).filter(k=>st.built[k]);
   if(builtList.length){ ctx.fillStyle='#2f9e5b'; ctx.font=(10.5*dpr)+'px Trebuchet MS';
     // (sanity check, round 6: this line used to sit on top of SHUT — one 15px line per status, in order)
-    ctx.fillText('RAISED: '+builtList.map(k=>((MP.STRUCTURES||{})[k]||{}).name||k).join(' · '),10*dpr,(16+15*(1+(shutList.length?1:0)+(fireList.length?1:0)))*dpr); }
+    ctx.fillText('RAISED: '+builtList.map(k=>((MP.STRUCTURES||{})[k]||{}).name||k).join(' · '),hx,(16+15*((stOn?0:1)+(shutList.length?1:0)+(fireList.length?1:0)))*dpr); }
   ctx.textAlign='right'; ctx.fillStyle='#9a8f7c'; ctx.font=(10.5*dpr)+'px Trebuchet MS';
   const dw=drawDiceRow(W-10*dpr,16*dpr,dpr);
   ctx.textAlign='right'; ctx.fillStyle='#9a8f7c'; ctx.font=(10.5*dpr)+'px Trebuchet MS'; ctx.textBaseline='middle';
@@ -1393,6 +1455,7 @@ if(location.hash.indexOf('setup')>=0){buildSetup();show('setup');}
 // test hook (scripts/e2e_gateway.mjs): read-only handle on the live game, only with #e2e in the URL
 if(location.hash.indexOf('e2e')>=0) window.__OIL_GAME=()=>game;
 // X7 phone touch layouts: a read-only handle (game) + a redraw on rotate; does nothing on the desktop page
+if(window.OIL_STATION&&OIL_STATION.on) OIL_STATION.attach({game:()=>game,view:()=>S.view,FAC,colorFor});   // 1119 THE STATION: read-only handles
 if(window.OIL_TOUCH&&OIL_TOUCH.on) OIL_TOUCH.attach({game:()=>game,view:()=>S.view,draw:()=>{ if(game&&$('#play').classList.contains('on')) draw(); }});
 if(location.hash.indexOf('autoplay')>=0){
   buildSetup();startGame();$('#spd').value='80';

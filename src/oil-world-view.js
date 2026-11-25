@@ -221,7 +221,8 @@
     // the tape, small: the world never hides the market
     c.textAlign = 'left'; c.textBaseline = 'middle'; c.font = 'bold ' + 12 * dpr + 'px Trebuchet MS';
     c.fillStyle = g.era === 'CHAOTIC' ? '#e2632a' : '#f6c95a';
-    c.fillText(`$${g.price}  ·  OIL ${g.oil}/${g.dials.OIL_START}  ·  ${g.era}  ·  ◉ THE WORLD`, 10 * dpr, 16 * dpr);
+    if (window.OIL_STATION && OIL_STATION.on && OIL_STATION.covers()) c.fillText('◉ THE WORLD', OIL_STATION.clearX() * dpr, 16 * dpr);   // 1119: THE PYLON carries the tape
+    else c.fillText(`$${g.price}  ·  OIL ${g.oil}/${g.dials.OIL_START}  ·  ${g.era}  ·  ◉ THE WORLD`, 10 * dpr, 16 * dpr);
     if (H.dice) H.dice(W - 10 * dpr, 16 * dpr, dpr);
     c.font = `italic ${10 * dpr}px Georgia, serif`; c.fillStyle = 'rgba(202,161,94,.7)'; c.textAlign = 'center';
     c.fillText('the ships sail their routes · cargo treks the pipes · fires burn until someone pays', W / 2, HH - 10 * dpr);

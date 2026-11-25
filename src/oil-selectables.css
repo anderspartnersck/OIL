@@ -1,0 +1,104 @@
+/* OiL! — THE SELECTABLES (1119). Every thing you can press, drawn as an OiL! printed component, not app chrome.
+   Joe 1119: "it needs to go back to the more arcade cab menu style for all selectables … way too claude menu style".
+   Replaces the generated UI-kit gold PILLS / rounded chips (src/oil-uikit.css, which stays untouched: panels/frames
+   keep its art) with the box's own vocabulary:
+
+     button          THE SIGN       the forecourt sign off the box: cream enamel face, OiL! red caps, the yellow
+                                    "THE HOME GAME" band along the foot, a dark bronze frame. Go / confirm.
+     button.alt      THE MANIFEST   a cargo-manifest tag: petroleum-black stock, gold ink, a perforated rule.
+     .chip           THE TICKET     a printed ticket; ON = run through the stamp (cream stock, red double rule).
+     .chip.box       THE BOX LID    the CORE / SuprexCore lids: ON = the cover face with its yellow band.
+     .fac            THE PLACARD    a company placard: the company colour as the header bar, brass rivets.
+     #ctrl           THE DICE TRAY  the table's controls take the dice canon (data.py DICE_COLORS):
+                                    RUN = Green Anders · STEP = Weather yellow · MAP/BOARD = World blue.
+   PAINT ONLY: no padding, font, width, height or border width changes — every hit area is the box it was
+   (tools/ui_rects.mjs proves it). Colours: dice canon + src/oil-skin.js FACTION_COLORS + the box art. */
+
+:root{--sign-face:#f3ead2;--sign-face2:#e2d2a8;--sign-ink:#c3261a;--sign-band:#f2c230;--sign-frame:#2a170a;--sign-bronze:#8a5a22;
+  --man-stock:#17110a;--man-stock2:#211710;--man-ink:#f2c14e;--man-rule:#9c7128;
+  --die-supply:#c8321f;--die-weather:#e8b923;--die-world:#2f63b0;--die-anders:#2f8f4b}
+
+/* ================= THE SIGN (primary) ================= */
+button{border-image:none!important;border:0 solid transparent;border-radius:3px;color:var(--sign-ink);
+  background:linear-gradient(180deg,#fbf5e4 0,var(--sign-face) 38%,var(--sign-face2) 100%);
+  box-shadow:inset 0 -5px 0 var(--sign-band),inset 0 -6px 0 #b5861b,inset 0 0 0 1px rgba(90,50,10,.35),
+    0 0 0 2px var(--sign-frame),0 0 0 3px var(--sign-bronze),0 4px 0 3px #0b0703,0 8px 14px rgba(0,0,0,.45);
+  text-shadow:0 1px 0 rgba(255,255,255,.55)}
+button:hover{background:linear-gradient(180deg,#fffaf0 0,#f8f0d9 40%,#ecdcb3 100%);
+  box-shadow:inset 0 -5px 0 #ffd23f,inset 0 -6px 0 #b5861b,inset 0 0 0 1px rgba(90,50,10,.35),
+    0 0 0 2px var(--sign-frame),0 0 0 3px #c08a3a,0 4px 0 3px #0b0703,0 0 18px rgba(255,190,80,.35),0 8px 14px rgba(0,0,0,.45)}
+button:active{transform:translateY(3px);box-shadow:inset 0 -5px 0 var(--sign-band),inset 0 -6px 0 #b5861b,inset 0 2px 4px rgba(60,30,5,.35),
+    0 0 0 2px var(--sign-frame),0 0 0 3px var(--sign-bronze),0 1px 0 3px #0b0703}
+button:focus-visible{outline:2px dashed var(--sign-band);outline-offset:5px}
+button:disabled,button:disabled:hover{color:#8a7c63;text-shadow:none;transform:none;
+  background:linear-gradient(180deg,#5a5040,#3e3629);
+  box-shadow:inset 0 -5px 0 #6a5a2c,inset 0 0 0 1px rgba(0,0,0,.4),0 0 0 2px var(--sign-frame),0 0 0 3px #4a3a22,0 4px 0 3px #0b0703}
+
+/* ================= THE MANIFEST (secondary) ================= */
+button.alt,#nprompt .po button.no{color:var(--man-ink);text-shadow:0 1px 0 #000;border-radius:2px;
+  background:repeating-linear-gradient(0deg,rgba(255,220,150,.025) 0 2px,transparent 2px 4px),
+    linear-gradient(180deg,var(--man-stock2),var(--man-stock));
+  box-shadow:inset 0 0 0 1px #000,inset 0 0 0 3px var(--man-stock),inset 0 0 0 4px rgba(156,113,40,.55),
+    0 0 0 1.5px var(--man-rule),0 3px 0 1.5px #050302,0 6px 10px rgba(0,0,0,.4);
+  outline:1px dashed rgba(242,193,78,.35);outline-offset:-7px}
+button.alt:hover,#nprompt .po button.no:hover{color:#ffe08a;background:repeating-linear-gradient(0deg,rgba(255,220,150,.03) 0 2px,transparent 2px 4px),linear-gradient(180deg,#2e2014,#1c140b);
+  box-shadow:inset 0 0 0 1px #000,inset 0 0 0 3px #1c140b,inset 0 0 0 4px rgba(242,193,78,.75),0 0 0 1.5px #d39a35,0 3px 0 1.5px #050302,0 0 14px rgba(242,193,78,.18)}
+button.alt:active,#nprompt .po button.no:active{transform:translateY(2px);box-shadow:inset 0 0 0 1px #000,inset 0 0 0 4px rgba(156,113,40,.55),inset 0 3px 6px rgba(0,0,0,.6),0 0 0 1.5px var(--man-rule),0 1px 0 1.5px #050302}
+
+/* ================= THE TICKET (toggles) ================= */
+.chip{border-image:none!important;border-color:transparent;border-radius:2px;color:#cdb98e;
+  background:linear-gradient(90deg,transparent 7px,rgba(0,0,0,.0) 7px),linear-gradient(180deg,#2b1f12,#1d150c);
+  box-shadow:inset 0 0 0 1px rgba(205,160,80,.35),0 2px 0 #050302;
+  outline:1px dashed rgba(205,160,80,.28);outline-offset:-5px}
+.chip:hover{color:#f2dfae;box-shadow:inset 0 0 0 1px rgba(242,193,78,.7),0 2px 0 #050302,0 0 10px rgba(242,193,78,.15)}
+.chip.on{color:var(--sign-ink);text-shadow:0 1px 0 rgba(255,255,255,.5);outline:none;border-color:transparent;
+  background:radial-gradient(circle at 88% 30%,rgba(195,38,26,.10) 0 9px,transparent 10px),linear-gradient(180deg,#f6eed8,#e4d4ab);
+  box-shadow:inset 0 0 0 2px #f6eed8,inset 0 0 0 3px var(--sign-ink),inset 0 0 0 4.5px #f6eed8,inset 0 0 0 5.5px rgba(195,38,26,.7),0 2px 0 #050302,0 0 0 1px #3a2210}
+
+/* ---- THE BOX lids (CORE / SuprexCore) ---- */
+.chip.box{border-radius:2px;border-image:none!important;
+  background:linear-gradient(180deg,#241a10,#140e08);box-shadow:inset 0 0 0 1px rgba(205,160,80,.4),inset 0 0 0 4px #140e08,inset 0 0 0 5px rgba(205,160,80,.2),0 3px 0 #050302}
+.chip.box.on{color:var(--sign-ink);background:linear-gradient(180deg,#fbf5e4,#ecdfba 70%);text-shadow:0 1px 0 #fff8;
+  box-shadow:inset 0 -6px 0 var(--sign-band),inset 0 -7px 0 #b5861b,inset 0 0 0 2px var(--sign-frame),inset 0 0 0 3px #c08a3a,0 3px 0 #050302,0 0 16px rgba(242,194,48,.18)}
+.chip.box.on small{color:#5a3812;opacity:1}
+
+/* ================= THE PLACARD (company select) ================= */
+.fac{border-image:none!important;border-color:transparent;border-radius:2px;
+  background:radial-gradient(circle at 6px 6.5px,#f0d9a0 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at calc(100% - 6px) 6.5px,#f0d9a0 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at 6px calc(100% - 6px),#f0d9a0 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at calc(100% - 6px) calc(100% - 6px),#f0d9a0 0 1.6px,#3a2408 2.2px,transparent 2.8px),linear-gradient(180deg,var(--fc,#e0a32a) 0 12px,rgba(0,0,0,.55) 12px 13px,transparent 13px),linear-gradient(180deg,#1d150c,#120d07);
+  box-shadow:inset 0 0 0 1px rgba(205,160,80,.35),0 3px 0 #050302}
+.fac:hover{box-shadow:inset 0 0 0 1px rgba(242,193,78,.8),0 3px 0 #050302,0 0 12px rgba(242,193,78,.15)}
+.fac.on{background:radial-gradient(circle at 6px 6.5px,#fff1c4 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at calc(100% - 6px) 6.5px,#fff1c4 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at 6px calc(100% - 6px),#fff1c4 0 1.6px,#3a2408 2.2px,transparent 2.8px),radial-gradient(circle at calc(100% - 6px) calc(100% - 6px),#fff1c4 0 1.6px,#3a2408 2.2px,transparent 2.8px),linear-gradient(180deg,var(--fc,#e0a32a) 0 12px,rgba(0,0,0,.55) 12px 13px,transparent 13px),linear-gradient(180deg,#2c1f10,#1a120a);
+  box-shadow:inset 0 0 0 2px var(--fc,#e0a32a),inset 0 0 0 3px #0c0804,0 0 0 2px var(--gold-lite,#f6c95a),0 3px 0 2px #050302}
+.fac.hu{box-shadow:inset 0 0 0 2px var(--fc,#e0a32a),0 0 0 2px #9fd8a8,0 3px 0 2px #050302}
+.fac .rbk{text-decoration:underline dashed 1px;text-underline-offset:2px}
+
+/* ================= THE DICE TRAY (#ctrl) ================= */
+#ctrl button.alt{border-radius:2px}
+#ctrl #runBtn,#ctrl #stepBtn,#ctrl #viewBtn,#ctrl #boardBtn{color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.55);outline:none;border-radius:4px;
+  background:radial-gradient(circle at 7px 7px,rgba(255,255,255,.85) 0 1.6px,transparent 2.2px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px),rgba(255,255,255,.85) 0 1.6px,transparent 2.2px),
+    linear-gradient(180deg,rgba(255,255,255,.22),rgba(0,0,0,.18)),var(--die,#2f63b0);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.28),0 0 0 2px #0b0703,0 3px 0 2px #050302,0 5px 10px rgba(0,0,0,.45)}
+#ctrl #runBtn{--die:var(--die-anders)} #ctrl #stepBtn{--die:var(--die-weather);color:#2a1a02;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+#ctrl #viewBtn,#ctrl #boardBtn{--die:var(--die-world)}
+#ctrl #runBtn:hover,#ctrl #stepBtn:hover,#ctrl #viewBtn:hover,#ctrl #boardBtn:hover{filter:brightness(1.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.28),0 0 0 2px #0b0703,0 3px 0 2px #050302,0 0 12px color-mix(in srgb,var(--die) 55%,transparent)}
+#ctrl #runBtn:active,#ctrl #stepBtn:active,#ctrl #viewBtn:active,#ctrl #boardBtn:active{transform:translateY(2px);
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.4),0 0 0 2px #0b0703,0 1px 0 2px #050302}
+/* the speed knob = a pump's number window */
+#ctrl select,#pmenu select{border-radius:2px;background-color:#050403;color:#f6e7b8;border:1px solid #6a4a1c;box-shadow:inset 0 2px 4px #000,0 0 0 2px #1d150c}
+
+/* ================= decisions (THE BOARD asks you) ================= */
+#nprompt .po button:not(.no){border-radius:2px}
+
+/* ================= the rulebook's tabs = index tabs on a binder ================= */
+body #rulebook .rb-tab{border-image:none!important;border-radius:3px 3px 0 0;color:#cdb98e;
+  background:linear-gradient(180deg,#2b1f12,#1a120a);box-shadow:inset 0 1px 0 rgba(242,193,78,.35),inset 1px 0 0 rgba(205,160,80,.3),inset -1px 0 0 rgba(205,160,80,.3),0 2px 0 #050302}
+body #rulebook .rb-tab.on{color:var(--sign-ink);background:linear-gradient(180deg,#fbf5e4,#e4d4ab);text-shadow:0 1px 0 #fff8;
+  box-shadow:inset 0 -4px 0 var(--sign-band),inset 0 0 0 1px #6a4a1c,0 2px 0 #050302}
+
+/* a decision that names a company (pacts, tribute, scapegoat, snares) = that company's placard tab */
+#nprompt .po button.co:not(.no){box-shadow:inset 5px 0 0 var(--fc,#e0a32a),inset 6px 0 0 rgba(0,0,0,.45),inset 0 -5px 0 var(--sign-band),inset 0 -6px 0 #b5861b,
+  0 0 0 2px var(--sign-frame),0 0 0 3px var(--sign-bronze),0 4px 0 3px #0b0703,0 8px 14px rgba(0,0,0,.45)}
+#nprompt .po button.co:not(.no):hover{box-shadow:inset 5px 0 0 var(--fc,#e0a32a),inset 6px 0 0 rgba(0,0,0,.45),inset 0 -5px 0 #ffd23f,inset 0 -6px 0 #b5861b,
+  0 0 0 2px var(--sign-frame),0 0 0 3px #c08a3a,0 4px 0 3px #0b0703,0 0 16px color-mix(in srgb,var(--fc,#e0a32a) 45%,transparent)}
