@@ -73,7 +73,7 @@
     const stateNote = al === 'state'
       ? 'A <b>state</b> company. With the expansion the state never requisitions you and pirates never board you — you <i>are</i> the state. Heat on your ground you absorb with legitimacy.'
       : 'A <b>private</b> company. With the expansion, in wartime the state may requisition you, and in pirate water pirates (or the embargo) can board you. Heat on your ground you lobby away with cash.';
-    const setupLine = f.setup ? (code === 'STOCK' ? 'Starts with <b>+$8</b> (capitalized).' : code === 'MC' ? 'Starts with <b>+2 pips</b> (the engineering edge).' : 'Has a setup bonus — see the power.') : 'No setup bonus — the standard kit.';
+    const setupLine = (f.setup && !(code === 'MC' && ctx.core && ctx.core.cutMcPips)) ? (code === 'STOCK' ? 'Starts with <b>+$8</b> (capitalized).' : code === 'MC' ? 'Starts with <b>+2 pips</b> (the engineering edge).' : 'Has a setup bonus — see the power.') : 'No setup bonus — the standard kit.';
     return `<article class="rb-placard" style="--fc:${colorOf(code)}">
       <header><div class="rb-brand">${esc(brandOf(code))}</div>
         <div class="rb-ed ${f.edition === 'EXPANSION' ? 'x' : ''}">${f.edition === 'EXPANSION' ? 'EXPANSION FRANCHISE' : 'CORE'}</div></header>
@@ -274,8 +274,10 @@
   let root = null, cur = 'rules', ctxCache = null;
   function context() {
     if (ctxCache) return ctxCache;
-    const core = probe(CORE_OPTS, 4), exp = probe(EXP_OPTS, 4), two = probe(EXP_OPTS, 2);
-    ctxCache = { core, exp, two, heg: exp && exp.hegDials, allied: (a, b) => (exp && exp.allied ? exp.allied(a, b) : false) };
+    // ORDER 75: a URL switch (#longway=off …; OilGame.SWITCHES_55) is read into the probe, so the book prints the table played
+    const OG = global.OilGame, L = global.location, SW = (OG && OG.switches55 && L) ? OG.switches55((L.hash || '') + (L.search || '')) : {};
+    const core = probe(Object.assign({}, CORE_OPTS, SW), 4), exp = probe(Object.assign({}, EXP_OPTS, SW), 4), two = probe(Object.assign({}, EXP_OPTS, SW), 2);
+    ctxCache = { core, exp, two, heg: exp && exp.hegDials, allied: (a, b) => (exp && exp.allied ? exp.allied(a, b) : false), sw: SW };   // ORDER 84: sw = the URL switches (#kingmaker …)
     return ctxCache;
   }
   function render(id) {

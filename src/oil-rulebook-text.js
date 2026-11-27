@@ -33,12 +33,12 @@
         <br><b>The slingshot (pips).</b> On a CHAOTIC roll you may spend <b>1 pip</b>: turn <b>all three dice upside down</b>. The shove keeps its size and <b>flips its sign</b> (+5 → −5) — a boom becomes a crash, a crash a boom. The spread is the same, so how far you sail is the same. Every <b>${D.PIP_REGEN_EVERY}rd turn of your own</b>, you gain a pip back (up to ${D.PIPS_START}; a company that starts with more keeps them until it spends them).</li>
       <li><b>THE PRICE MOVES.</b> Add the shove to the price. Once the well is down to <b>${D.SCARCITY_BAND} or less</b>, scarcity adds more every turn: <b>+ (${D.SCARCITY_BAND} − oil) ÷ ${D.SCARCITY_DIV}</b>, rounded up. The price never leaves $${D.PRICE_MIN}–$${D.PRICE_MAX}. Everyone's barrels are worth that price — there is one market and you are all in it.</li>
       <li><b>YOUR POWER.</b> Your placard's power happens now, every turn, automatically.</li>
-      <li><b>SAIL.</b> The dice also say how far the world lets you move: <b>high die − low die</b> (at least ${M.MOVE_MIN}, at most ${M.MOVE_MAX}). Move your ship to any place that many route spaces away or fewer — or stay. <b>Shut gates (✕) block you</b>; the arctic is iced until it is developed. <b>In a CHAOTIC era the sea is dangerous:</b> each place you enter can cost you a barrel and +1 exposure — a strait ${pct(peril.gate || 0)}, open water ${pct(peril.ocean || 0)}, a cape ${pct(peril.cape || 0)}, the arctic ${pct(peril.arctic || 0)}. Going round a closure, a cape or the ice is <b>the long way</b>: +${M.LONGWAY_PCT}% on your next sale.</li>
+      <li><b>SAIL.</b> The dice also say how far the world lets you move: <b>high die − low die</b> (at least ${M.MOVE_MIN}, at most ${M.MOVE_MAX}). Move your ship to any place that many route spaces away or fewer — or stay. <b>Shut gates (✕) block you</b>; the arctic is iced until it is developed. <b>In a CHAOTIC era the sea is dangerous:</b> each place you enter can cost you a barrel and +1 exposure — a strait ${pct(peril.gate || 0)}, open water ${pct(peril.ocean || 0)}, a cape ${pct(peril.cape || 0)}, the arctic ${pct(peril.arctic || 0)}.${M.LONGWAY_PCT ? ` Going round a closure, a cape or the ice is <b>the long way</b>: +${M.LONGWAY_PCT}% on your next sale.` : ''}</li>
       <li><b>ACROSS THE TABLE — draw, then one call.</b> Draw <b>1 card</b>: from <b>DEEDS</b> if you are at an HQ, <b>COMPETITION</b> at a strait or canal, <b>FREEDOM-MARKET</b> anywhere else. You hold at most <b>3</b> — a fourth pushes out your oldest. Then do <b>one</b>: <b>PLAY A CARD</b> · <b>OFFER A DEAL</b> (§4) · <b>BREAK A DEAL</b> · pass.</li>
       <li><b>ON THE GROUND — one call</b> (only where there is somebody to sell to: an HQ or onshore ground; at sea you are in transit and skip this):
         <ul>
           <li><b>SELL</b> one barrel where you stand (§3). That sale is your claim on the ground: <b>+1 control ▰</b>.</li>
-          <li><b>CALL THE SERVICE</b> on a fire you are standing on, or buy a <b>RETAINER</b> at your own HQ (§5).</li>
+          <li><b>CALL THE SERVICE</b> on a fire you are standing on${C.RETAINER_MODE === 'cut' ? '' : ', or buy a <b>RETAINER</b> at your own HQ'} (§5).</li>
           <li><b>HOLD</b> — always allowed, never free if you sat still: a turn you neither moved nor sold costs <b>+${D.HOLD_PENALTY} exposure</b>.</li>
         </ul></li>
       <li><b>THE WELL BURNS.</b> Take <b>1 + price ÷ ${D.BURN_PER_PRICE}</b> (rounded down) oil off the well: 1 under $${D.BURN_PER_PRICE}, 2 to $${2 * D.BURN_PER_PRICE - 1}, 3 to $${3 * D.BURN_PER_PRICE - 1}, 4 at $${3 * D.BURN_PER_PRICE}. Every fire burns <b>${C.FIRE_BURN}</b> more. Then check the end (§6).</li>
@@ -52,7 +52,7 @@
       <tr><td><b>No contract</b> — dumped on the market</td><td>×${M.CONSIGN_DUMP}% (onshore ground is never a dump)</td></tr>
       <tr><td><b>Shut straits</b> — the freight premium</td><td>+${M.FREIGHT_PCT}% for each shut gate (at most ${M.FREIGHT_CAP})</td></tr>
       <tr><td><b>Boxed in</b> — each blocked route out of where you stand</td><td>−${M.BLOCK_PCT}% (never below ${M.BLOCK_FLOOR}%)</td></tr>
-      <tr><td><b>The long way</b> (round a closure, a cape or the ice)</td><td>+${M.LONGWAY_PCT}%</td></tr>
+      ${M.LONGWAY_PCT ? `<tr><td><b>The long way</b> (round a closure, a cape or the ice)</td><td>+${M.LONGWAY_PCT}%</td></tr>` : ''}
       <tr><td><b>Onshore ground</b></td><td>+${M.ONSHORE_PCT}%, and +${C.HEAT_ONSHORE} heat there</td></tr>
       <tr><td><b>A rival's HQ</b> (an incursion)</td><td>+${M.INCURSION_BONUS}% — but you and the host each take +${M.INCURSION_HIT} exposure and the place +${C.HEAT_INCURSION} heat</td></tr>
       <tr><td><b>A burning place</b></td><td>×${C.FIRE_DELIVERY}%</td></tr>
@@ -72,7 +72,7 @@
       <tr><td><b>EXPOSURE</b> — on you</td><td>It is on the record that you needed help. It decides ties, and (with the expansion) how many dice you roll.</td></tr></table>
     <p><b>Absorbing heat.</b> When a hit of ${C.ABSORB_MIN}+ heat lands on a seated HQ, its company takes the edge off: a <b>state</b> company sheds ${C.STATE_ABSORB} heat for +${C.STATE_EXPOSURE} exposure (legitimacy); a <b>private</b> one sheds ${C.PRIVATE_ABSORB} for $${C.PRIVATE_FEE} (lobbying).</p>
     <p><b>What heat does.</b> A strait at <b>${C.GATE_SHUT_AT} heat shuts</b> (✕) for ${M.CLOSE_TURNS} turns (never if it would cut an HQ off the world). An HQ at <b>${C.BLOWOUT_AT} heat blows</b>: a <b>FIRE</b>. A fire never goes out on its own — it burns <b>${C.FIRE_BURN} oil a turn</b> for everyone and gives its company <b>+${C.FIRE_HEAT} exposure a turn</b>, and sales from it are halved.</p>
-    <p><b>Call the service (IWS).</b> Stand on the fire and pay <b>$${C.IWS_BASE} + $${C.IWS_PER_TURN} for every extra turn it has burned</b>, +${C.IWS_EXPOSURE} exposure: the fire is out and the place cools. <b>A retainer:</b> $${C.RETAINER_COST} at your own HQ once its heat is ${C.RETAINER_AT}+ (not burning) — your HQ takes ${C.RETAINER_SHIELD} more heat before it blows, for ${C.RETAINER_TURNS} turns. Or let it burn.</p>
+    <p><b>Call the service (IWS).</b> Stand on the fire and pay <b>$${C.IWS_BASE} + $${C.IWS_PER_TURN} for every extra turn it has burned</b>, +${C.IWS_EXPOSURE} exposure: the fire is out and the place cools.${C.RETAINER_MODE === 'cut' ? '' : ` <b>A retainer:</b> $${C.RETAINER_COST} at your own HQ once its heat is ${C.RETAINER_AT}+ (not burning) — your HQ takes ${C.RETAINER_SHIELD} more heat before it blows, for ${C.RETAINER_TURNS} turns.`} Or let it burn.</p>
 
     <h3>6 · HOW IT ENDS — THE E.D.D. PROTOCOL</h3>
     <p><b>The oil only goes down, every turn.</b> The Protocol — <b>EAT · DIVIDE · DESTROY</b> — <b>arms</b> the first time any of these happens:</p>
@@ -83,10 +83,22 @@
     <table><tr><td class="r">${faces('EAT')}</td><td><b>EAT</b></td><td>You take +▰1 and their barrels' worth in $; they lose every barrel and take +3 exposure.</td></tr>
       <tr><td class="r">${faces('DIVIDE')}</td><td><b>DIVIDE</b></td><td>Half their control (rounded down) moves to you.</td></tr>
       <tr><td class="r">${faces('DESTROY')}</td><td><b>DESTROY</b></td><td>They lose ▰1 and take +2 exposure; 1 oil burns; the strait nearest them shuts.</td></tr></table>
-    <p>Every strike also puts +${C.HEAT_EDD} heat where the target stands. <b>The game ends the moment the well hits 0 — always.</b></p>
+    <p>Every strike also puts +${C.HEAT_EDD} heat where the target stands. <b>The game ends the moment the well hits 0 — always.</b></p>${kingmakerRule(ctx)}
     ${box(`<b>WHO WINS:</b> the most <b>control ▰</b>. Tied: the <b>least exposure</b>. Still tied: the richest <b>holdings</b> ($ + barrels at the final price). <br><span class="rb-dim">Most Protocols arm because the oil is nearly gone; some on a spike; a few because too much of the world is on fire. You are not playing to save it. You are playing to be holding the most when it goes.</span>`, 'red')}
     ${tiersRules()}`;
   };
+
+  // ORDER 84: THE KINGMAKER RULE (test) — printed ONLY when the URL turns it on (#kingmaker, or #eddrunnerup alone).
+  // The rule is the map game's (3–5 players); the line says so, because this book's table is the box game.
+  function kingmakerRule(ctx) {
+    const W = (ctx && ctx.sw) || {}; if (!W.kingmaker77 && !W.eddRunnerUp) return '';
+    const yards = W.kingmaker77 || W.yardV3;
+    return box(`<b>KINGMAKER RULE (test) — the map game, 3–5 players.</b> When E.D.D. strikes, <b>only the company in second place (▰) may strike the front-runner.</b> Everyone else strikes <b>the richest of the rest</b>. (Front-runner and second place are read at each strike; ties as in the verdict.)` +
+      (yards ? ` <br><b>Its yards:</b> the Gulf Coast 0 · the Northeast 0 and +1 barrel · the Caspian 1 and +1 barrel · the Volga 1 and +2 barrels · the North Sea 2 · the Mainland 3. Extra starting barrels ride on deck until sold; your yard tops you up to 2 only when you hold fewer.` : '') +
+      // ORDER 87: TWO TABLES, an option on top (#kingmaker&twotables); absent unless the URL names it
+      (W.eddTwoTables ? ` <br><b>TWO TABLES (option):</b> only second place may strike the front-runner, and only the front-runner may strike second place. <b>Everyone else strikes the richest company below the top two.</b> Nobody below them? Your strike finds nobody.` : '') +
+      ` <br><span class="rb-dim">A table test, off by default (ORDER 84). The box game plays E.D.D. as printed above.</span>`, 'red');
+  }
 
   // THE CONCESSIONS (1118) — read from src/oil-tiers.js, so the book cannot drift from the engine
   function tiersRules() {

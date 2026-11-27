@@ -302,6 +302,24 @@ function activeCodes(){ // the companies at the table, YOU first
   return list;
 }
 function setFull(v){ S.privilege=v; S.momentum=v; S.clock=v; S.ducks=v; S.suprex=v&&!/suprex=off/.test(location.hash+location.search); if(v){S.map=true;S.path=true;} }   // 1118: SuprexCore theatres ride the box (#suprex=off = the 1117 expansion)
+// ORDER 84: setup SAYS when a URL switch is on (#kingmaker → "KINGMAKER RULE (test)"; also ORDER 75's #pkg55 / #longway=off …,
+// which were invisible). A lit chip per switch on a TEST RULES row under HOUSE RULES. Built ONLY when a switch is on, so the
+// default setup DOM is as before. The chips are not taps: the URL sets them (OilGame.SWITCHES_84 / SWITCHES_55).
+function testRulesRow(){
+  if($('#rowTest')||!window.OilGame||!OilGame.switches55) return;
+  const W=OilGame.switches55(location.hash+location.search), chips=[], hints=[];
+  if(W.kingmaker77){ chips.push('KINGMAKER RULE (test)'); hints.push('KINGMAKER RULE: only the company in second place may strike the front-runner; everyone else strikes the richest of the rest; its own yards. The map game, 3–5 players: this box table plays E.D.D. as printed.'); }
+  else { if(W.eddRunnerUp){ chips.push('KINGMAKER RULE (test) · strike only'); hints.push('Only the runner-up may strike the front-runner (the map game only: this box table plays E.D.D. as printed).'); }
+    if(W.yardV3){ chips.push('YARDS V3 (test)'); hints.push('Yards v3 need the runner-up strike (the map game only).'); } }
+  if(W.eddTwoTables){ chips.push('TWO TABLES (test)'); hints.push('TWO TABLES (with #kingmaker): a company outside the top two strikes the richest company below them, never the top two. The map game only.'); }   // ORDER 87
+  if(W.pkg55) chips.push('THE 55 PACKAGE');
+  else Object.keys(OilGame.SWITCHES_55||{}).forEach(k=>{ if(W[k]) chips.push(OilGame.SWITCHES_55[k].code+' #'+OilGame.SWITCHES_55[k].flag); });
+  if(!chips.length) return;
+  const r=document.createElement('div'); r.className='row'; r.id='rowTest'; r.title='URL switches (ORDER 75 / ORDER 84): off unless the address names them';
+  r.innerHTML='<div class="lbl">TEST RULES</div><div class="seg">'+chips.map(t=>'<div class="chip on" style="cursor:default">'+t+'</div>').join('')+'</div>'+
+    '<span class="ss" id="testHint" style="margin:0 0 0 118px;text-align:left;flex-basis:100%">'+(hints.join(' · ')||'set by the address (#…); take it out of the URL to play today\'s rules.')+'</span>';
+  $('#rowHouse').after(r);
+}
 function buildSetup(){
   const segExp=$('#segExp'); segExp.innerHTML='';
   [['core','CORE GAME','three dice · the map · three decks · deals · fire · eight… six companies'],['exp','NOW WITH SuprexCore PREMIUM — CORE + EXPANSION','the fourth die (the Green Anders die) · the privilege · momentum · pirates & the firm · the seat clock · the ducks · 2-player HEGEMONY']].forEach(([k,l,sub])=>{
@@ -340,6 +358,7 @@ function buildSetup(){
       if(!ok) c.style.opacity='.35'; c.onclick=()=>{ if(!on(needs))return; S.house[k]=!S.house[k]; buildSetup(); }; segH.appendChild(c); });
     const lit=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n));
     $('#houseHint').textContent=lit.length?lit.map(x=>x[2]).join(' · '):'none — today\'s rules. Tap one to try an open call.'; }
+  testRulesRow();   // ORDER 84: the URL switches, shown (built only when one is on)
   $('#pathHint').textContent=pathOn?(PATH_PRESETS.find(x=>x[0]===S.pathPreset)||PATH_PRESETS[0])[2]:(S.map?'off — sell anywhere there is an HQ; no contracts.':'needs THE MAP.');
   // THE COMPANIES — each player takes a placard. Tap: — → BOT → PLAYER (pass-and-play) → —. ★ = you (tap ★ to move it).
   const fg=$('#facs'); fg.innerHTML=''; const active=activeCodes(), [lo,hi]=SEATS(), n=active.length;
@@ -431,7 +450,8 @@ function startGame(){
     levels:(on('map')&&S.levels!=='off')?S.levels:undefined,   // OIL LEVELS prototype (O2, docs/RESUME-2026-11-10.md): THE BOX chip, or #levels=two | #levels=voyage   // THE PATH (docs/THE-PATH.md): contracts, tolls, structures
     // THE PATH seats the real roster, so each company starts in its own yard (and its power is live —
     // the configuration path-model.js and LAB 12 measure). Off the path the table stays as it was.
-    factions:(on('map')&&S.path)?codes:undefined});
+    factions:(on('map')&&S.path)?codes:undefined,
+    ...OilGame.switches55(location.hash+location.search)});   // ORDER 75: ORDER 55's switches, all OFF unless the URL names one (#longway=off …; OilGame.SWITCHES_55)
   game._colors=codes.map(c=>colorFor(c));
   const youIdx=codes.indexOf(S.youCode);
   if(youIdx>=0){ game.players[youIdx].isHuman=true; game.players[youIdx]._you=true; game.players[youIdx].agent={decide:presentPrompt}; }

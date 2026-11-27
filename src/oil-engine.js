@@ -661,10 +661,20 @@
   class OilGame {
     constructor(opts = {}) {
       opts = opts || {};
+      // ORDER 75: ORDER 55's levers as real switches, every one OFF (OilGame.SWITCHES_55). None set -> this line does
+      // nothing, no RNG is drawn, the golden fingerprint is untouched.
+      // ORDER 84: THE KINGMAKING FIX (OilGame.SWITCHES_84), every key OFF. None set -> this line does nothing, no RNG.
+      // (Before the 55 switches: kingmaker77 turns mapSeats5 on, and the 55 line refuses a 6-seat map game.)
+      if (OilGame.SWITCHES_84_ON(opts)) opts = OilGame.switches84Opts(opts);
+      if (OilGame.SWITCHES_55_ON(opts)) opts = OilGame.switches55Opts(opts);
       // THE MAP-ONLY CORE (ORDER 33, docs/CORE10-MAP.md): one switch turns the table into the ten-rule paper game.
       // Off (no opts.mapOnly) -> this line does nothing, no RNG is drawn, the golden fingerprint is untouched.
       if (opts.mapOnly) opts = OilGame.mapOnlyOpts(opts);
       this.mapOnly = opts._mapOnly || null;
+      // ORDER 84 eddRunnerUp (OFF): the map game only. Set only when ON, so a default game carries no new field.
+      if (this.mapOnly && opts.eddRunnerUp) this.eddRunnerUp = true;
+      // ORDER 87 eddTwoTables (OFF): the same, and only on top of eddRunnerUp (switches84Opts refuses it alone).
+      if (this.mapOnly && opts.eddRunnerUp && opts.eddTwoTables) this.eddTwoTables = true;
       this.rng = makeRng(opts.seed || 1);
       this.expansion = opts.expansion !== false;   // Green Anders die present
       this.edition = EDITIONS[opts.edition] ? opts.edition : 'classic';
@@ -869,7 +879,9 @@
       if (this.factions) {
         const FX = OilGame._factionFX();
         this.players.forEach((p, i) => { p.faction = this.factions[i] || null; });
-        if (this.asym) this.players.forEach(p => { const f = p.faction && FX[p.faction]; if (f && f.setup) f.setup(this, p); });
+        // ORDER 75 O-4110 (opts.cutMcPips, OFF): Milecastle's setup line (+2 pips) is not played
+        this.cutMcPips = !!opts.cutMcPips;
+        if (this.asym) this.players.forEach(p => { const f = p.faction && FX[p.faction]; if (f && f.setup && !(this.cutMcPips && p.faction === 'MC')) f.setup(this, p); });
         if (this.dials.PIP_CAP === 'own') this.players.forEach(p => { p.pipsStart = p.pips; });   // carry-over #12 knob
         // ORDER 36 (MODEL): opts.yardStart { company: { control, barrels } } — a yard's printed head start. Absent -> nothing.
         if (opts.yardStart) this.players.forEach(p => { const y = opts.yardStart[p.faction]; if (y) { p.control += y.control || 0; p.barrels += y.barrels || 0; } });
@@ -2031,6 +2043,80 @@
     static get MAP_ONLY_YARDS() {
       return { HARTSTARR: 0, STOCK: 0, NIKOYL: 1, MINA: 1, MILECASTLE: 1, BRIGHT: 2 };
     }
+    // ========================================================================
+    // ORDER 75 — ORDER 55's levers as REAL SWITCHES (docs/RULES-FINAL-DRAFT-1125.md, O-4108…O-4112). Each is an opt-in
+    // table opt, OFF by default, and a flag read the same way off a URL (#longway=off) or a command line
+    // (--longway=off): OilGame.switches55(text) turns the flags into opts. ORDER 55 measured each one with a harness
+    // override; these are the same levers in the engine, so its batteries reproduce game for game.
+    // ========================================================================
+    static get SWITCHES_55() {
+      return {
+        cutLongWay: { code: 'O-4108', flag: 'longway=off', what: 'the long way pays nothing (mapDials.LONGWAY_PCT 0; an explicit LONGWAY_PCT still wins)' },
+        cutRetainer: { code: 'O-4111', flag: 'retainer=off', what: "the retainer is never offered (crisisDials.RETAINER_MODE 'cut'; an explicit RETAINER_MODE still wins)" },
+        cutMcPips: { code: 'O-4110', flag: 'mcpips=off', what: "Milecastle's setup line is cut: no +2 starting pips (its passive is untouched)" },
+        mapSeats5: { code: 'O-4112', flag: 'mapseats=5', what: 'the map game seats 3–5: its seat picker stops at 5 and a 6-seat map game is refused (OFF: 3–6 as today)' },
+      };
+    }
+    // THE 55 PACKAGE (opts.pkg55 / #pkg55 / --pkg55, OFF): every switch above at once — ORDER 55's recommendation
+    static SWITCHES_55_ON(opts) { return !!opts.pkg55 || Object.keys(OilGame.SWITCHES_55).some(k => opts[k]); }
+    // the flags in a URL (location.hash + location.search) or a joined argv -> { key: true } for each flag present
+    static switches55(text) {
+      const s = String(text || ''), SW = OilGame.SWITCHES_55, o = {};
+      const has = f => new RegExp('(^|[#&?\\s,;/]|--)' + f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=$|[#&?\\s,;])', 'i').test(s);
+      if (has('pkg55')) o.pkg55 = true;
+      for (const k in SW) if (has(SW[k].flag)) o[k] = true;
+      const S84 = OilGame.SWITCHES_84; for (const k in S84) if ([].concat(S84[k].flags || S84[k].flag).some(has)) o[k] = true;   // ORDER 84 (#kingmaker, --extra kingmaker77 …)
+      return o;
+    }
+    static switches55Opts(opts) {
+      if (opts.pkg55) { opts = Object.assign({}, opts); for (const k in OilGame.SWITCHES_55) opts[k] = true; }   // THE 55 PACKAGE
+      const o = Object.assign({}, opts);
+      if (opts.cutLongWay && !(opts.mapDials && 'LONGWAY_PCT' in opts.mapDials))   // O-4108
+        o.mapDials = Object.assign({}, opts.mapDials || {}, { LONGWAY_PCT: 0 });
+      if (opts.cutRetainer && !(opts.crisisDials && 'RETAINER_MODE' in opts.crisisDials))   // O-4111
+        o.crisisDials = Object.assign({}, opts.crisisDials || {}, { RETAINER_MODE: 'cut' });
+      if (opts.mapOnly) {                                                                    // O-4112
+        const n = opts.n_players || 5, R = OilGame.mapSeatRange(opts);
+        if (n > R.max) throw new Error('the map game seats ' + R.min + '–' + R.max + ' (O-4112, mapSeats5): ' + n + ' asked');
+      }
+      return o;
+    }
+    // ========================================================================
+    // ORDER 84 — THE KINGMAKING FIX as a real switch (docs/EDD-FIX-PROPOSAL-1126.md §2A; ORDER 77's winning cell
+    // map-ru-v3). OFF by default. Read off a URL or a command line by OilGame.switches55(text), like the 55 switches,
+    // but NOT part of THE 55 PACKAGE (pkg55 never turns these on).
+    // ========================================================================
+    static get SWITCHES_84() {
+      return {
+        eddRunnerUp: { code: 'ORDER 84', flag: 'eddrunnerup', what: 'map game: when E.D.D. strikes, only the company in second place may strike the front-runner; everyone else strikes the richest of the rest (§2A)' },
+        kingmaker77: { code: 'ORDER 84', flag: 'kingmaker', flags: ['kingmaker', 'kingmaker77'], what: 'THE KINGMAKER RULE (test): the map game only, 3–5 seats (turns mapSeats5 on), with eddRunnerUp + yardV3 = ORDER 77 map-ru-v3. Not played at the box table' },
+        yardV3: { code: 'ORDER 84', flag: 'yardv3', what: 'map game: the yard table v3 (OilGame.MAP_ONLY_YARDS_V3). ONLY with eddRunnerUp: a map game asked for yardV3 alone is REFUSED (untested on its own)' },
+        // ORDER 87 (docs/FABLE-TASK1-OIL-1126.md fix 1, the 20k winner): an OPTION of the kingmaker package, OFF.
+        // kingmaker77 does NOT turn it on; it is asked for on top (#kingmaker&twotables · --extra kingmaker77 --eddtwotables).
+        eddTwoTables: { code: 'ORDER 87', flag: 'eddtwotables', flags: ['eddtwotables', 'twotables'], what: 'TWO TABLES (test): map game: only second place may strike the front-runner and only the front-runner may strike second place; everyone else strikes the richest company below the top two (nobody, if there is none). ONLY with eddRunnerUp (#kingmaker): alone it is REFUSED' },
+      };
+    }
+    static SWITCHES_84_ON(opts) { return Object.keys(OilGame.SWITCHES_84).some(k => opts[k]); }
+    static switches84Opts(opts) {
+      const o = Object.assign({}, opts);
+      // THE KINGMAKER PACKAGE (opts.kingmaker77 / #kingmaker / --extra kingmaker77): map game only; 3–5 seats
+      if (opts.kingmaker77 && opts.mapOnly) { o.mapSeats5 = true; o.eddRunnerUp = true; o.yardV3 = true; }
+      if (o.yardV3 && opts.mapOnly) {
+        // yardV3 was only ever measured with the runner-up rule (ORDER 77 map-ru-v3); alone it is refused, not ignored
+        if (!o.eddRunnerUp) throw new Error('yardV3 (ORDER 84) is played only with eddRunnerUp: the yard table v3 alone is untested');
+        o._yardV3 = true;   // mapOnlyOpts deals the v3 yards by company (an explicit yardStart still wins)
+      }
+      // ORDER 87 eddTwoTables: measured only on top of the runner-up rule (ORDER 87 battery); alone it is refused, not ignored
+      if (o.eddTwoTables && opts.mapOnly && !o.eddRunnerUp) throw new Error('eddTwoTables (ORDER 87) is played only with eddRunnerUp (#kingmaker): TWO TABLES alone is untested');
+      return o;
+    }
+    // ORDER 84 yardV3: ORDER 77's yard table v3 (map-ru-v3), by yard: S0+1b · N1+1b · Mi1+2b · MC2 · B3 (Hartstarr 0).
+    // Starting ▰ and extra starting barrels (on top of the 2 everyone starts with). Replaces MAP_ONLY_YARDS when ON.
+    static get MAP_ONLY_YARDS_V3() {
+      return { HARTSTARR: null, STOCK: { barrels: 1 }, NIKOYL: { control: 1, barrels: 1 }, MINA: { control: 1, barrels: 2 }, MILECASTLE: { control: 2 }, BRIGHT: { control: 3 } };
+    }
+    // O-4112: the map game's seat picker (a UI reads this; OFF = 3–6, as ORDER 55 measured and the box allows)
+    static mapSeatRange(opts) { return { min: 3, max: (opts && (opts.mapSeats5 || opts.pkg55)) ? 5 : 6 }; }
     static mapOnlyOpts(opts) {
       const m = opts.mapOnly, key = (m && typeof m === 'object' && m.drop) || null, D = OilGame.MAP_ONLY_DROPS;
       if (key && !D[key]) throw new Error('mapOnly: unknown rule ' + key);
@@ -2044,11 +2130,11 @@
       //   opts.mapOnly: { core: 33 }      -> all three back at once: the ORDER 33 core exactly
       // Only this function changes; the full / legacy game never comes through here.
       const c33 = !!(m && typeof m === 'object' && String(m.core) === '33');
-      const Y = OilGame.MAP_ONLY_YARDS, FH = MP.FACTION_HQ || {};
+      const V3 = !!opts._yardV3, Y = V3 ? OilGame.MAP_ONLY_YARDS_V3 : OilGame.MAP_ONLY_YARDS, FH = MP.FACTION_HQ || {};   // ORDER 84: yardV3
       let yardStart = opts.yardStart;
-      if (yardStart === undefined && !c33) {
+      if (yardStart === undefined && (!c33 || V3)) {
         yardStart = {};
-        factions.forEach(f => { const v = Y[FH[f] || f]; if (v) yardStart[f] = { control: v }; });
+        factions.forEach(f => { const v = Y[FH[f] || f]; if (v) yardStart[f] = typeof v === 'object' ? Object.assign({}, v) : { control: v }; });
       }
       return Object.assign({}, opts, {
         map: true, consign: false, path: (() => {   // (ORDER 36: opts.mapOnly.path merges over the core's PATH, dials key by key)
@@ -3227,6 +3313,18 @@
         if (revenge && target) { this.dealStats.revenge++; p.grudges = p.grudges.filter(id => id !== target.id); this.emit('edd_revenge', { player: p.name, on: target.name }); }
       }
       if (this.suprex && target && OilGame._suprexFX().tryBlock(this, target, 'edd', { by: p })) target = null;   // SUPREXCORE FIREBREAK
+      // ORDER 84 eddRunnerUp (map game, OFF): only the runner-up (2nd in ▰; ties least exposure, then richest) may strike
+      // the front-runner, read at this strike; anyone else whose target would be the front-runner strikes the richest of
+      // the rest. The same code as ORDER 77's harness patch (scripts/oil55/patch/runnerup.js), at the same place. No RNG.
+      // ORDER 87 eddTwoTables (on top of it, OFF): the top two strike as built (so second place may reach the front-runner
+      // and the front-runner second place); anyone else strikes the richest company BELOW the top two, or nobody. The same
+      // code as the fable harness patch (scripts/oil55/patch/twotables.js), at the same place. No RNG.
+      if (this.eddRunnerUp && this.eddTwoTables) { const R = this.players.slice().sort((x, y) => (y.control - x.control) || (x.exposure - y.exposure) || (y.holdings(this.price) - x.holdings(this.price)));
+        if (p !== R[0] && p !== R[1] && target) { const f = pool.filter(q => q !== R[0] && q !== R[1]);
+          target = f.length ? f.reduce((x, y) => (x.holdings(this.price) > y.holdings(this.price) ? x : y)) : null; } }
+      else if (this.eddRunnerUp) { const R = this.players.slice().sort((x, y) => (y.control - x.control) || (x.exposure - y.exposure) || (y.holdings(this.price) - x.holdings(this.price)));
+        if (target && target === R[0] && p !== R[1]) { const f = pool.filter(q => q !== R[0]);
+          target = f.length ? f.reduce((x, y) => (x.holdings(this.price) > y.holdings(this.price) ? x : y)) : null; } }
       switch (choice) {
         case 'EAT':     if (target) { p.control += 1; p.value += target.barrels * this.price; target.barrels = 0; target.exposure += 3;
           // "acquire territory": you take their ground — they wash up at their own HQ.
