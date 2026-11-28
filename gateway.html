@@ -291,7 +291,15 @@ S.house={backhaul:/supply=backhaul/.test(location.hash),rider:/retainer=rider/.t
 if(/firm=big/.test(location.hash+location.search)) document.body.classList.add('firmbig');   // carry-over #5 preview
 const CORE_MODS={cards:1,deals:1,map:1,path:1,crisis:1,tiers:1};   // 1118: THE CONCESSIONS are core
 const on=k=>CORE_MODS[k]?S[k]:(S.expansion&&S[k]);
-const SEATS=()=>S.expansion?[2,8]:[4,6];   // core 4–6 (the one sheet); expansion 2–8 (the seat clock; 2 = HEGEMONY)
+// (1127) THE MAP GAME START — opt-in #mapgame (or ?mapgame), OFF by default. The map-only core (opts.mapOnly: ORDER 33/36/43,
+// docs/CORE10-MAP.md) had no page that could play it: #kingmaker lit a chip and then the box game ran. With #mapgame, RUN deals
+// the MAP-ONLY table (THE MAP + THE PATH; cards, deals, crisis, concessions and the expansion OFF) and carries the URL
+// switches into it (#kingmaker ORDER 84 · #twotables ORDER 87 · #mapseats=5 / #longway=off … ORDER 75, via OilGame.switches55).
+// No #mapgame = the box game, the same call as before (startGame's else branch is untouched).
+const MAPGAME=/(^|[#&?])mapgame(?=$|[#&])/i.test(location.hash+location.search);
+const MAPSW=()=>window.OilGame&&OilGame.switches55?OilGame.switches55(location.hash+location.search):{};
+const mapSeatMax=()=>{ const W=MAPSW(); return window.OilGame&&OilGame.mapSeatRange?OilGame.mapSeatRange({mapSeats5:W.mapSeats5||W.kingmaker77,pkg55:W.pkg55}).max:6; };
+const SEATS=()=>MAPGAME?[3,mapSeatMax()]:S.expansion?[2,8]:[4,6];   // core 4–6 (the one sheet); expansion 2–8 (the seat clock; 2 = HEGEMONY); #mapgame 3–5|6 (O-4112)
 function rosterCodes(){ return FAC.filter(f=>S.expansion||f.edition!=='EXPANSION').map(f=>f.code); }
 function seated(){ const r=rosterCodes(); return r.filter(c=>S.seat[c]); }
 function activeCodes(){ // the companies at the table, YOU first
@@ -308,10 +316,11 @@ function setFull(v){ S.privilege=v; S.momentum=v; S.clock=v; S.ducks=v; S.suprex
 function testRulesRow(){
   if($('#rowTest')||!window.OilGame||!OilGame.switches55) return;
   const W=OilGame.switches55(location.hash+location.search), chips=[], hints=[];
-  if(W.kingmaker77){ chips.push('KINGMAKER RULE (test)'); hints.push('KINGMAKER RULE: only the company in second place may strike the front-runner; everyone else strikes the richest of the rest; its own yards. The map game, 3–5 players: this box table plays E.D.D. as printed.'); }
+  if(W.kingmaker77){ chips.push('KINGMAKER RULE (test)'); hints.push('KINGMAKER RULE: only the company in second place may strike the front-runner; everyone else strikes the richest of the rest; its own yards. The map game, 3–5 players: '+(MAPGAME?'it plays at this table (#mapgame).':'this box table plays E.D.D. as printed (add #mapgame to play it).')); }
   else { if(W.eddRunnerUp){ chips.push('KINGMAKER RULE (test) · strike only'); hints.push('Only the runner-up may strike the front-runner (the map game only: this box table plays E.D.D. as printed).'); }
     if(W.yardV3){ chips.push('YARDS V3 (test)'); hints.push('Yards v3 need the runner-up strike (the map game only).'); } }
   if(W.eddTwoTables){ chips.push('TWO TABLES (test)'); hints.push('TWO TABLES (with #kingmaker): a company outside the top two strikes the richest company below them, never the top two. The map game only.'); }   // ORDER 87
+  if(MAPGAME){ chips.unshift('THE MAP GAME (test)'); hints.unshift('THE MAP GAME (#mapgame): RUN deals the map-only core — THE MAP + THE PATH, the dice; cards, deals, crisis, concessions and the expansion are OFF whatever the chips above say. Seats '+SEATS().join('–')+'.'+(W.kingmaker77||W.eddRunnerUp||W.eddTwoTables?' The kingmaker switches play at this table.':'')); }
   if(W.pkg55) chips.push('THE 55 PACKAGE');
   else Object.keys(OilGame.SWITCHES_55||{}).forEach(k=>{ if(W[k]) chips.push(OilGame.SWITCHES_55[k].code+' #'+OilGame.SWITCHES_55[k].flag); });
   if(!chips.length) return;
@@ -324,7 +333,8 @@ function buildSetup(){
   const segExp=$('#segExp'); segExp.innerHTML='';
   [['core','CORE GAME','three dice · the map · three decks · deals · fire · eight… six companies'],['exp','NOW WITH SuprexCore PREMIUM — CORE + EXPANSION','the fourth die (the Green Anders die) · the privilege · momentum · pirates & the firm · the seat clock · the ducks · 2-player HEGEMONY']].forEach(([k,l,sub])=>{
     const c=document.createElement('div'); const isOn=(k==='exp')===S.expansion; c.className='chip box'+(isOn?' on':''); c.innerHTML=`${l}<small>${sub.replace('eight… ','')}</small>`;
-    c.onclick=()=>{ const v=k==='exp'; if(S.expansion===v)return; S.expansion=v; setFull(v);
+    c.onclick=()=>{ const v=k==='exp'; if(S.expansion===v)return; if(MAPGAME&&v)return;   // (1127) #mapgame: the map-only core has no expansion
+      S.expansion=v; setFull(v);
       if(!v){ FAC.forEach(f=>{ if(f.edition==='EXPANSION') delete S.seat[f.code]; }); if(!S.seat[S.youCode]){ S.youCode=seated()[0]||FAC[0].code; S.seat[S.youCode]='you'; } }
       // the box sets the table size: top up with bots to the box's minimum, trim to its maximum
       const [lo2,hi2]=SEATS(); let cur=seated();
@@ -382,7 +392,7 @@ function buildSetup(){
     fg.appendChild(d);
   });
   const two=S.expansion&&n===2, ok=n>=lo&&n<=hi, humans=active.filter(c=>c===S.youCode||S.seat[c]==='human').length;
-  $('#setupHint').innerHTML=`${n} at the table${two?' — <b style="color:#2f9e5b">HEGEMONY</b> (the 2-player game)':''} · ${humans} player${humans>1?'s':''} (pass-and-play), ${n-humans} bot${n-humans===1?'':'s'} · ${S.expansion?'2–8':'4–6'} play${ok?'':` — <b style="color:#ff9a6a">seat ${n<lo?'at least '+lo:'at most '+hi}</b>`}`;
+  $('#setupHint').innerHTML=`${n} at the table${two?' — <b style="color:#2f9e5b">HEGEMONY</b> (the 2-player game)':''} · ${humans} player${humans>1?'s':''} (pass-and-play), ${n-humans} bot${n-humans===1?'':'s'} · ${MAPGAME?SEATS().join('–'):S.expansion?'2–8':'4–6'} play${ok?'':` — <b style="color:#ff9a6a">seat ${n<lo?'at least '+lo:'at most '+hi}</b>`}`;
   $('#startGo').disabled=!ok&&!/seats=/.test(location.hash)&&!(on('hegemony')&&on('map')); $('#startGo').style.opacity=$('#startGo').disabled?'.4':'1';
 }
 
@@ -431,6 +441,12 @@ function startGame(){
   stop();
   const codes=activeCodes();
   const names=codes.map(c=>(FAC.find(f=>f.code===c)||{}).brand);
+  if(MAPGAME){
+    const seed0=(/[#&]seed=(\d+)/.exec(location.hash)||[])[1]?+(/[#&]seed=(\d+)/.exec(location.hash)[1]):(Math.random()*1e9)|0;   // (1127) THE MAP GAME: the map-only core + the URL switches (OilGame.mapOnlyOpts / switches84Opts / switches55Opts)
+    try{ game=new OilGame({seed:seed0,n_players:codes.length,names,factions:codes,order:/order=fixed/.test(location.hash+location.search)?undefined:'draw',
+      mapOnly:true,...MAPSW()}); }
+    catch(e){ game=null; $('#setupHint').innerHTML='<b style="color:#ff9a6a">THE MAP GAME refused this table: '+String(e.message||e).replace(/</g,'&lt;')+'</b>'; return; }
+  } else
   game=new OilGame({seed:(/[#&]seed=(\d+)/.exec(location.hash)||[])[1]?+(/[#&]seed=(\d+)/.exec(location.hash)[1]):(Math.random()*1e9)|0,   // #seed=N: test seam (tools/map_shots.mjs)
     n_players:codes.length,expansion:S.expansion,cards:on('cards'),deals:on('deals'),map:on('map'),crisis:on('crisis'),names,
     privilege:on('privilege'),
@@ -461,6 +477,7 @@ function startGame(){
   $('#edd').style.display='none'; $('#nprompt').classList.remove('on'); $('#desk').classList.remove('on'); $('#log').innerHTML='';
   deskScar=false; deskSpike=false;
   buildPanels(); updatePanels(); show('play'); draw();
+  if(MAPGAME){ const W=MAPSW(); logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · THE MAP GAME (map-only core: THE MAP + THE PATH; no cards, deals, crisis or concessions)${game.eddRunnerUp?' · KINGMAKER RULE':''}${game.eddTwoTables?' · TWO TABLES':''}${Object.keys(OilGame.SWITCHES_55).filter(k=>W[k]||W.pkg55).map(k=>' · '+OilGame.SWITCHES_55[k].code+' #'+OilGame.SWITCHES_55[k].flag).join('')}`); } else
   logLine(`<span class="t">TABLE SET</span> · ${codes.length} factions · ${S.expansion?'NOW WITH SuprexCore PREMIUM (core + expansion)':'core'} · ${on('cards')?'cards':'no cards'} · ${on('deals')?'THE TABLE':'no deals'} · ${on('map')?'THE MAP':'no map'}${game.path?' · THE PATH ('+S.pathPreset+')':''}${game.asym?' · factions asymmetric':''} · ${on('crisis')?'CRISIS':'no crisis'}${game.privilege?' · THE PRIVILEGE':''}${game.momentum?' · MOMENTUM':''}${game.disputes?' · DISPUTES':''}${game.suprex?' · SUPREXCORE: THE GULF ON FIRE · WAR IN RUSSIA/UKRAINE · VENEZUELA TO THE CALIFORNIA LANES':''}${game.clock?' · SEAT CLOCK ('+game.dials.OIL_START+' oil, E.D.D. at '+game.dials.EDD_OIL+')':''}${(()=>{const h=HOUSE_RULES.filter(([k,,,n])=>S.house[k]&&on(n)).map(x=>x[1]);return h.length?' · HOUSE RULES: '+h.join(', '):'';})()}`);
   logLine(`<span class="grn">You are ${game.players[youIdx>=0?youIdx:0].name}. Press RUN — the game pauses for your calls.</span>`);
   if(window.OIL_STATION&&OIL_STATION.on) OIL_STATION.opened();   // 1119 THE STATION: the loading card (your company's forecourt)
